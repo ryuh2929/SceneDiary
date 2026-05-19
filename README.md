@@ -9,3 +9,13 @@ NEO4J_PASSWORD=your_password
 POSTGRES_PASSWORD=your_password
 OPENAI_API_KEY=your_api_key
 ```
+
+도커 처음 빌드할 때
+```
+docker compose up --build
+```
+
+도커 실행할 때
+```
+docker compose up -d
+```
