@@ -11,10 +11,12 @@ const colors = {
   accent: '#F6D9A6',
   background: '#F4F6F9',
   surface: '#FFFFFF',
+  textOnPrimary: '#FFFFFF',
   text: '#152538',
   textMuted: '#39536B',
-  border: '#D8E3F2',
+  border: '#A9C3E6',
   inactive: '#E8EDF5',
+  toggle: '#5B7DBB',
 };
 
 type AppIconProps = {
@@ -68,7 +70,7 @@ function ToggleRow({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: colors.inactive, true: colors.primary }}
+        trackColor={{ false: colors.inactive, true: colors.toggle }}
         thumbColor={colors.surface}
         ios_backgroundColor={colors.inactive}
       />
@@ -139,8 +141,16 @@ export default function SettingsScreen() {
 
             <View className="mt-sm flex-row flex-wrap gap-sm">
               {profile.persona.tags.map((tag) => (
-                <View key={tag.id} className="rounded-full bg-primaryLight px-3 py-2">
-                  <Text className="text-sm font-bold text-primary">{tag.label}</Text>
+                // 페르소나 칩은 선택 여부에 따라 색을 분리해 실제 선택 UI로 바꾸기 쉽게 둡니다.
+                <View
+                  key={tag.id}
+                  className={`rounded-full px-3 py-2 ${tag.selected ? 'bg-primary' : 'bg-muted'}`}>
+                  <Text
+                    className={`text-sm font-bold ${
+                      tag.selected ? 'text-textOnPrimary' : 'text-textSecondary'
+                    }`}>
+                    {tag.label}
+                  </Text>
                 </View>
               ))}
             </View>

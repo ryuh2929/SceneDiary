@@ -3,6 +3,7 @@ import type { SymbolViewProps } from 'expo-symbols';
 export type PersonaTag = {
   id: string;
   label: string;
+  selected: boolean;
 };
 
 export type AppSymbolName = Extract<SymbolViewProps['name'], object>;
@@ -39,10 +40,10 @@ export const dummySettingsProfile: SettingsProfile = {
     title: '글 작성 페르소나',
     description: '감성적이고 문학적인 표현',
     tags: [
-      { id: 'poetic', label: '시적인' },
-      { id: 'daily', label: '일상적' },
-      { id: 'adventurous', label: '모험가' },
-      { id: 'romantic', label: '로맨틱' },
+      { id: 'poetic', label: '시적인', selected: true },
+      { id: 'daily', label: '일상적', selected: false },
+      { id: 'adventurous', label: '모험가', selected: false },
+      { id: 'romantic', label: '로맨틱', selected: false },
     ],
   },
   travelType: {
