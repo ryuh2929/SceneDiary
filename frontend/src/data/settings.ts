@@ -1,3 +1,5 @@
+// 테스트를 위한 임시 데이터 폴더 입니다. 실제 DB와 연결 후에는 삭제 예정
+
 import type { SymbolViewProps } from 'expo-symbols';
 
 export type PersonaTag = {
