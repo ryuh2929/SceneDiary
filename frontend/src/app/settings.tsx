@@ -1,6 +1,12 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import React, { useMemo, useState } from 'react';
-import { Platform, ScrollView, Switch, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useDerivedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { dummySettingsProfile, SettingsToggle } from '@/data/settings';
@@ -18,6 +24,8 @@ const colors = {
   inactive: '#E8EDF5',
   toggle: '#5B7DBB',
 };
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type AppIconProps = {
   icon: SymbolViewProps['name'];
@@ -49,6 +57,57 @@ function SettingsCard({
   );
 }
 
+function ToggleSwitch({
+  value,
+  onValueChange,
+}: {
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}) {
+  const progress = useDerivedValue(() => withTiming(value ? 1 : 0, { duration: 180 }), [value]);
+  const trackStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(progress.value, [0, 1], [colors.inactive, colors.toggle]),
+  }));
+  const thumbStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: progress.value * 20 }],
+  }));
+
+  return (
+    <AnimatedPressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      onPress={() => onValueChange(!value)}
+      style={[
+        {
+          width: 46,
+          height: 26,
+          borderRadius: 999,
+          padding: 3,
+          justifyContent: 'center',
+        },
+        trackStyle,
+      ]}>
+      {/* 기본 Switch 대신 직접 만든 손잡이라 색상, 위치, 애니메이션을 디자인에 맞게 고정할 수 있습니다. */}
+      <Animated.View
+        style={[
+          {
+            width: 20,
+            height: 20,
+            borderRadius: 999,
+            backgroundColor: colors.surface,
+            shadowColor: colors.text,
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.12,
+            shadowRadius: 2,
+            elevation: 2,
+          },
+          thumbStyle,
+        ]}
+      />
+    </AnimatedPressable>
+  );
+}
+
 function ToggleRow({
   item,
   value,
@@ -67,12 +126,9 @@ function ToggleRow({
         <Text className="text-md font-semibold text-textPrimary">{item.label}</Text>
       </View>
 
-      <Switch
+      <ToggleSwitch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: colors.inactive, true: colors.toggle }}
-        thumbColor={colors.surface}
-        ios_backgroundColor={colors.inactive}
       />
     </SettingsCard>
   );
