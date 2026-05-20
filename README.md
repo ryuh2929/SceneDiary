@@ -1,6 +1,8 @@
 # SceneDiary
 
 Python 3.13.13
+node v24.x
+npm 11.x
 
 루트 디렉토리에 `.env` 파일 만들기 (NEO4J_USER는 neo4j 권장)
 ```
