@@ -108,6 +108,28 @@ function ToggleSwitch({
   );
 }
 
+function PersonaChip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      className={`rounded-full px-3 py-2 ${selected ? 'bg-primary' : 'bg-muted'}`}>
+      <Text className={`text-sm font-bold ${selected ? 'text-textOnPrimary' : 'text-textSecondary'}`}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 function ToggleRow({
   item,
   value,
@@ -148,6 +170,10 @@ export default function SettingsScreen() {
     [profile.toggles],
   );
   const [toggles, setToggles] = useState(initialToggles);
+  // 페르소나는 하나만 선택되도록 선택된 id만 저장합니다.
+  const [selectedPersonaId, setSelectedPersonaId] = useState(
+    profile.persona.tags.find((tag) => tag.selected)?.id ?? profile.persona.tags[0]?.id,
+  );
 
   // 하단 네브바는 별도 컴포넌트가 담당하므로, 이 화면은 안전 영역과 본문 여백만 책임집니다.
   const contentInset = Platform.select({
@@ -198,16 +224,12 @@ export default function SettingsScreen() {
             <View className="mt-sm flex-row flex-wrap gap-sm">
               {profile.persona.tags.map((tag) => (
                 // 페르소나 칩은 선택 여부에 따라 색을 분리해 실제 선택 UI로 바꾸기 쉽게 둡니다.
-                <View
+                <PersonaChip
                   key={tag.id}
-                  className={`rounded-full px-3 py-2 ${tag.selected ? 'bg-primary' : 'bg-muted'}`}>
-                  <Text
-                    className={`text-sm font-bold ${
-                      tag.selected ? 'text-textOnPrimary' : 'text-textSecondary'
-                    }`}>
-                    {tag.label}
-                  </Text>
-                </View>
+                  label={tag.label}
+                  selected={tag.id === selectedPersonaId}
+                  onPress={() => setSelectedPersonaId(tag.id)}
+                />
               ))}
             </View>
 
