@@ -1,46 +1,36 @@
-// src/app/(tabs)/map.tsx
-import React, { useEffect, useState } from "react";
-import {
-  StyleSheet,
-  View,
-  Dimensions,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
-import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
-import * as Location from "expo-location"; // 🌍 위치 권한 패키지 가져오기
+// src/app/map.tsx (모바일 전용 파일이 됩니다)
+import React, { useState } from "react";
+import { StyleSheet, View, Image } from "react-native";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import { useColorScheme } from "react-native";
+import { Colors } from "@/constants/theme";
 
 export default function MapScreen() {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      // 1️⃣ 스마트폰 시스템에 위치 권한 요청하기 (이미 허용되어 있다면 바로 통과)
-      const { status } = await Location.requestForegroundPermissionsAsync();
-
-      if (status !== "granted") {
-        // 2️⃣ 거부당했을 때 사용자에게 친절하게 안내하기
-        Alert.alert(
-          "위치 권한 필요",
-          "지도에 표시하려면 설정에서 위치 권한을 허용해 주세요.",
-        );
-        setHasPermission(false);
-      } else {
-        setHasPermission(true);
-      }
-      setLoading(false);
-    })();
-  }, []);
-
-  // 권한 체크 중일 때는 로딩 스피너를 보여줍니다
-  if (loading) {
-    return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
+  const theme = useColorScheme() ?? "light"; // 현재 기기 테마가 무엇인지 확인
+  const styles = createStyles(theme); // 테마를 넘겨서 스타일 객체를 받아옴
+  const [markers] = useState([
+    {
+      id: 1,
+      lat: 37.5665,
+      lon: 126.978,
+      title: "서울시청",
+      img: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e",
+    },
+    {
+      id: 2,
+      lat: 37.57,
+      lon: 126.98,
+      title: "인사동",
+      img: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e",
+    },
+    {
+      id: 3,
+      lat: 37.55,
+      lon: 126.99,
+      title: "남산타워",
+      img: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e",
+    },
+  ]);
 
   return (
     <View style={styles.container}>
@@ -53,26 +43,33 @@ export default function MapScreen() {
           latitudeDelta: 0.0922,
           longitudeDelta: 0.0421,
         }}
-        // 3️⃣ 권한 상태에 따라 내 위치 기능을 켜고 끕니다 (거부 상태에서 true로 주면 크래시 방지)
-        showsUserLocation={hasPermission === true}
-        showsMyLocationButton={hasPermission === true}
-        rotateEnabled={true}
-      />
+      >
+        {/* 2. .map() 함수를 이용한 마커 반복 생성 */}
+        {markers.map((item) => (
+          <Marker
+            key={item.id}
+            coordinate={{ latitude: item.lat, longitude: item.lon }}
+          >
+            <View className="items-center">
+              {/* 마커 컨테이너: 설정하신 border, background 컬러 사용 */}
+              <View className="p-[2px] bg-surface border-2 border-textPrimary rounded-full shadow-md">
+                <Image
+                  source={{ uri: item.img }}
+                  className="w-[50px] h-[50px] rounded-full"
+                />
+              </View>
+              {/* 꼬리 부분: 테일윈드 클래스로 구현 */}
+              <View className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-textPrimary -mt-[2px]" />
+            </View>
+          </Marker>
+        ))}
+      </MapView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  center: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  map: {
-    width: Dimensions.get("window").width,
-    height: Dimensions.get("window").height,
-  },
-});
+const createStyles = (theme: "light" | "dark") =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: Colors[theme].background },
+    map: { width: "100%", height: "100%" },
+  });
