@@ -10,6 +10,8 @@
 # env
 .env
 .env.*
+# .env.example 은 팀 공유용 템플릿이므로 추적 (값은 비어있음)
+!.env.example
 
 ### Node ###
 # Logs
