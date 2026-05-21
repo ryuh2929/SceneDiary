@@ -7,6 +7,27 @@ from app.schemas.settings import SettingsProfile
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
+# DB에는 안정적인 코드값(poetic, daily...)만 저장하고,
+# 화면에 보여줄 라벨/설명은 API 응답을 만들 때 이 매핑으로 변환합니다.
+PERSONA_OPTIONS = {
+    "poetic": {
+        "label": "시적인",
+        "description": "감성적이고 문학적인 표현",
+    },
+    "daily": {
+        "label": "일상적",
+        "description": "담백하고 자연스러운 표현",
+    },
+    "adventurous": {
+        "label": "모험가",
+        "description": "생동감 있고 역동적인 표현",
+    },
+    "romantic": {
+        "label": "로맨틱",
+        "description": "따뜻하고 감성적인 표현",
+    },
+}
+
 
 def clean(value: object | None) -> str:
     if value is None:
@@ -15,51 +36,39 @@ def clean(value: object | None) -> str:
 
 
 def persona_tags(selected_persona: str) -> list[dict[str, object]]:
-    defaults = [
-        ("poetic", "\uc2dc\uc801"),
-        ("daily", "\uc77c\uc0c1\uc801"),
-        ("adventurous", "\ubaa8\ud5d8\uac00"),
-        ("romantic", "\ub85c\ub9e8\ud2f1"),
-    ]
-    normalized = selected_persona.lower()
-    tags = [
+    normalized = selected_persona.strip().lower()
+
+    # 프론트는 tags 배열을 그대로 버튼 목록으로 렌더링합니다.
+    # 따라서 항상 전체 페르소나 목록을 내려주고, DB 값과 일치하는 항목만 선택 상태로 표시합니다.
+    return [
         {
-            "id": tag_id,
-            "label": label,
-            "selected": normalized in {tag_id, label.lower()},
+            "id": persona_id,
+            "label": option["label"],
+            "selected": persona_id == normalized,
         }
-        for tag_id, label in defaults
+        for persona_id, option in PERSONA_OPTIONS.items()
     ]
-
-    if selected_persona and not any(tag["selected"] for tag in tags):
-        tags.append(
-            {
-                "id": selected_persona,
-                "label": selected_persona,
-                "selected": True,
-            }
-        )
-
-    return tags
 
 
 def to_settings_profile(user: User) -> SettingsProfile:
-    writing_persona = clean(user.writing_persona)
+    writing_persona = clean(user.writing_persona).lower()
+    selected_persona = PERSONA_OPTIONS.get(writing_persona)
 
-    # TODO: profile_image_url is available from users.profile_image_url.
-    # Render it here after the default profile image is prepared and uploaded.
+    # users.profile_image_url 값은 이미 조회할 수 있습니다.
+    # 기본 프로필 이미지를 준비하고 DB에 저장한 뒤 여기에서 렌더링에 연결합니다.
     return SettingsProfile(
-        nickname=clean(user.nickname) or "\uae30\ub85d\ud558\ub294 \uc5ec\ud589\uc790",
+        nickname=clean(user.nickname) or "기록하는 여행자",
         persona={
-            "title": "\uae00 \uc791\uc131 \ud398\ub974\uc18c\ub098",
-            "description": writing_persona
-            or "\uc120\ud0dd\ub41c \uae00 \uc791\uc131 \ud398\ub974\uc18c\ub098\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.",
+            "title": "글 작성 페르소나",
+            "description": selected_persona["description"]
+            if selected_persona
+            else "선택된 글 작성 페르소나가 없습니다.",
             "tags": persona_tags(writing_persona),
         },
         travelType={
             "id": "pending",
-            "title": "\ubd84\uc11d \uc804",
-            "description": "\uc5ec\ud589 \uc720\ud615 \ubd84\uc11d \ub370\uc774\ud130\ub294 \ub098\uc911\uc5d0 \uc5f0\uacb0\ud560 \uc608\uc815\uc785\ub2c8\ub2e4.",
+            "title": "분석 전",
+            "description": "여행 유형 분석 데이터는 나중에 연결할 예정입니다.",
             "icon": {
                 "ios": "safari",
                 "android": "explore",
@@ -69,7 +78,7 @@ def to_settings_profile(user: User) -> SettingsProfile:
         toggles=[
             {
                 "id": "darkMode",
-                "label": "\ub2e4\ud06c \ubaa8\ub4dc",
+                "label": "다크 모드",
                 "enabled": bool(user.dark_mode),
                 "icon": {
                     "ios": "moon",
@@ -79,7 +88,7 @@ def to_settings_profile(user: User) -> SettingsProfile:
             },
             {
                 "id": "pushNotification",
-                "label": "\ud478\uc2dc \uc54c\ub9bc",
+                "label": "푸시 알림",
                 "enabled": bool(user.push_enabled),
                 "icon": {
                     "ios": "bell",
