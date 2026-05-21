@@ -21,3 +21,9 @@ docker compose up --build
 ```
 docker compose up -d
 ```
+
+docker-compose.yml 변경 사항 있을 때
+```
+docker compose down -v
+```
+후에 처음 빌드 명령어 실행

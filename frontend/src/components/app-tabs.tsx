@@ -28,6 +28,7 @@ export default function AppTabs() {
           renderingMode="template"
         />
       </NativeTabs.Trigger>
+
     </NativeTabs>
   );
 }
