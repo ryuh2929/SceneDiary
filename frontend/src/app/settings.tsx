@@ -1,5 +1,5 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, {
   interpolateColor,
@@ -10,6 +10,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { dummySettingsProfile, SettingsToggle } from '@/data/settings';
+import { fetchSettingsProfile } from '@/services/settings-api';
 
 const colors = {
   primary: '#5B7DBB',
@@ -158,7 +159,9 @@ function ToggleRow({
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const profile = dummySettingsProfile;
+  const [profile, setProfile] = useState(dummySettingsProfile);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // 토글 값은 화면에서 즉시 확인할 수 있도록 로컬 상태로 관리하고, 이후 DB/API 값으로 대체하기 쉽게 id 기준 객체로 변환합니다.
   const initialToggles = useMemo(
@@ -174,6 +177,47 @@ export default function SettingsScreen() {
   const [selectedPersonaId, setSelectedPersonaId] = useState(
     profile.persona.tags.find((tag) => tag.selected)?.id ?? profile.persona.tags[0]?.id,
   );
+  const selectedPersona = useMemo(
+    () => profile.persona.tags.find((tag) => tag.id === selectedPersonaId),
+    [profile.persona.tags, selectedPersonaId],
+  );
+
+  useEffect(() => {
+    let ignore = false;
+
+    fetchSettingsProfile()
+      .then((settingsProfile) => {
+        if (ignore) {
+          return;
+        }
+
+        setProfile(settingsProfile);
+        setToggles(
+          Object.fromEntries(
+            settingsProfile.toggles.map((toggle) => [toggle.id, toggle.enabled]),
+          ) as Record<SettingsToggle['id'], boolean>,
+        );
+        setSelectedPersonaId(
+          settingsProfile.persona.tags.find((tag) => tag.selected)?.id ??
+            settingsProfile.persona.tags[0]?.id,
+        );
+        setProfileError(null);
+      })
+      .catch((error: Error) => {
+        if (!ignore) {
+          setProfileError(error.message);
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoadingProfile(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // 하단 네브바는 별도 컴포넌트가 담당하므로, 이 화면은 안전 영역과 본문 여백만 책임집니다.
   const contentInset = Platform.select({
@@ -189,7 +233,18 @@ export default function SettingsScreen() {
       contentContainerStyle={contentInset}
       showsVerticalScrollIndicator={false}>
       <View className="mx-auto w-full max-w-[420px] flex-1">
-        <Text className="mb-xl text-lg font-bold text-textPrimary">설정</Text>
+        <View className="mb-xl flex-row items-center justify-between">
+          <Text className="text-lg font-bold text-textPrimary">설정</Text>
+          {isLoadingProfile ? (
+            <Text className="text-sm font-semibold text-textSecondary">불러오는 중</Text>
+          ) : null}
+        </View>
+
+        {profileError ? (
+          <View className="mb-md rounded-lg border border-[#E8B4B4] bg-[#FFF4F4] px-md py-sm">
+            <Text className="text-sm font-semibold text-[#8A2D2D]">{profileError}</Text>
+          </View>
+        ) : null}
 
         <View className="items-center">
           <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-primaryLight">
@@ -234,7 +289,7 @@ export default function SettingsScreen() {
             </View>
 
             <Text className="mt-sm text-sm font-medium text-textSecondary">
-              {profile.persona.description}
+              {selectedPersona?.description ?? profile.persona.description}
             </Text>
           </SettingsCard>
 
