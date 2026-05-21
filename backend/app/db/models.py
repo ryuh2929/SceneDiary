@@ -139,6 +139,10 @@ class TripDay(Base):
         comment="Twemoji codepoint (lowercase hex, multi-codepoint joined by -). e.g. 1f60a",
     )
 
+    # → photos.id (그날 대표 사진. 선택값. UI 하단 사진 바에서 고른 사진)
+    represent_image: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+
     created_at: Mapped[datetime] = mapped_column(DateTime)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp()
