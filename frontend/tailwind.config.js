@@ -6,18 +6,10 @@ module.exports = {
 
   // ✅ 2. 스타일 적용할 파일 경로
   content: [
-    "./App.{js,jsx,ts,tsx}",
-<<<<<<< HEAD
-    "./app/**/*.{js,jsx,ts,tsx}",
     "./src/**/*.{js,jsx,ts,tsx}",
-    "./components/**/*.{js,jsx,ts,tsx}",
-    "./src/**/*.{js,jsx,ts,tsx}",
-    "./screens/**/*.{js,jsx,ts,tsx}",
-=======
     "./src/app/**/*.{js,jsx,ts,tsx}",
     "./src/components/**/*.{js,jsx,ts,tsx}",
     "./src/screens/**/*.{js,jsx,ts,tsx}",
->>>>>>> 5670d62794c0ca6ef95d47f3323e36ce667cb206
   ],
 
   // ✅ 3. 디자인 시스템
