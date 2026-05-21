@@ -53,13 +53,9 @@
     "tailwindcss": "^3.4.19"
   },
   "devDependencies": {
-<<<<<<< HEAD
     "@types/react": "~19.1.10",
     "@types/react-native-maps": "^0.24.1",
-=======
-    "@types/react": "~19.2.2",
     "tailwindcss": "^3.4.17",
->>>>>>> dev
     "typescript": "~5.9.2"
   },
   "private": true
