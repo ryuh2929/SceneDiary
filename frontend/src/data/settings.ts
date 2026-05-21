@@ -1,10 +1,11 @@
-// 테스트를 위한 임시 데이터 폴더 입니다. 실제 DB와 연결 후에는 삭제 예정
+// 테스트를 위한 임시 데이터 폴더 입니다. 백엔드 꺼져 있어도 확인 가능
 
 import type { SymbolViewProps } from 'expo-symbols';
 
 export type PersonaTag = {
   id: string;
   label: string;
+  description: string;
   selected: boolean;
 };
 
@@ -42,10 +43,30 @@ export const dummySettingsProfile: SettingsProfile = {
     title: '글 작성 페르소나',
     description: '감성적이고 문학적인 표현',
     tags: [
-      { id: 'poetic', label: '시적인', selected: true },
-      { id: 'daily', label: '일상적', selected: false },
-      { id: 'adventurous', label: '모험가', selected: false },
-      { id: 'romantic', label: '로맨틱', selected: false },
+      {
+        id: 'poetic',
+        label: '시적인',
+        description: '감성적이고 문학적인 표현',
+        selected: true,
+      },
+      {
+        id: 'daily',
+        label: '일상적',
+        description: '담백하고 자연스러운 표현',
+        selected: false,
+      },
+      {
+        id: 'adventurous',
+        label: '모험가',
+        description: '생동감 있고 역동적인 표현',
+        selected: false,
+      },
+      {
+        id: 'romantic',
+        label: '로맨틱',
+        description: '따뜻하고 감성적인 표현',
+        selected: false,
+      },
     ],
   },
   travelType: {
