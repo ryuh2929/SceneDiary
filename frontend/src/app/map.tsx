@@ -2,12 +2,8 @@
 import React, { useState } from "react";
 import { StyleSheet, View, Image } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
-import { useColorScheme } from "react-native";
-import { Colors } from "@/constants/theme";
 
 export default function MapScreen() {
-  const theme = useColorScheme() ?? "light"; // 현재 기기 테마가 무엇인지 확인
-  const styles = createStyles(theme); // 테마를 넘겨서 스타일 객체를 받아옴
   const [markers] = useState([
     {
       id: 1,
@@ -33,10 +29,10 @@ export default function MapScreen() {
   ]);
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-background">
       <MapView
         provider={PROVIDER_GOOGLE}
-        style={styles.map}
+        style={{ width: "100%", height: "100%" }}
         initialRegion={{
           latitude: 37.5665,
           longitude: 126.978,
@@ -52,14 +48,14 @@ export default function MapScreen() {
           >
             <View className="items-center">
               {/* 마커 컨테이너: 설정하신 border, background 컬러 사용 */}
-              <View className="p-[2px] bg-surface border-2 border-textPrimary rounded-full shadow-md">
+              <View className="p-[2px] bg-surface border-2 border-primary rounded-full shadow-md">
                 <Image
                   source={{ uri: item.img }}
                   className="w-[50px] h-[50px] rounded-full"
                 />
               </View>
               {/* 꼬리 부분: 테일윈드 클래스로 구현 */}
-              <View className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-textPrimary -mt-[2px]" />
+              <View className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-primary -mt-[2px]" />
             </View>
           </Marker>
         ))}
@@ -67,9 +63,3 @@ export default function MapScreen() {
     </View>
   );
 }
-
-const createStyles = (theme: "light" | "dark") =>
-  StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors[theme].background },
-    map: { width: "100%", height: "100%" },
-  });
