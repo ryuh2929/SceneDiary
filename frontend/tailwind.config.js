@@ -6,7 +6,7 @@ module.exports = {
 
   // ✅ 2. 스타일 적용할 파일 경로
   content: [
-    "./App.{js,jsx,ts,tsx}",
+    "./src/**/*.{js,jsx,ts,tsx}",
     "./src/app/**/*.{js,jsx,ts,tsx}",
     "./src/components/**/*.{js,jsx,ts,tsx}",
     "./src/screens/**/*.{js,jsx,ts,tsx}",

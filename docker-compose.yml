@@ -45,9 +45,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+      
+  neo4j:
+    image: neo4j:5
+    container_name: scenediary-neo4j
+    restart: always
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - scenediary_neo4jdata:/data
 
 # ─────────────────────────────────────────────────────────
 # Docker가 관리하는 볼륨 (데이터 저장소)
 # ─────────────────────────────────────────────────────────
 volumes:
   scenediary_pgdata:
+  scenediary_neo4jdata:
+version: "3.9"

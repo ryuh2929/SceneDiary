@@ -28,6 +28,9 @@ export default function AppTabs() {
           <TabTrigger name="explore" href="/explore" asChild>
             <TabButton>Explore</TabButton>
           </TabTrigger>
+
+          {/* 설정 화면은 주소 접근이 가능해야 해서 숨김 탭으로만 등록합니다. */}
+          <TabTrigger name="settings" href="/settings" style={styles.hiddenTab} />
         </CustomTabList>
       </TabList>
     </Tabs>
@@ -112,5 +115,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
     marginLeft: Spacing.three,
+  },
+  hiddenTab: {
+    display: 'none',
   },
 });
