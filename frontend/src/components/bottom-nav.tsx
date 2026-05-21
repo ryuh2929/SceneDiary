@@ -1,18 +1,19 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Link, usePathname } from 'expo-router';
+import { Link, usePathname,Href } from 'expo-router';
 import { Home, Map, Settings, LucideIcon } from 'lucide-react-native';
 
 type NavItem = {
-  path: '/' | '/map' | '/settings';
+  // path: '/(tabs)' | '/(tabs)/map' | '/(tabs)/settings';
+  path: Href;
   icon: LucideIcon;
   label: string;
 };
 
 const navItems: NavItem[] = [
-  { path: '/', icon: Home, label: '홈' },
-  { path: '/map', icon: Map, label: '지도' },
-  { path: '/settings', icon: Settings, label: '설정' },
+  { path: '/(tabs)', icon: Home, label: '홈' },
+  { path: '/(tabs)/map', icon: Map, label: '지도' },
+  { path: '/(tabs)/settings', icon: Settings, label: '설정' },
 ];
 
 export default function BottomNav() {
@@ -35,7 +36,7 @@ export default function BottomNav() {
           const iconColor = isActive ? "#5B7DBB" : "#39536B"; // tabActive : tabInactive
 
           return (
-            <Link key={path} href={path} asChild>
+            <Link key={label} href={path} asChild>
               <Pressable 
                 className={`flex-1 flex-col items-center justify-center py-xs rounded-md ${
                   isActive ? 'opacity-100' : 'opacity-70'
