@@ -44,6 +44,7 @@ def persona_tags(selected_persona: str) -> list[dict[str, object]]:
         {
             "id": persona_id,
             "label": option["label"],
+            "description": option["description"],
             "selected": persona_id == normalized,
         }
         for persona_id, option in PERSONA_OPTIONS.items()

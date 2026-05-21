@@ -10,6 +10,7 @@ class AppSymbolName(BaseModel):
 class PersonaTag(BaseModel):
     id: str
     label: str
+    description: str
     selected: bool
 
 

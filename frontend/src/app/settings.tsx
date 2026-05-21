@@ -177,6 +177,10 @@ export default function SettingsScreen() {
   const [selectedPersonaId, setSelectedPersonaId] = useState(
     profile.persona.tags.find((tag) => tag.selected)?.id ?? profile.persona.tags[0]?.id,
   );
+  const selectedPersona = useMemo(
+    () => profile.persona.tags.find((tag) => tag.id === selectedPersonaId),
+    [profile.persona.tags, selectedPersonaId],
+  );
 
   useEffect(() => {
     let ignore = false;
@@ -285,7 +289,7 @@ export default function SettingsScreen() {
             </View>
 
             <Text className="mt-sm text-sm font-medium text-textSecondary">
-              {profile.persona.description}
+              {selectedPersona?.description ?? profile.persona.description}
             </Text>
           </SettingsCard>
 
