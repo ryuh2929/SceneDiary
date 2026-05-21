@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronRight, ChevronDown, MapPin, Plus } from 'lucide-react-native';
 import Twemoji from 'react-native-twemoji';
 import BottomNav from '@/components/bottom-nav';
-import { BlurView } from 'expo-blur';
+
 
 type DayDetail = {
   id: string;
@@ -95,37 +95,24 @@ export default function HomeScreen() {
                   </View>
 
                   {/* 심볼 */}
-                  <View className="absolute top-md right-md bg-surface rounded-full w-10 h-10 items-center justify-center shadow-sm">
-                    <Twemoji size={10}>{item.symbol}</Twemoji>
+                  
+                <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
+                  {/* 크기가 작다면 text-[18px] 등으로 조절 */}
+                  {/* <Text className="text-[20px]">{item.symbol}</Text> */}
+                  <View
+                    style={{
+                      transform: [
+                        { scale: 0.15 }, 
+                        { translateY: 10 } 
+                      ]
+                    }}
+                  >
+                    <Twemoji>{item.symbol}</Twemoji>
                   </View>
-                
+                                 
+                </View>
 
-                {/* <BlurView
-                  intensity={40}
-                  tint="light"
-                  className="
-                    absolute
-                    top-3
-                    right-3
-                    w-12
-                    h-12
-                    rounded-full
-                    overflow-hidden
-                    items-center
-                    justify-center
-                  "
-                  style={{
-                    shadowColor: '#000',
-                    shadowOpacity: 0.15,
-                    shadowRadius: 10,
-                    shadowOffset: { width: 0, height: 4 },
-                    elevation: 5,
-                  }}
-                >
-                  <Twemoji size={18}>
-                    {item.symbol}
-                  </Twemoji>
-                </BlurView> */}
+                
                 </Pressable>
                 {/* 텍스트 정보 */}
                 <View className="p-md">
@@ -167,23 +154,48 @@ export default function HomeScreen() {
                         onPress={() => router.push({ pathname: '/Detail' as any, params: { id: item.id, day: detail.day } })}
                       >
                         <Image source={{ uri: detail.image }} className="w-14 h-14 rounded-md mr-md" resizeMode="cover" />
-                        <View className="flex-1">
-                          <View className="flex-row items-center gap-xs mb-xs">
-                            <Text className="text-sm font-bold text-primary font-sans">Day {detail.day}</Text>
-                            <Twemoji size={10}>{detail.emoji}</Twemoji>
+                              <View className="flex-1">
+                                <View className="flex-row items-center justify-between mb-xs w-full pr-sm">
+                                  {/* 왼쪽: Day 텍스트 */}
+                                  <Text className="text-sm font-bold text-primary font-sans">Day {detail.day}</Text>
+                                  
+                                  {/* 오른쪽: 이모지 상자 */}
+                                  <View 
+                                    style={{
+                                      width: 28,
+                                      height: 28,
+                                      flexDirection: "row",
+                                      justifyContent: "center",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                <View
+                                  style={{
+                                    transform: [{ scale: 0.15 },
+                                                { translateX: 0 },
+                                                { translateY: 150 }
+                                              ]
+                                  }}
+                                >
+                                  <Twemoji>{detail.emoji}</Twemoji>
+                                </View>
+                              </View>
+
                           </View>
+                          {/* 타이틀 및 위치 정보 */}
                           <Text className="text-md font-bold text-textPrimary font-sans mb-xs" numberOfLines={1}>
                             {detail.title}
                           </Text>
                           <View className="flex-row items-center gap-xs">
                             <MapPin size={10} color="#39536B" />
                             <Text className="text-sm text-textSecondary font-sans">{detail.location}</Text>
-                          </View>
-                        </View>
+                          </View>                    
+                        </View>                        
                       </Pressable>
                     ))}
                   </View>
                 )}
+                
               </View>
             );
           })}
