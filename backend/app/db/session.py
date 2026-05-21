@@ -8,8 +8,14 @@ DB 연결과 세션 관리를 담당하는 모듈.
 """
 
 import os
+from collections.abc import Generator
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import DeclarativeBase
+
+load_dotenv()
 
 # ─────────────────────────────────────────────────────────
 # 1. DB 접속 주소(DATABASE_URL) 읽기
@@ -19,6 +25,9 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 #
 # 예: postgresql://scenediary:5433@host.docker.internal:5433/scenediary
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not set")
 
 # ─────────────────────────────────────────────────────────
 # 2. 엔진(engine) 생성
@@ -64,3 +73,10 @@ SessionLocal = sessionmaker(
 # 파악하고, 그걸 기준으로 마이그레이션 파일을 자동 생성합니다.
 class Base(DeclarativeBase):
     pass
+
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
