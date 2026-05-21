@@ -40,6 +40,7 @@ export default function LoadingScreen() {
   const progressWidth = useMemo(() => `${progress}%` as `${number}%`, [progress]);
 
   useEffect(() => {
+    // 로딩 상태를 시각적으로 보여주기 위해 원형 테두리를 반복 회전시킵니다.
     rotation.value = withRepeat(
       withTiming(360, { duration: 1400, easing: Easing.linear }),
       -1,
@@ -48,6 +49,7 @@ export default function LoadingScreen() {
   }, [rotation]);
 
   useEffect(() => {
+    // 실제 분석 API 연결 전까지는 진행률과 안내 문구를 목업 상태로 갱신합니다.
     const progressTimer = setInterval(() => {
       setProgress((current) => {
         if (current >= 92) {

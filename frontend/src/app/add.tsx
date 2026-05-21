@@ -43,10 +43,13 @@ export default function AddScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>(samplePhotos);
+  // 웹에서도 모바일 화면 폭을 기준으로 UI가 과하게 늘어나지 않도록 최대 너비를 제한합니다.
   const screenWidth = Math.min(width, 420);
+  // 3열 그리드 간격을 고려해 사진 타일 크기를 계산합니다.
   const tileSize = Math.max(88, Math.floor((screenWidth - 48 - 32) / 3));
 
   const nextSamplePhoto = useMemo(() => {
+    // 실제 파일 선택 기능 연결 전까지는 중복되지 않은 샘플 이미지만 추가합니다.
     return samplePhotos.find((photo) => !pendingPhotos.some((current) => current.id === photo.id));
   }, [pendingPhotos]);
 
@@ -67,6 +70,7 @@ export default function AddScreen() {
       return;
     }
 
+    // 이후 실제 분석 API 연결 시 사진 데이터를 넘기는 흐름으로 확장할 예정입니다.
     router.push('/loading');
   };
 
