@@ -45,13 +45,14 @@ export default function MapScreen() {
           <Marker
             key={item.id}
             coordinate={{ latitude: item.lat, longitude: item.lon }}
+            tracksViewChanges={true}
           >
-            <View className="items-center">
+            <View className="items-center w-[60px] h-[75px]">
               {/* 마커 컨테이너: 설정하신 border, background 컬러 사용 */}
-              <View className="p-[2px] bg-surface border-2 border-primary rounded-full shadow-md">
+              <View className="w-[56px] h-[56px] p-[2px] bg-surface border-2 border-primary rounded-full shadow-md items-center justify-center">
                 <Image
                   source={{ uri: item.img }}
-                  className="w-[50px] h-[50px] rounded-full"
+                  className="w-[48px] h-[48px] rounded-full"
                 />
               </View>
               {/* 꼬리 부분: 테일윈드 클래스로 구현 */}
