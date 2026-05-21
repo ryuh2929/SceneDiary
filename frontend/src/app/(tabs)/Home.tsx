@@ -86,7 +86,17 @@ export default function HomeScreen() {
               <View key={item.id} className="bg-surface rounded-lg overflow-hidden shadow-sm border border-border">
 
                 {/* 메인 이미지 */}
-                <Pressable className="relative h-60 w-full" onPress={() => router.push({ pathname: '/Detail' as any, params: { id: item.id } })}>
+                <Pressable className="relative h-60 w-full" 
+                          onPress={() => router.push({ pathname: '/detail', 
+                                  params: { id: item.id,
+                                  title: item.title,
+                                  location: item.location,
+                                  mainImage: item.mainImage,
+                                  startDate: item.startDate,
+                                  endDate: item.endDate,
+                                  symbol: item.symbol } })
+                                }
+                  >
                   <Image source={{ uri: item.mainImage }} className="w-full h-full" resizeMode="cover" />
 
                   {/* 날짜 뱃지 */}
@@ -94,11 +104,8 @@ export default function HomeScreen() {
                     <Text className="text-sm font-sans text-textPrimary">{item.startDate} ~ {item.endDate}</Text>
                   </View>
 
-                  {/* 심볼 */}
-                  
+                  {/* 심볼 */} 
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  {/* 크기가 작다면 text-[18px] 등으로 조절 */}
-                  {/* <Text className="text-[20px]">{item.symbol}</Text> */}
                   <View
                     style={{
                       transform: [
@@ -151,7 +158,18 @@ export default function HomeScreen() {
                       <Pressable
                         key={detail.id}
                         className="flex-row items-center bg-surface p-sm rounded-md shadow-sm"
-                        onPress={() => router.push({ pathname: '/Detail' as any, params: { id: item.id, day: detail.day } })}
+                        onPress={() => router.push({ pathname: '/detail', 
+                                  params: { id: item.id,
+                                  title: item.title,
+                                  location: item.location,
+                                  mainImage: item.mainImage,
+                                  startDate: item.startDate,
+                                  endDate: item.endDate,
+                                  symbol: item.symbol,
+                                  day: detail.day,
+                                  details: JSON.stringify(item.details)//상세 일기 배열 데이터를 문자열로 변환해서 보냄
+                                 } })
+                                }
                       >
                         <Image source={{ uri: detail.image }} className="w-14 h-14 rounded-md mr-md" resizeMode="cover" />
                               <View className="flex-1">
