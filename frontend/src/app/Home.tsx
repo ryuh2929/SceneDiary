@@ -19,9 +19,8 @@ type TravelCard = {
   id: string;
   title: string;
   location: string;
-  date: string;
-  month: string;
-  day: string;
+  startDate: string;
+  endDate: string;
   mainImage: string;
   symbol: string;
   details: DayDetail[];
@@ -32,14 +31,14 @@ const travelData: TravelCard[] = [
     id: '1',
     title: '도쿄 벚꽃 여행',
     location: '도쿄, 일본',
-    date: '2026.04.01',
-    month: '4월',
-    day: '1',
+    startDate: '04.01',
+    endDate: '04.03',
     mainImage: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e',
     symbol: '🌸',
     details: [
       { id: 'd1', day: 1, title: '벚꽃 아래에서', location: '우에노공원', emoji: '🌸', image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e' },
       { id: 'd2', day: 2, title: '시부야의 밤', location: '시부야', emoji: '✨', image: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26' },
+      { id: 'd3', day: 3, title: '신주쿠 교엔 산책', location: '신주쿠', emoji: '🌿', image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e' },
     ],
   },
 ];
@@ -55,11 +54,7 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
+      
         {/* 헤더 */}
         <View className="bg-surface pt-safe pb-md items-center border-b border-border shadow-sm">
           <Text className="text-xl font-logo text-logo mt-sm">SceneDiary</Text>
@@ -73,7 +68,11 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         </View>
-
+          <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        >
         {/* 연도 레이블 */}
         <View className="px-md mt-lg mb-md">
           <Text className="text-md font-sans text-textSecondary">{currentYear}년의 여행</Text>
@@ -91,9 +90,8 @@ export default function HomeScreen() {
                   <Image source={{ uri: item.mainImage }} className="w-full h-full" resizeMode="cover" />
 
                   {/* 날짜 뱃지 */}
-                  <View className="absolute top-md left-md bg-badge rounded-md px-sm py-xs items-center shadow-sm">
-                    <Text className="text-sm font-sans text-white">{item.month}</Text>
-                    <Text className="text-lg font-bold font-sans text-white">{item.day}</Text>
+                  <View className="absolute top-md left-md bg-muted rounded-md px-sm py-xs items-center shadow-sm">
+                    <Text className="text-sm font-sans text-textPrimary">{item.startDate} ~ {item.endDate}</Text>
                   </View>
 
                   {/* 심볼 */}
@@ -142,7 +140,10 @@ export default function HomeScreen() {
                 {item.details.length > 0 && (
                   <Pressable
                     onPress={() => toggleExpand(item.id)}
-                    className={`flex-row items-center justify-center py-sm gap-xs border-t border-border ${isExpanded ? 'bg-muted' : 'bg-surface'}`}
+                    className={
+                      "w-full flex-row items-center justify-center py-sm gap-xs border-t border-border " +
+                      (isExpanded ? "bg-muted" : "bg-surface")
+                    }
                   >
                     <Text className="text-sm text-primary font-sans">
                       {isExpanded ? '접기' : `여행 상세 (${item.details.length}일)`}
@@ -150,7 +151,8 @@ export default function HomeScreen() {
                     <ChevronDown
                       size={14}
                       color="#5B7DBB"
-                      style={{ transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] }}
+                      style={{ transform: [{ rotate: isExpanded ? '180deg' : '0deg' }],
+                    marginLeft: 2, }}
                     />
                   </Pressable>
                 )}
