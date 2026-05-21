@@ -29,8 +29,6 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      {/* 설정 화면은 별도 하단 네브바에서 접근하므로, 탭에는 노출하지 않고 라우트만 등록합니다. */}
-      <NativeTabs.Trigger name="settings" hidden />
     </NativeTabs>
   );
 }
