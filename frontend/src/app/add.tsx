@@ -43,10 +43,12 @@ export default function AddScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>(samplePhotos);
-  // 웹에서도 모바일 화면 폭을 기준으로 UI가 과하게 늘어나지 않도록 최대 너비를 제한합니다.
-  const screenWidth = Math.min(width, 420);
-  // 3열 그리드 간격을 고려해 사진 타일 크기를 계산합니다.
-  const tileSize = Math.max(88, Math.floor((screenWidth - 48 - 32) / 3));
+  // 웹 화면에서는 넓게 쓰되, 사진 영역이 산만해지지 않도록 본문 폭만 제한합니다.
+  const contentWidth = Math.min(width, 760);
+  const columnCount = contentWidth >= 700 ? 4 : 3;
+  // 현재 열 개수와 간격을 기준으로 사진 타일 크기를 계산합니다.
+  const tileSize = Math.max(88, Math.floor((contentWidth - 48 - (columnCount - 1) * 16) / columnCount));
+  const bottomInset = Math.max(insets.bottom, 16);
 
   const nextSamplePhoto = useMemo(() => {
     // 실제 파일 선택 기능 연결 전까지는 중복되지 않은 샘플 이미지만 추가합니다.
@@ -77,10 +79,10 @@ export default function AddScreen() {
   return (
     <View className="flex-1 items-center bg-background">
       <View
-        className="w-full max-w-[420px] flex-1 bg-surface"
+        className="w-full max-w-[760px] flex-1 bg-surface"
         style={{
           paddingTop: insets.top + 14,
-          paddingBottom: insets.bottom,
+          paddingBottom: bottomInset,
         }}>
         <View className="flex-row items-center justify-between px-lg pb-lg">
           <Pressable
@@ -141,13 +143,13 @@ export default function AddScreen() {
           </View>
         </ScrollView>
 
-        <View className="border-t border-muted bg-surface px-lg pb-md pt-md">
+        <View className="items-center bg-surface px-lg pb-md pt-md">
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="AI로 일기 작성하기"
             disabled={pendingPhotos.length === 0}
             onPress={moveToAnalysis}
-            className="overflow-hidden rounded-lg"
+            className="w-full max-w-[360px] overflow-hidden rounded-lg"
             style={{
               opacity: pendingPhotos.length === 0 ? 0.55 : 1,
               shadowColor: colors.primary,
@@ -160,7 +162,7 @@ export default function AddScreen() {
               colors={[colors.primary, colors.primaryLight, colors.accent]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              className="items-center justify-center py-md">
+              className="h-14 items-center justify-center">
               <Text className="text-md font-extrabold text-textOnPrimary">AI로 일기 작성하기</Text>
             </LinearGradient>
           </Pressable>

@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Search } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -21,6 +22,7 @@ const colors = {
   textSecondary: '#39536B',
   border: '#A9C3E6',
   muted: '#E8EDF5',
+  textOnPrimary: '#FFFFFF',
 };
 
 const analysisSteps = [
@@ -33,6 +35,7 @@ const analysisSteps = [
 export default function LoadingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 16);
   const rotation = useSharedValue(0);
   const [progress, setProgress] = useState(18);
   const [stepIndex, setStepIndex] = useState(0);
@@ -76,18 +79,10 @@ export default function LoadingScreen() {
 
   return (
     <View
-      className="flex-1 items-center bg-background px-md"
-      style={{ paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }}>
+      className="flex-1 items-center bg-surface px-lg"
+      style={{ paddingTop: insets.top + 24, paddingBottom: bottomInset }}>
       <View
-        className="mx-auto w-full max-w-[420px] flex-1 items-center justify-center rounded-lg border bg-surface px-xl"
-        style={{
-          borderColor: colors.border,
-          shadowColor: colors.textPrimary,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 10,
-          elevation: 3,
-        }}>
+        className="mx-auto w-full max-w-[720px] flex-1 items-center justify-center px-xl">
         <View className="items-center">
           <View className="relative h-36 w-36 items-center justify-center">
             <View
@@ -118,7 +113,7 @@ export default function LoadingScreen() {
           <Text className="mt-xs text-md font-semibold text-textSecondary">잠시만 기다려주세요...</Text>
 
           <View className="mt-xl w-[280px] max-w-full">
-            <View className="h-2 overflow-hidden rounded-full bg-muted">
+            <View className="h-[6px] overflow-hidden rounded-full bg-muted">
               {/* 진행률은 실제 분석 API가 연결되면 서버 상태값으로 교체하면 됩니다. */}
               <View
                 className="h-full rounded-full bg-accent"
@@ -133,8 +128,14 @@ export default function LoadingScreen() {
           accessibilityRole="button"
           accessibilityLabel="일기 작성 화면으로 이동"
           onPress={() => router.replace('/diary_writing')}
-          className="absolute bottom-lg rounded-full bg-primary px-lg py-sm">
-          <Text className="text-sm font-bold text-textOnPrimary">작성 화면으로 이동</Text>
+          className="absolute bottom-md w-full max-w-[360px] overflow-hidden rounded-lg">
+          <LinearGradient
+            colors={[colors.primary, colors.primaryLight, colors.accent]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            className="h-14 items-center justify-center">
+            <Text className="text-md font-extrabold text-textOnPrimary">작성 화면으로 이동</Text>
+          </LinearGradient>
         </Pressable>
       </View>
     </View>
