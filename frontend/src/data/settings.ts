@@ -1,7 +1,3 @@
-// 테스트를 위한 임시 데이터 폴더 입니다. 백엔드 꺼져 있어도 확인 가능
-
-import type { SymbolViewProps } from 'expo-symbols';
-
 export type PersonaTag = {
   id: string;
   label: string;
@@ -9,20 +5,19 @@ export type PersonaTag = {
   selected: boolean;
 };
 
-export type AppSymbolName = Extract<SymbolViewProps['name'], object>;
+export type TravelTypeIconName = 'compass';
 
 export type TravelType = {
   id: string;
   title: string;
   description: string;
-  icon: AppSymbolName;
+  icon: TravelTypeIconName;
 };
 
 export type SettingsToggle = {
   id: 'darkMode' | 'pushNotification';
   label: string;
   enabled: boolean;
-  icon: AppSymbolName;
 };
 
 export type SettingsProfile = {
@@ -58,7 +53,7 @@ export const dummySettingsProfile: SettingsProfile = {
       {
         id: 'adventurous',
         label: '모험가',
-        description: '생동감 있고 역동적인 표현',
+        description: '생동감 있고 활동적인 표현',
         selected: false,
       },
       {
@@ -73,32 +68,18 @@ export const dummySettingsProfile: SettingsProfile = {
     id: 'explorer',
     title: '탐험가',
     description: '새로운 곳을 끊임없이 찾아다니는 타입',
-    icon: {
-      ios: 'safari',
-      android: 'explore',
-      web: 'explore',
-    },
+    icon: 'compass',
   },
   toggles: [
     {
       id: 'darkMode',
       label: '다크 모드',
       enabled: false,
-      icon: {
-        ios: 'moon',
-        android: 'dark_mode',
-        web: 'dark_mode',
-      },
     },
     {
       id: 'pushNotification',
       label: '푸시 알림',
       enabled: true,
-      icon: {
-        ios: 'bell',
-        android: 'notifications',
-        web: 'notifications',
-      },
     },
   ],
 };

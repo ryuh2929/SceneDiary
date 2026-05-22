@@ -1,4 +1,12 @@
-import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import {
+  Bell,
+  Compass,
+  Moon,
+  Pencil,
+  Sparkles,
+  User,
+  type LucideIcon,
+} from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, {
@@ -9,7 +17,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { dummySettingsProfile, SettingsToggle } from '@/data/settings';
+import {
+  dummySettingsProfile,
+  SettingsToggle,
+  TravelTypeIconName,
+} from '@/data/settings';
 import { fetchSettingsProfile } from '@/services/settings-api';
 
 const colors = {
@@ -28,15 +40,54 @@ const colors = {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+const travelTypeIcons: Record<TravelTypeIconName, LucideIcon> = {
+  compass: Compass,
+};
+
+const toggleIcons: Record<SettingsToggle['id'], LucideIcon> = {
+  darkMode: Moon,
+  pushNotification: Bell,
+};
+
 type AppIconProps = {
-  icon: SymbolViewProps['name'];
+  icon: TravelTypeIconName;
   size?: number;
   color?: string;
 };
 
-function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
-  return <SymbolView name={icon} size={size} tintColor={color} />;
-}
+const ProfileIcon = React.memo(function ProfileIcon() {
+  return <User size={32} color={colors.primary} strokeWidth={2.2} />;
+});
+
+const EditIcon = React.memo(function EditIcon() {
+  return <Pencil size={13} color={colors.textMuted} strokeWidth={2.2} />;
+});
+
+const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
+  return <Sparkles size={15} color={colors.primary} strokeWidth={2.2} />;
+});
+
+const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
+  // lucide 아이콘은 SVG 기반이라 iOS, Android, Web에서 같은 형태로 렌더링됩니다.
+  const Icon = travelTypeIcons[icon] ?? Compass;
+
+  return <Icon size={size} color={color} strokeWidth={2.2} />;
+});
+
+const ToggleIcon = React.memo(function ToggleIcon({
+  id,
+  size = 16,
+  color = colors.textMuted,
+}: {
+  id: SettingsToggle['id'];
+  size?: number;
+  color?: string;
+}) {
+  // 다크 모드와 푸시 알림 아이콘은 설정 UI의 고정 요소라서 API 데이터가 아니라 프론트에서 직접 결정합니다.
+  const Icon = toggleIcons[id];
+
+  return <Icon size={size} color={color} strokeWidth={2.2} />;
+});
 
 function SettingsCard({
   children,
@@ -124,7 +175,10 @@ function PersonaChip({
       accessibilityState={{ selected }}
       onPress={onPress}
       className={`rounded-full px-3 py-2 ${selected ? 'bg-primary' : 'bg-muted'}`}>
-      <Text className={`text-sm font-bold ${selected ? 'text-textOnPrimary' : 'text-textSecondary'}`}>
+      <Text
+        className={`text-sm font-bold ${
+          selected ? 'text-textOnPrimary' : 'text-textSecondary'
+        }`}>
         {label}
       </Text>
     </Pressable>
@@ -144,15 +198,12 @@ function ToggleRow({
     <SettingsCard className="flex-row items-center justify-between py-sm">
       <View className="flex-row items-center gap-sm">
         <View className="h-9 w-9 items-center justify-center rounded-lg bg-muted">
-          <AppIcon icon={item.icon} size={16} color={colors.textMuted} />
+          <ToggleIcon id={item.id} />
         </View>
         <Text className="text-md font-semibold text-textPrimary">{item.label}</Text>
       </View>
 
-      <ToggleSwitch
-        value={value}
-        onValueChange={onValueChange}
-      />
+      <ToggleSwitch value={value} onValueChange={onValueChange} />
     </SettingsCard>
   );
 }
@@ -173,6 +224,7 @@ export default function SettingsScreen() {
     [profile.toggles],
   );
   const [toggles, setToggles] = useState(initialToggles);
+
   // 페르소나는 하나만 선택되도록 선택된 id만 저장합니다.
   const [selectedPersonaId, setSelectedPersonaId] = useState(
     profile.persona.tags.find((tag) => tag.selected)?.id ?? profile.persona.tags[0]?.id,
@@ -248,37 +300,24 @@ export default function SettingsScreen() {
 
         <View className="items-center">
           <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-primaryLight">
-            <SymbolView
-              name={{ ios: 'person', android: 'person', web: 'person' }}
-              size={32}
-              tintColor={colors.primary}
-            />
+            <ProfileIcon />
           </View>
 
           <View className="mt-md flex-row items-center gap-xs">
             <Text className="text-[20px] font-extrabold text-textPrimary">{profile.nickname}</Text>
-            <SymbolView
-              name={{ ios: 'pencil', android: 'edit', web: 'edit' }}
-              size={13}
-              tintColor={colors.textMuted}
-            />
+            <EditIcon />
           </View>
         </View>
 
         <View className="mt-lg gap-md">
           <SettingsCard>
             <View className="flex-row items-center gap-sm">
-              <SymbolView
-                name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }}
-                size={15}
-                tintColor={colors.primary}
-              />
+              <PersonaTitleIcon />
               <Text className="text-md font-bold text-textPrimary">{profile.persona.title}</Text>
             </View>
 
             <View className="mt-sm flex-row flex-wrap gap-sm">
               {profile.persona.tags.map((tag) => (
-                // 페르소나 칩은 선택 여부에 따라 색을 분리해 실제 선택 UI로 바꾸기 쉽게 둡니다.
                 <PersonaChip
                   key={tag.id}
                   label={tag.label}

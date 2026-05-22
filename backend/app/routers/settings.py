@@ -7,8 +7,8 @@ from app.schemas.settings import SettingsProfile
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
-# DB에는 안정적인 코드값(poetic, daily...)만 저장하고,
-# 화면에 보여줄 라벨/설명은 API 응답을 만들 때 이 매핑으로 변환합니다.
+# DB에는 안정적인 코드값(poetic, daily 등)만 저장하고,
+# 화면에 보여줄 라벨/설명은 API 응답을 만들 때 매핑합니다.
 PERSONA_OPTIONS = {
     "poetic": {
         "label": "시적인",
@@ -20,7 +20,7 @@ PERSONA_OPTIONS = {
     },
     "adventurous": {
         "label": "모험가",
-        "description": "생동감 있고 역동적인 표현",
+        "description": "생동감 있고 활동적인 표현",
     },
     "romantic": {
         "label": "로맨틱",
@@ -55,8 +55,7 @@ def to_settings_profile(user: User) -> SettingsProfile:
     writing_persona = clean(user.writing_persona).lower()
     selected_persona = PERSONA_OPTIONS.get(writing_persona)
 
-    # users.profile_image_url 값은 이미 조회할 수 있습니다.
-    # 기본 프로필 이미지를 준비하고 DB에 저장한 뒤 여기에서 렌더링에 연결합니다.
+    # 아이콘은 프론트에서 lucide-react-native 컴포넌트로 매핑할 수 있는 키만 내려줍니다.
     return SettingsProfile(
         nickname=clean(user.nickname) or "기록하는 여행자",
         persona={
@@ -68,34 +67,20 @@ def to_settings_profile(user: User) -> SettingsProfile:
         },
         travelType={
             "id": "pending",
-            "title": "분석 전",
-            "description": "여행 유형 분석 데이터는 나중에 연결할 예정입니다.",
-            "icon": {
-                "ios": "safari",
-                "android": "explore",
-                "web": "explore",
-            },
+            "title": "분석 중",
+            "description": "여행 유형 분석 데이터는 나중에 연결될 예정입니다.",
+            "icon": "compass",
         },
         toggles=[
             {
                 "id": "darkMode",
                 "label": "다크 모드",
                 "enabled": bool(user.dark_mode),
-                "icon": {
-                    "ios": "moon",
-                    "android": "dark_mode",
-                    "web": "dark_mode",
-                },
             },
             {
                 "id": "pushNotification",
                 "label": "푸시 알림",
                 "enabled": bool(user.push_enabled),
-                "icon": {
-                    "ios": "bell",
-                    "android": "notifications",
-                    "web": "notifications",
-                },
             },
         ],
     )
