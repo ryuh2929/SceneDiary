@@ -69,45 +69,79 @@ export default function TravelDetailUI() {
               <View className="flex-row items-center gap-xs">
                 <Calendar size={14} color="#39536B" />
                 <Text className="text-sm font-sans text-textSecondary">
-                  {startDate && endDate ? `${startDate.replaceAll('-', '.')} ~ ${endDate.replaceAll('-', '.')}`
-                  : startDate || '날짜 미정'}</Text>
+                  {(() => {
+                    if (!startDate || !endDate) return '날짜 미정';
+                    
+                    //만약 데이터가 이미 '04.01' 형태로 들어온 경우 앞의 연도를 강제로 붙여줍니다.
+                    const format = (dateStr: string) => {
+                      const clean = dateStr.replaceAll('-', '.');
+                      if (clean.length <= 5) {
+                        return `26.${clean}`; // '04.01' -> '26.04.01'
+                      }
+                      return clean.startsWith('20') ? clean.slice(2) : clean; // '2026.04.01' -> '26.04.01'
+                    };
+
+                    return `${format(startDate)} ~ ${format(endDate)}`;
+                  })()}
+                </Text>
               </View>
+              
               {symbol && (
+                <View className="w-10 h-10 items-center justify-center overflow-hidden">
                   <View
                     style={{
                       transform: [
-                        { scale: 0.50 }, 
-                        { translateY: 10 } 
+                        { scale: 0.15 }, 
+                        { translateY: -30 } 
                       ]
                     }}
-                    className="w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden"
+                    
                   >
                     <Twemoji>{symbol}</Twemoji>
                   </View>
+                </View>
                 )}
             </View>
           </View>
         </LinearGradient>
       </View>
 
+      
       {/* Day 탭 */}
-      <View className="flex-row items-end px-md mt-sm">
-        {(dayTabs.length > 0 ? dayTabs : [1]).map((d: number)=> (
-          <Pressable
-            key={d}
-            onPress={() => setActiveDay(d)}
-            className={`px-md py-xs rounded-t-lg shadow-sm ${activeDay === d ? 'bg-primary' : 'bg-muted'}`}
-          >
-            <Text className={`font-logo text-xl ${activeDay === d ? 'text-white' : 'text-textSecondary'}`}>Day {d}</Text>
-          </Pressable>
-        ))}
-        <Pressable className="w-10 h-10 rounded-t-lg border border-border bg-surface items-center justify-center">
-          <Plus size={20} color="#A9C3E6" />
-        </Pressable>
-      </View>
+        <View className="flex-row items-end px-9 mt-sm">
+          {(dayTabs.length > 0 ? dayTabs : [1]).map((d: number) => (
+            <Pressable
+              key={d}
+              onPress={() => setActiveDay(d)}
+              // activeDay일 때는 px-lg(크게), 아닐 때는 px-sm(정확히 숫자만 감싸게 고정)으로 크기를 이원화
+              className={`py-xs rounded-t-lg mr-xs shadow-sm ${
+                activeDay === d 
+                  ? 'px-lg bg-primary min-w-[70px] items-center' // 활성화 탭: 넓은 패딩 + 최소 너비 지정으로 듬직하게
+                  : 'px-sm bg-muted min-w-[36px] items-center'   // 일반 숫자 탭: 좁은 패딩 + 정사각형에 가까운 콤팩트한 크기
+              }`}
+            >
+              <Text
+                className={`${
+                  activeDay === d 
+                    ? 'font-logo text-xl text-white' // 선택 시 필기체 느낌의 큰 글씨
+                    : 'font-sans text-base font-bold text-textSecondary' // 미선택 시 깔끔한 고딕 숫자
+                }`}
+              >
+                {activeDay === d ? `Day ${d}` : d}
+              </Text>
+            </Pressable>
+          ))}
+
+          {/* 최대 7개 미만일 때만 + 버튼 표시 */}
+          {dayTabs.length < 7 && (
+            <Pressable className=" rounded-t-lg h-[30px] bg-muted min-w-[36px] items-center justify-center shadow-sm">
+              <Plus size={16} color="#39536B" strokeWidth={3} />
+            </Pressable>
+          )}
+        </View>
 
       {/* 메인 콘텐츠 카드 */}
-      <View className="px-md mt-xs pb-xl">
+      <View className="px-md  pb-xl">
         <View className="bg-surface rounded-lg p-md shadow-sm border border-border">
 
           {/* 소제목 & 감정 이모지 */}
@@ -131,7 +165,7 @@ export default function TravelDetailUI() {
                   transform: [
                     { scale: 0.15 },
                     { translateX: 0 },
-                    { translateY: 150 }
+                    { translateY: 30 }
                   ]
                 }}
               >
@@ -143,17 +177,27 @@ export default function TravelDetailUI() {
 
 
         {/* 📍 세부 위치 정보 연동 */}
-        <View className="flex-row items-center gap-xs">
+        <View className="flex-row items-center gap-xs ">
           <MapPin size={10} color="#39536B" />
-          <Text className="text-sm text-textSecondary font-sans">
+          <Text className="text-sm text-textSecondary font-sans mr-1">
             {currentDayData?.location || '위치 정보 없음'}
           </Text>
           
            {/* 날짜 & 날씨 */}
-            <Text className="text-sm text-textSecondary font-sans">2026-04-01</Text>
-            <View className="flex-row items-center gap-xs bg-accent px-sm py-xs rounded-full">
-              <Twemoji size={14}>☀️</Twemoji>
-              <Text className="text-sm text-textSecondary font-sans font-bold">맑음</Text>
+            <Text className="text-sm text-textSecondary font-sans mr-2">
+              {(() => {
+                const targetDate = currentDayData?.date || startDate;
+                if (!targetDate) return '날짜 미정';
+
+                const clean = targetDate.replaceAll('-', '.');
+                //뒤에서부터 5글자만 남겨서 항상 '월.일' (예: 04.01) 형식만 쏙 뽑아냅니다.
+                return clean.length >= 5 ? clean.slice(-5) : clean;
+              })()}
+            </Text>
+            <View className="flex-row items-center gap-xs px-sm py-xs rounded-full">
+             <Text className="text-sm text-textSecondary font-sans font-bold">
+              {`${currentDayData?.weatherEmoji || '☀️'} ${currentDayData?.weather || '맑음'}`}
+            </Text>
             </View>
           </View>
 
@@ -161,7 +205,7 @@ export default function TravelDetailUI() {
           {/* 본문 사진 */}
           <Image
             source={{ uri: currentDayData?.image || mainImage || 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e' }}
-            className="w-full h-60 rounded-lg mb-md"
+            className="w-full h-60 rounded-lg mb-md mt-md"
             resizeMode="cover"
           />
 
