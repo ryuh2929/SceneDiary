@@ -19,8 +19,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   dummySettingsProfile,
-  SettingsIconName,
   SettingsToggle,
+  TravelTypeIconName,
 } from '@/data/settings';
 import { fetchSettingsProfile } from '@/services/settings-api';
 
@@ -40,14 +40,17 @@ const colors = {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const settingsIcons: Record<SettingsIconName, LucideIcon> = {
+const travelTypeIcons: Record<TravelTypeIconName, LucideIcon> = {
   compass: Compass,
-  moon: Moon,
-  bell: Bell,
+};
+
+const toggleIcons: Record<SettingsToggle['id'], LucideIcon> = {
+  darkMode: Moon,
+  pushNotification: Bell,
 };
 
 type AppIconProps = {
-  icon: SettingsIconName;
+  icon: TravelTypeIconName;
   size?: number;
   color?: string;
 };
@@ -66,7 +69,22 @@ const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
 
 const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
   // lucide 아이콘은 SVG 기반이라 iOS, Android, Web에서 같은 형태로 렌더링됩니다.
-  const Icon = settingsIcons[icon] ?? Compass;
+  const Icon = travelTypeIcons[icon] ?? Compass;
+
+  return <Icon size={size} color={color} strokeWidth={2.2} />;
+});
+
+const ToggleIcon = React.memo(function ToggleIcon({
+  id,
+  size = 16,
+  color = colors.textMuted,
+}: {
+  id: SettingsToggle['id'];
+  size?: number;
+  color?: string;
+}) {
+  // 다크 모드와 푸시 알림 아이콘은 설정 UI의 고정 요소라서 API 데이터가 아니라 프론트에서 직접 결정합니다.
+  const Icon = toggleIcons[id];
 
   return <Icon size={size} color={color} strokeWidth={2.2} />;
 });
@@ -180,7 +198,7 @@ function ToggleRow({
     <SettingsCard className="flex-row items-center justify-between py-sm">
       <View className="flex-row items-center gap-sm">
         <View className="h-9 w-9 items-center justify-center rounded-lg bg-muted">
-          <AppIcon icon={item.icon} size={16} color={colors.textMuted} />
+          <ToggleIcon id={item.id} />
         </View>
         <Text className="text-md font-semibold text-textPrimary">{item.label}</Text>
       </View>

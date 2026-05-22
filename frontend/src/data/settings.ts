@@ -5,20 +5,19 @@ export type PersonaTag = {
   selected: boolean;
 };
 
-export type SettingsIconName = 'compass' | 'moon' | 'bell';
+export type TravelTypeIconName = 'compass';
 
 export type TravelType = {
   id: string;
   title: string;
   description: string;
-  icon: SettingsIconName;
+  icon: TravelTypeIconName;
 };
 
 export type SettingsToggle = {
   id: 'darkMode' | 'pushNotification';
   label: string;
   enabled: boolean;
-  icon: SettingsIconName;
 };
 
 export type SettingsProfile = {
@@ -76,13 +75,11 @@ export const dummySettingsProfile: SettingsProfile = {
       id: 'darkMode',
       label: '다크 모드',
       enabled: false,
-      icon: 'moon',
     },
     {
       id: 'pushNotification',
       label: '푸시 알림',
       enabled: true,
-      icon: 'bell',
     },
   ],
 };

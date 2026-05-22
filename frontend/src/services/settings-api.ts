@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-import type { SettingsIconName, SettingsProfile } from '@/data/settings';
+import type { SettingsProfile, TravelTypeIconName } from '@/data/settings';
 
 function getApiBaseUrl() {
   const configuredBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -30,7 +30,7 @@ export async function fetchSettingsProfile() {
   return normalizeSettingsProfile(profile);
 }
 
-function normalizeSettingsIcon(icon: unknown): SettingsIconName {
+function normalizeTravelTypeIcon(icon: unknown): TravelTypeIconName {
   // 백엔드가 재시작되지 않은 경우 예전 { ios, android, web } 형태가 올 수 있어서 프론트에서 한 번 더 정리합니다.
   const iconKey =
     typeof icon === 'string'
@@ -44,12 +44,6 @@ function normalizeSettingsIcon(icon: unknown): SettingsIconName {
     case 'explore':
     case 'safari':
       return 'compass';
-    case 'moon':
-    case 'dark_mode':
-      return 'moon';
-    case 'bell':
-    case 'notifications':
-      return 'bell';
     default:
       return 'compass';
   }
@@ -60,11 +54,7 @@ function normalizeSettingsProfile(profile: SettingsProfile): SettingsProfile {
     ...profile,
     travelType: {
       ...profile.travelType,
-      icon: normalizeSettingsIcon(profile.travelType.icon),
+      icon: normalizeTravelTypeIcon(profile.travelType.icon),
     },
-    toggles: profile.toggles.map((toggle) => ({
-      ...toggle,
-      icon: normalizeSettingsIcon(toggle.icon),
-    })),
   };
 }

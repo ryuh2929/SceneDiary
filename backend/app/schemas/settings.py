@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-SettingsIconName = Literal["compass", "moon", "bell"]
+TravelTypeIconName = Literal["compass"]
 
 
 class PersonaTag(BaseModel):
@@ -22,14 +22,13 @@ class TravelType(BaseModel):
     id: str
     title: str
     description: str
-    icon: SettingsIconName
+    icon: TravelTypeIconName
 
 
 class SettingsToggle(BaseModel):
     id: str
     label: str
     enabled: bool
-    icon: SettingsIconName
 
 
 class SettingsProfile(BaseModel):

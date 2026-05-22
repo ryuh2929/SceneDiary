@@ -76,13 +76,11 @@ def to_settings_profile(user: User) -> SettingsProfile:
                 "id": "darkMode",
                 "label": "다크 모드",
                 "enabled": bool(user.dark_mode),
-                "icon": "moon",
             },
             {
                 "id": "pushNotification",
                 "label": "푸시 알림",
                 "enabled": bool(user.push_enabled),
-                "icon": "bell",
             },
         ],
     )
