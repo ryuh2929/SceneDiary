@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import type { SettingsProfile, TravelTypeIconName } from '@/data/settings';
+import { getOrCreateDeviceId } from '@/services/device-id';
 
 function getApiBaseUrl() {
   const configuredBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -19,7 +20,9 @@ function getApiBaseUrl() {
 }
 
 export async function fetchSettingsProfile() {
-  const response = await fetch(`${getApiBaseUrl()}/settings/profile`);
+  const deviceId = await getOrCreateDeviceId();
+  const query = new URLSearchParams({ device_id: deviceId });
+  const response = await fetch(`${getApiBaseUrl()}/settings/profile?${query.toString()}`);
 
   if (!response.ok) {
     throw new Error('Failed to load settings profile.');
