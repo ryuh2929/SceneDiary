@@ -52,12 +52,24 @@ type AppIconProps = {
   color?: string;
 };
 
-function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
+const ProfileIcon = React.memo(function ProfileIcon() {
+  return <User size={32} color={colors.primary} strokeWidth={2.2} />;
+});
+
+const EditIcon = React.memo(function EditIcon() {
+  return <Pencil size={13} color={colors.textMuted} strokeWidth={2.2} />;
+});
+
+const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
+  return <Sparkles size={15} color={colors.primary} strokeWidth={2.2} />;
+});
+
+const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
   // lucide 아이콘은 SVG 기반이라 iOS, Android, Web에서 같은 형태로 렌더링됩니다.
   const Icon = settingsIcons[icon] ?? Compass;
 
   return <Icon size={size} color={color} strokeWidth={2.2} />;
-}
+});
 
 function SettingsCard({
   children,
@@ -270,19 +282,19 @@ export default function SettingsScreen() {
 
         <View className="items-center">
           <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-primaryLight">
-            <User size={32} color={colors.primary} strokeWidth={2.2} />
+            <ProfileIcon />
           </View>
 
           <View className="mt-md flex-row items-center gap-xs">
             <Text className="text-[20px] font-extrabold text-textPrimary">{profile.nickname}</Text>
-            <Pencil size={13} color={colors.textMuted} strokeWidth={2.2} />
+            <EditIcon />
           </View>
         </View>
 
         <View className="mt-lg gap-md">
           <SettingsCard>
             <View className="flex-row items-center gap-sm">
-              <Sparkles size={15} color={colors.primary} strokeWidth={2.2} />
+              <PersonaTitleIcon />
               <Text className="text-md font-bold text-textPrimary">{profile.persona.title}</Text>
             </View>
 

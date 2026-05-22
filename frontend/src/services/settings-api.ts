@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-import type { SettingsProfile } from '@/data/settings';
+import type { SettingsIconName, SettingsProfile } from '@/data/settings';
 
 function getApiBaseUrl() {
   const configuredBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -25,5 +25,46 @@ export async function fetchSettingsProfile() {
     throw new Error('Failed to load settings profile.');
   }
 
-  return response.json() as Promise<SettingsProfile>;
+  const profile = (await response.json()) as SettingsProfile;
+
+  return normalizeSettingsProfile(profile);
+}
+
+function normalizeSettingsIcon(icon: unknown): SettingsIconName {
+  // 백엔드가 재시작되지 않은 경우 예전 { ios, android, web } 형태가 올 수 있어서 프론트에서 한 번 더 정리합니다.
+  const iconKey =
+    typeof icon === 'string'
+      ? icon
+      : icon && typeof icon === 'object' && 'web' in icon
+        ? String(icon.web)
+        : '';
+
+  switch (iconKey) {
+    case 'compass':
+    case 'explore':
+    case 'safari':
+      return 'compass';
+    case 'moon':
+    case 'dark_mode':
+      return 'moon';
+    case 'bell':
+    case 'notifications':
+      return 'bell';
+    default:
+      return 'compass';
+  }
+}
+
+function normalizeSettingsProfile(profile: SettingsProfile): SettingsProfile {
+  return {
+    ...profile,
+    travelType: {
+      ...profile.travelType,
+      icon: normalizeSettingsIcon(profile.travelType.icon),
+    },
+    toggles: profile.toggles.map((toggle) => ({
+      ...toggle,
+      icon: normalizeSettingsIcon(toggle.icon),
+    })),
+  };
 }
