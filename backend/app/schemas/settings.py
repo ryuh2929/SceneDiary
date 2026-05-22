@@ -1,10 +1,8 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
-
-class AppSymbolName(BaseModel):
-    ios: str
-    android: str
-    web: str
+SettingsIconName = Literal["compass", "moon", "bell"]
 
 
 class PersonaTag(BaseModel):
@@ -24,14 +22,14 @@ class TravelType(BaseModel):
     id: str
     title: str
     description: str
-    icon: AppSymbolName
+    icon: SettingsIconName
 
 
 class SettingsToggle(BaseModel):
     id: str
     label: str
     enabled: bool
-    icon: AppSymbolName
+    icon: SettingsIconName
 
 
 class SettingsProfile(BaseModel):
