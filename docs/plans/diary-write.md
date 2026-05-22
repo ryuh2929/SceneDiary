@@ -180,9 +180,23 @@ type DayPage = {
 
 > 메모: Detail 이동은 **이동만**(`router.push('/Detail')`) — 우리 `TripDiary`→Detail params(`id/title/details` 등) 매핑은 5단계(API 연동)로 분리. 정식 경로는 `/Detail`(대문자) — 기존 `Home.tsx`는 `/detail` 소문자로 써서 타입 에러가 나 있음(이 화면 밖, 별도 정정 대상).
 
-### 4단계 — 백엔드 API 계약 정의
-- [ ] 4절의 엔드포인트를 Pydantic(`schemas/`) ↔ TS(`types/diary.ts`) 1:1로 확정
-- [ ] 백엔드는 더미 응답으로 먼저 구현, 폴링 경로 포함
+### 4단계 — 백엔드 API 계약 정의 ✅ 완료 (2026-05-22)
+- [x] 응답 스키마를 Pydantic으로 확정 (`schemas/diary.py`) — `GenStatus`, `DayPhoto`, `DayPage`, `TripDiary`. 프론트 `types/diary_writing.ts`와 1:1. 필드명은 카멜케이스로 통일(settings.py 관습).
+- [x] 요청/상태 스키마 — `DayStatus`(폴링), `DayUpdate`(여행지 저장 body), `TripStatusUpdate`(최종 저장 body).
+- [x] 라우터 6개 + 더미 응답 (`routers/diary.py`), `main.py` 등록. TestClient로 6개 + 404 검증.
+- [ ] **요청/상태 TS 타입**(DayStatus/DayUpdate/TripStatusUpdate)은 5단계(API 클라이언트 작성) 때 추가 — 응답 타입은 이미 1:1.
+
+> **확정된 엔드포인트** (업로드/생성 시작 ①은 앞 화면 담당이라 제외 — 6절):
+> | # | 메서드 · 경로 | 요청 | 응답 | 비고 |
+> |---|---|---|---|---|
+> | 여행 전체 조회 | `GET /trips/{trip_id}` | — | `TripDiary` | 진입 시 N일치 한 번에 |
+> | 상태 폴링 | `GET /trips/{trip_id}/day-statuses` | — | `list[DayStatus]` | 가벼운 상태만 |
+> | 일차 조회 | `GET /trip-days/{trip_day_id}` | — | `DayPage` | ready된 날 본문 재조회 |
+> | 일차 저장 | `PATCH /trip-days/{trip_day_id}` | `DayUpdate` | `DayPage` | 여행지만 (지도 좌표는 추후) |
+> | 재생성 | `POST /trip-days/{trip_day_id}/regenerate` | — | `DayStatus` | 더미는 즉시 generating |
+> | 최종 저장 | `PATCH /trips/{trip_id}` | `TripStatusUpdate` | `TripStatusUpdate` | status='completed' |
+>
+> 폴링 방식 채택(푸시 아님 — 프로토타입엔 충분). genStatus 출처 = 최신 `diary_generations.status` 번역(success→ready 등), 실제 번역·DB 조회·사진 id→URL 변환은 6단계.
 
 ### 5단계 — 프론트 ↔ 백엔드 연동
 - [ ] mock → 실제 API 교체, 에러 처리, baseURL 환경변수
@@ -214,8 +228,8 @@ type DayPage = {
 | 1 | 목업 디자인이 React Native로 보임 | ✅ |
 | 2 | 읽기전용 일차별 뷰어 + 버튼 3상태/실패상태 (mock) | ✅ |
 | 3 | mock으로 전체 흐름 (일차 순차→저장→Detail) 동작 | ✅ |
-| 4 | 더미 응답이지만 백엔드 API가 응답함 | ⬜ 다음 |
-| 5 | 실제 API 호출로 흐름 동작 | ⬜ |
+| 4 | 더미 응답이지만 백엔드 API가 응답함 | ✅ |
+| 5 | 실제 API 호출로 흐름 동작 | ⬜ 다음 |
 | 6 | 실제 사진 → 실제 AI → 실제 DB 저장 동작 | ⬜ (DB 모델·마이그레이션은 완료) |
 
 ---
@@ -239,3 +253,4 @@ type DayPage = {
 | 2026-05-21 | 정정 — ①날씨도 Twemoji 코드포인트(문자열→lucide 아님), ②1일차 사진 전체(최대 5장) VLM 분석, ③상단 좌측 대표사진은 VLM이 고른 **trip** 대표사진(`trips.trip_represent_image` 추가, 하단 일자별 사진 바와 별개) |
 | 2026-05-21 | **2단계 완료** — 읽기전용 멀티데이 뷰어 재구성(`diary_writing.tsx`), 타입(`types/diary_writing.ts`)·mock(`data/diary_writing.ts`, 실제 DB trip 1 전사) 분리. trip 대표사진은 `cover_photo_id`로 확정(새 컬럼 폐기). weather 코드포인트 통일·사진 정적 서빙은 백엔드 후속(6절)으로 분리 |
 | 2026-05-22 | **3단계 완료** — mock 전체 흐름 구현(`diary_writing.tsx` 단일 파일). `days`를 `useState`로 관리, `useEffect`+`setTimeout`으로 다음 날 시간차 ready 시뮬레이션. "다음날로"=mock 저장 로그, 마지막 "저장하기"=`router.push('/Detail')` 이동만, `handleRegenerate`=generating→3초→ready. 1·2·3 흐름 검증 완료 |
+| 2026-05-22 | **4단계 완료** — 백엔드 API 계약 확정. `schemas/diary.py`(응답 4 + 요청/상태 3, 프론트 TS와 1:1·카멜케이스), `routers/diary.py`(6개 엔드포인트 + 더미 응답), `main.py` 등록. 업로드/생성 ①은 앞 화면 담당이라 제외. TestClient로 6개+404 검증. 요청/상태 TS 타입은 5단계로. genStatus 출처=최신 `diary_generations.status` 번역(6단계 구현) |
