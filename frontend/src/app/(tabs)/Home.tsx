@@ -71,15 +71,12 @@ export default function HomeScreen() {
           <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 180 }}
         >
-        {/* 연도 레이블 */}
-        <View className="px-md mt-lg mb-md">
-          <Text className="text-md font-sans text-textSecondary">{currentYear}년의 여행</Text>
-        </View>
+        
 
         {/* 여행 리스트 */}
-        <View className="px-md gap-lg">
+        <View className="px-md mt-lg mb-md gap-lg">
           {travelData.map((item) => {
             const isExpanded = expandedId === item.id;
             return (
@@ -94,7 +91,9 @@ export default function HomeScreen() {
                                   mainImage: item.mainImage,
                                   startDate: item.startDate,
                                   endDate: item.endDate,
-                                  symbol: item.symbol } })
+                                  symbol: item.symbol,
+                                  details: JSON.stringify(item.details)
+                                } })
                                 }
                   >
                   <Image source={{ uri: item.mainImage }} className="w-full h-full" resizeMode="cover" />
@@ -222,10 +221,10 @@ export default function HomeScreen() {
 
       {/* FAB */}
       <Pressable
-        className="absolute bottom-24 right-md bg-fab w-14 h-14 rounded-full items-center justify-center shadow-lg"
-        style={{ zIndex: 99 }}
+        className="absolute right-md bg-fab w-14 h-14 rounded-full items-center justify-center shadow-lg"
+        style={{ zIndex: 99, bottom: 125 }}
       >
-        <Plus size={28} color="#FFFFFF" strokeWidth={2.5} />
+        <Plus size={32} color="#FFFFFF" strokeWidth={2.5} />
       </Pressable>
 
       <BottomNav />
