@@ -39,3 +39,21 @@ export type TripDiary = {
   status: string; // trips.status — 최종 저장 시 'completed'
   days: DayPage[]; // 길이 = N (총 일수)
 };
+
+// ── 요청/상태용 (백엔드 schemas/diary.py 와 1:1, 5단계 API 연동에서 사용) ──
+
+// 상태 폴링 응답 1개. "각 날이 ready냐?"만 가볍게 (본문은 안 옴).
+export type DayStatus = {
+  tripDayId: number; // trip_days.id
+  genStatus: GenStatus; // ready / generating / failed
+};
+
+// 일차 저장(PATCH) 요청 body. 이 화면의 유일한 편집 대상 = 여행지.
+export type DayUpdate = {
+  locationSummary: string; // trip_days.location_summary
+};
+
+// 최종 저장(PATCH /trips) 요청 body. 여행 상태를 'completed'로.
+export type TripStatusUpdate = {
+  status: string; // trips.status
+};

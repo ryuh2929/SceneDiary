@@ -13,6 +13,8 @@
 settings.py 와 같은 방식(APIRouter + response_model + 404 처리)으로 작성합니다.
 """
 
+import time
+
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.diary import (
@@ -29,7 +31,9 @@ router = APIRouter(tags=["diary"])
 
 # ─────────────────────────────────────────────────────────────
 # 더미 데이터 (6단계에서 실제 DB 조회로 교체)
-#   모양 확인용 최소 2일치. 1일차=ready, 2일차=generating(본문 빈 채).
+#   _DUMMY_DAYS = 각 날의 "완성된(ready)" 모습 2일치. genStatus·본문은
+#   아래 _gen_status / _day_view 가 "시간"에 따라 계산해 덮어씁니다.
+#   (서버가 뜬 뒤 시간이 지나면 다음 날이 ready로 — 5-3 폴링 확인용)
 #   사진 URL은 picsum placeholder (실제 변환은 6단계).
 # ─────────────────────────────────────────────────────────────
 _DUMMY_DAYS: list[DayPage] = [
@@ -58,12 +62,23 @@ _DUMMY_DAYS: list[DayPage] = [
         date="2026-05-02",
         locationSummary="제부도",
         weather="1f3e0",  # 🏠
-        subtitle="",
-        emotion="",
-        symbol="",
-        content="",  # 생성 중이라 본문 비어 있음
-        photos=[],
-        genStatus="generating",
+        subtitle="제부의 오후, 일상의 빛과 맛",
+        emotion="1f604",  # 😄
+        symbol="1f41a",  # 🐚
+        content="제부도는 언제나 빛으로 가득 찬 공간이다. 친구들과 웃고, 활기찬 순간들을 카메라에 담는 시간은 그 자체로 기쁨이었다.",
+        photos=[
+            DayPhoto(
+                id=4,
+                thumbnailUrl="https://picsum.photos/seed/sd-4/200/200",
+                fileUrl="https://picsum.photos/seed/sd-4/800/800",
+            ),
+            DayPhoto(
+                id=5,
+                thumbnailUrl="https://picsum.photos/seed/sd-5/200/200",
+                fileUrl="https://picsum.photos/seed/sd-5/800/800",
+            ),
+        ],
+        genStatus="ready",
     ),
 ]
 
@@ -76,20 +91,57 @@ _DUMMY_TRIP = TripDiary(
 )
 
 
-def _find_day(trip_day_id: int) -> DayPage:
-    """더미에서 trip_day_id 로 하루를 찾습니다. 없으면 404."""
-    for day in _DUMMY_DAYS:
+# ── "시간차" 생성 시뮬레이션 (데모용) ──
+# 서버가 뜬 시점부터 _READY_INTERVAL_SEC 마다 한 날씩 ready가 됩니다. (0번째 날은 처음부터 ready)
+_START = time.monotonic()
+_READY_INTERVAL_SEC = 6.0
+
+
+def _gen_status(index: int) -> str:
+    """index번째 날의 현재 생성 상태를 '경과 시간'으로 계산합니다."""
+    elapsed = time.monotonic() - _START
+    ready_count = 1 + int(elapsed // _READY_INTERVAL_SEC)
+    return "ready" if index < ready_count else "generating"
+
+
+def _day_view(index: int) -> DayPage:
+    """index번째 날을 '현재 시각 기준' 모습으로 만들어 돌려줍니다.
+    아직 생성 중이면 본문·사진 등 생성 결과는 비워서 보냅니다(기본 정보만).
+    """
+    base = _DUMMY_DAYS[index]
+    if _gen_status(index) == "ready":
+        return base  # 이미 genStatus="ready" + 본문 채워져 있음
+    return base.model_copy(
+        update={
+            "genStatus": "generating",
+            "subtitle": "",
+            "emotion": "",
+            "symbol": "",
+            "content": "",
+            "photos": [],
+        }
+    )
+
+
+def _find_index(trip_day_id: int) -> int:
+    """trip_day_id 로 날의 위치(index)를 찾습니다. 없으면 404."""
+    for i, day in enumerate(_DUMMY_DAYS):
         if day.tripDayId == trip_day_id:
-            return day
+            return i
     raise HTTPException(status_code=404, detail="TripDay not found")
 
 
-# ① 여행 전체 조회 — 처음 진입 시 N일치 한 번에
+# ① 여행 전체 조회 — 처음 진입 시 N일치 한 번에 (각 날은 현재 시각 기준 상태로)
 @router.get("/trips/{trip_id}", response_model=TripDiary)
 def get_trip(trip_id: int) -> TripDiary:
     if trip_id != _DUMMY_TRIP.tripId:
         raise HTTPException(status_code=404, detail="Trip not found")
-    return _DUMMY_TRIP
+    # 데모용: 화면에 들어올 때마다 "생성중" 타이머를 다시 시작 → 매번 전환을 볼 수 있게.
+    # (실제 DB 연결되는 6단계에선 이 줄을 지웁니다 — 진짜 생성 상태를 읽으니까)
+    global _START
+    _START = time.monotonic()
+    days = [_day_view(i) for i in range(len(_DUMMY_DAYS))]
+    return _DUMMY_TRIP.model_copy(update={"days": days})
 
 
 # ② 상태 폴링 — "각 날이 ready냐?"만 가볍게
@@ -97,19 +149,22 @@ def get_trip(trip_id: int) -> TripDiary:
 def get_day_statuses(trip_id: int) -> list[DayStatus]:
     if trip_id != _DUMMY_TRIP.tripId:
         raise HTTPException(status_code=404, detail="Trip not found")
-    return [DayStatus(tripDayId=d.tripDayId, genStatus=d.genStatus) for d in _DUMMY_DAYS]
+    return [
+        DayStatus(tripDayId=d.tripDayId, genStatus=_gen_status(i))
+        for i, d in enumerate(_DUMMY_DAYS)
+    ]
 
 
 # ③ 일차 조회 — 어떤 날이 ready되면 그 날 본문만 다시 가져오기
 @router.get("/trip-days/{trip_day_id}", response_model=DayPage)
 def get_trip_day(trip_day_id: int) -> DayPage:
-    return _find_day(trip_day_id)
+    return _day_view(_find_index(trip_day_id))
 
 
 # ④ 일차 저장 — 여행지(locationSummary)만 수정
 @router.patch("/trip-days/{trip_day_id}", response_model=DayPage)
 def update_trip_day(trip_day_id: int, body: DayUpdate) -> DayPage:
-    day = _find_day(trip_day_id)
+    day = _day_view(_find_index(trip_day_id))
     # 더미: 받은 값을 그대로 반영해 돌려줌 (실제 DB 저장은 6단계)
     return day.model_copy(update={"locationSummary": body.locationSummary})
 
@@ -117,9 +172,9 @@ def update_trip_day(trip_day_id: int, body: DayUpdate) -> DayPage:
 # ⑤ 재생성 — 실패한 날 다시 생성 요청
 @router.post("/trip-days/{trip_day_id}/regenerate", response_model=DayStatus)
 def regenerate_trip_day(trip_day_id: int) -> DayStatus:
-    day = _find_day(trip_day_id)
+    index = _find_index(trip_day_id)
     # 더미: 요청 즉시 generating 으로 응답 (실제 생성은 6단계)
-    return DayStatus(tripDayId=day.tripDayId, genStatus="generating")
+    return DayStatus(tripDayId=_DUMMY_DAYS[index].tripDayId, genStatus="generating")
 
 
 # ⑥ 최종 저장 — 여행 상태를 'completed'로
