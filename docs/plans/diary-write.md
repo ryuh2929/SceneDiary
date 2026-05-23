@@ -198,8 +198,15 @@ type DayPage = {
 >
 > 폴링 방식 채택(푸시 아님 — 프로토타입엔 충분). genStatus 출처 = 최신 `diary_generations.status` 번역(success→ready 등), 실제 번역·DB 조회·사진 id→URL 변환은 6단계.
 
-### 5단계 — 프론트 ↔ 백엔드 연동
-- [ ] mock → 실제 API 교체, 에러 처리, baseURL 환경변수
+### 5단계 — 프론트 ↔ 백엔드 연동 ✅ 완료 (2026-05-23)
+작은 단계로 쪼개 진행, 각 단계 tsc + 실제 서버로 검증.
+- [x] 5-1 — API 클라이언트 `services/diary-api.ts`(호출 함수 6개 + 공통 `request<T>` 헬퍼, baseURL은 settings-api 방식 재사용) + 요청/상태 TS 타입 3개(`DayStatus/DayUpdate/TripStatusUpdate`) 추가
+- [x] 5-2 — 초기 데이터 mock → `GET /trips/1` fetch. `trip`/`loading`/`error` 상태 + 진입 시 useEffect, 로딩/에러 화면 분기
+- [x] 5-3 — 가짜 `setTimeout` → 실제 폴링(`setInterval`로 `day-statuses` 3초마다) + ready 전환 시 `GET /trip-days/{id}`로 본문 채우기. **백엔드 더미를 "시간차"로** 수정(`_gen_status`/`_day_view`, `GET /trips` 진입 시 타이머 리셋)
+- [x] 5-4 — 핸들러를 실제 호출로: `handleNext`=`saveDayLocation`(PATCH), `handleSave`=`completeTrip`(PATCH)→Detail, `handleRegenerate`=`regenerateDay`(POST)
+- [x] 5-5 — 에러 처리: 로딩 실패 시 "다시 시도" 버튼(`loadTrip` 분리), 액션 실패 시 하단 `actionError` 안내(`text-error`), **성공해야** 진행/이동. Alert 대신 화면 내 상태(웹 안정성·팀 관습)
+
+> 메모: baseURL은 `EXPO_PUBLIC_API_BASE_URL`(없으면 실기기 hostUri:8000 / 웹 localhost:8000). mock 파일 `data/diary_writing.ts`는 5-2부터 미사용(정리 대상). 시간차 더미·타이머 리셋은 데모용 — 6단계에서 실제 DB 상태 조회로 교체.
 
 ### 6단계 — AI 로직 + DB 저장
 - [x] `backend/app/db/session.py`, `models.py`(7개 모델), Alembic baseline ✅ 완료 (`docs/plans/db-setup.md`)
@@ -229,8 +236,8 @@ type DayPage = {
 | 2 | 읽기전용 일차별 뷰어 + 버튼 3상태/실패상태 (mock) | ✅ |
 | 3 | mock으로 전체 흐름 (일차 순차→저장→Detail) 동작 | ✅ |
 | 4 | 더미 응답이지만 백엔드 API가 응답함 | ✅ |
-| 5 | 실제 API 호출로 흐름 동작 | ⬜ 다음 |
-| 6 | 실제 사진 → 실제 AI → 실제 DB 저장 동작 | ⬜ (DB 모델·마이그레이션은 완료) |
+| 5 | 실제 API 호출로 흐름 동작 | ✅ |
+| 6 | 실제 사진 → 실제 AI → 실제 DB 저장 동작 | ⬜ 다음 (DB 모델·마이그레이션은 완료) |
 
 ---
 
@@ -254,3 +261,4 @@ type DayPage = {
 | 2026-05-21 | **2단계 완료** — 읽기전용 멀티데이 뷰어 재구성(`diary_writing.tsx`), 타입(`types/diary_writing.ts`)·mock(`data/diary_writing.ts`, 실제 DB trip 1 전사) 분리. trip 대표사진은 `cover_photo_id`로 확정(새 컬럼 폐기). weather 코드포인트 통일·사진 정적 서빙은 백엔드 후속(6절)으로 분리 |
 | 2026-05-22 | **3단계 완료** — mock 전체 흐름 구현(`diary_writing.tsx` 단일 파일). `days`를 `useState`로 관리, `useEffect`+`setTimeout`으로 다음 날 시간차 ready 시뮬레이션. "다음날로"=mock 저장 로그, 마지막 "저장하기"=`router.push('/Detail')` 이동만, `handleRegenerate`=generating→3초→ready. 1·2·3 흐름 검증 완료 |
 | 2026-05-22 | **4단계 완료** — 백엔드 API 계약 확정. `schemas/diary.py`(응답 4 + 요청/상태 3, 프론트 TS와 1:1·카멜케이스), `routers/diary.py`(6개 엔드포인트 + 더미 응답), `main.py` 등록. 업로드/생성 ①은 앞 화면 담당이라 제외. TestClient로 6개+404 검증. 요청/상태 TS 타입은 5단계로. genStatus 출처=최신 `diary_generations.status` 번역(6단계 구현) |
+| 2026-05-23 | **5단계 완료** — 프론트↔백엔드 연동(5-1~5-5). 프론트: `services/diary-api.ts`(호출 6 + `request<T>`), 요청 TS 타입 3개, mock→fetch, `setInterval` 폴링 + ready 시 본문 fetch, 핸들러 실제 호출(save/regenerate/complete), 에러 처리(재시도·`actionError`·성공해야 진행). 백엔드: 더미를 "시간차"로(`_gen_status`/`_day_view`, `GET /trips` 진입 시 타이머 리셋)해 폴링 전환을 눈으로 확인 가능. 서버 on/off로 정상·에러 흐름 검증. `data/diary_writing.ts` mock은 미사용 전환 |
