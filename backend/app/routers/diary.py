@@ -11,13 +11,19 @@
   남은 것: 사진 정적 서빙(6-2), 실제 생성 VLM→LLM(6-3), 재생성 백그라운드(6-4).
 """
 
+import json
+import os
+import time
+from datetime import datetime
+from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.db.models import Diary, Photo, Trip, TripDay
-from app.db.session import get_db
+# 합치기 후: 일기 본문은 trip_days 에 들어가서 Diary 모델은 더 이상 없음.
+from app.db.models import DiaryGeneration, Photo, Trip, TripDay
+from app.db.session import SessionLocal, get_db
 from app.schemas.diary import (
     DayPage,
     DayPhoto,
@@ -28,6 +34,11 @@ from app.schemas.diary import (
 )
 
 router = APIRouter(tags=["diary"])
+
+# 사진 파일 경로 해석용 backend 루트. (photos.file_url = "test_images/..." 가 이 폴더 기준)
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+# 생성에 쓰는 모델명(생성 이력 기록용). diary_generator 와 같은 기본값.
+_MODEL_NAME = os.getenv("DIARY_MODEL", "gemma4:e4b")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -59,10 +70,24 @@ def _weather_codepoint(value: str | None) -> str:
     return ""
 
 
-def _gen_status(diary: Diary | None) -> str:
-    """그 날의 생성 상태. (6-1 단순 규칙: 본문 있는 일기가 있으면 ready)
-    실패 판정·생성 이력(diary_generations) 반영은 6-4에서."""
-    if diary is not None and diary.content:
+def _gen_status(db: Session, trip_day: TripDay) -> str:
+    """그 날의 생성 상태 = 그 날의 '최신 diary_generations.status' 를 번역.
+    (step4 결정: running→generating, failure→failed, success→ready)
+    합치기 후: 생성 이력은 trip_day_id 로 조회. 이력이 없으면 본문 유무로 판단."""
+    latest = (
+        db.query(DiaryGeneration)
+        .filter(DiaryGeneration.trip_day_id == trip_day.id)
+        .order_by(DiaryGeneration.id.desc())
+        .first()
+    )
+    if latest is not None:
+        if latest.status == "running":
+            return "generating"
+        if latest.status == "failure":
+            return "failed"
+        if latest.status == "success":
+            return "ready"
+    if trip_day.content:
         return "ready"
     return "generating"
 
@@ -89,8 +114,8 @@ def _photo_url(db: Session, base: str, photo_id: int | None) -> str:
 
 
 def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
-    """trip_day + 그날 diary + 사진들을 묶어 DayPage 로 만듭니다."""
-    diary = db.query(Diary).filter(Diary.trip_day_id == trip_day.id).first()
+    """trip_day(일기 내용 포함) + 사진들을 묶어 DayPage 로 만듭니다.
+    합치기 후: 일기 본문·상징이 trip_day 에 직접 있어 별도 diary 조회가 없습니다."""
     photos = (
         db.query(Photo)
         .filter(Photo.trip_day_id == trip_day.id, Photo.deleted_at.is_(None))
@@ -105,8 +130,8 @@ def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
         weather=_weather_codepoint(trip_day.weather),
         subtitle=trip_day.subtitle or "",
         emotion=trip_day.emotion or "",
-        symbol=(diary.symbol if diary else "") or "",
-        content=(diary.content if diary else "") or "",
+        symbol=trip_day.symbol or "",  # 합치기 후: trip_day 에서 직접
+        content=trip_day.content or "",  # 합치기 후: trip_day 에서 직접
         photos=[
             DayPhoto(
                 id=p.id,
@@ -115,7 +140,7 @@ def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
             )
             for p in photos
         ],
-        genStatus=_gen_status(diary),
+        genStatus=_gen_status(db, trip_day),
     )
 
 
@@ -175,8 +200,8 @@ def get_day_statuses(trip_id: int, db: Session = Depends(get_db)) -> list[DaySta
     )
     result: list[DayStatus] = []
     for td in trip_days:
-        diary = db.query(Diary).filter(Diary.trip_day_id == td.id).first()
-        result.append(DayStatus(tripDayId=td.id, genStatus=_gen_status(diary)))
+        # 합치기 후: 상태도 trip_day 기준으로 계산
+        result.append(DayStatus(tripDayId=td.id, genStatus=_gen_status(db, td)))
     return result
 
 
@@ -204,14 +229,88 @@ def update_trip_day(
     return _build_day(db, trip_day, _base_url(request))
 
 
-# ⑤ 재생성 — 실제 재생성(VLM→LLM)은 6-4에서 백그라운드로 연결. 지금은 현재 상태만 반환.
+# ── 백그라운드 생성 작업 ──
+def _run_generation(trip_day_id: int, gen_id: int) -> None:
+    """(백그라운드) 사진 → 생성기 → DB 저장. 요청과 별개로 도니까 새 DB 세션을 엽니다."""
+    # openai 의존을 서버 시작과 분리하려고 여기서 지연 import.
+    from app.services.diary_generator import generate_day_diary
+
+    db = SessionLocal()
+    started = time.monotonic()
+    try:
+        trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
+        photos = (
+            db.query(Photo)
+            .filter(Photo.trip_day_id == trip_day_id, Photo.deleted_at.is_(None))
+            .order_by(Photo.display_order)
+            .all()
+        )
+        paths = [_BACKEND_DIR / p.file_url for p in photos]
+        paths = [p for p in paths if p.exists()]
+        # 콘솔 로그(영문/숫자만 — 어떤 터미널에서도 안 깨지게)
+        print(f"[diary-gen] start: trip_day={trip_day_id}, photos={len(paths)}")
+
+        result = generate_day_diary(
+            paths,
+            location=trip_day.location_summary or "",
+            date=trip_day.date.isoformat(),
+        )
+
+        # 결과 저장: 합치기 후 일기 내용이 trip_day 에 직접 들어감
+        trip_day.content = result["content"]
+        trip_day.symbol = result["symbol"]
+        trip_day.word_count = len(result["content"])
+        trip_day.generated_at = datetime.now()
+        trip_day.subtitle = result["subtitle"]
+        trip_day.emotion = result["emotion"]
+
+        gen = db.query(DiaryGeneration).filter(DiaryGeneration.id == gen_id).first()
+        gen.status = "success"
+        gen.response_text = json.dumps(result, ensure_ascii=False)
+        db.commit()
+        elapsed = time.monotonic() - started
+        print(
+            f"[diary-gen] done: trip_day={trip_day_id} in {elapsed:.1f}s "
+            f"(content {len(result['content'])} chars)"
+        )
+    except Exception as exc:  # 실패 기록 → genStatus 가 failed 로 보이게
+        db.rollback()
+        gen = db.query(DiaryGeneration).filter(DiaryGeneration.id == gen_id).first()
+        if gen is not None:
+            gen.status = "failure"
+            gen.error_message = str(exc)[:1000]
+            db.commit()
+        print(f"[diary-gen] FAILED: trip_day={trip_day_id}: {exc}")
+        import traceback
+
+        traceback.print_exc()
+    finally:
+        db.close()
+
+
+# ⑤ 재생성 — 생성기를 백그라운드로 실행하고 즉시 generating 으로 응답.
 @router.post("/trip-days/{trip_day_id}/regenerate", response_model=DayStatus)
 def regenerate_trip_day(
-    trip_day_id: int, db: Session = Depends(get_db)
+    trip_day_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
 ) -> DayStatus:
     trip_day = _get_trip_day_or_404(db, trip_day_id)
-    diary = db.query(Diary).filter(Diary.trip_day_id == trip_day_id).first()
-    return DayStatus(tripDayId=trip_day.id, genStatus=_gen_status(diary))
+
+    # 합치기 후: 일기 = trip_day(항상 존재)라 "diary 먼저 만들기"가 불필요해짐(닭-알 해결).
+    # 바로 생성 시작 기록(status='running') → 폴링이 generating 으로 봄.
+    gen = DiaryGeneration(
+        trip_day_id=trip_day_id,
+        model_used=_MODEL_NAME,
+        status="running",
+        created_at=datetime.now(),
+    )
+    db.add(gen)
+    db.commit()
+
+    # 느린 생성은 응답 후 백그라운드에서. (사진 여러 장이면 수십 초)
+    background_tasks.add_task(_run_generation, trip_day_id, gen.id)
+    return DayStatus(tripDayId=trip_day.id, genStatus="generating")
 
 
 # ⑥ 최종 저장 — 여행 상태를 'completed'로
