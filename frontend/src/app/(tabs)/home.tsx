@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, ChevronDown, MapPin, Plus } from 'lucide-rea
 import Twemoji from 'react-native-twemoji';
 import BottomNav from '@/components/bottom-nav';
 
-
+//상세리스트
 type DayDetail = {
   id: string;
   day: number;
@@ -14,7 +14,7 @@ type DayDetail = {
   image: string;
   emoji: string;
 };
-
+//여행
 type TravelCard = {
   id: string;
   title: string;
