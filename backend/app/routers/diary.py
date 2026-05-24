@@ -1,22 +1,23 @@
 """
-일기(diary) 자원 API. (4단계: 계약 + 더미 응답)
+일기(diary) 자원 API. (6-1단계: 실제 DB 조회)
 
 ※ 이 파일은 특정 화면 전용이 아니라 "일기 자원"을 다루는 API입니다.
   지금은 diary_writing(작성/검토) 화면이 주로 쓰지만, 읽기 주소
   (GET /trips/{id}, GET /trip-days/{id})는 Detail(상세 보기) 등 다른 화면도 재사용합니다.
   그래서 화면명(diary_writing)이 아니라 자원명(diary)으로 둡니다 — settings.py 와 같은 관습.
 
-지금은 DB를 안 보고 아래 _DUMMY_TRIP 고정 데이터를 돌려줍니다.
-실제 DB 조회·AI 생성·사진 URL 변환은 6단계에서 이 함수들 속을 채웁니다.
-주소·요청/응답 "모양"은 schemas/diary.py 로 확정 (프론트 types/diary_writing.ts 와 1:1).
-
-settings.py 와 같은 방식(APIRouter + response_model + 404 처리)으로 작성합니다.
+6-1: 더미 응답 → 실제 DB 조회로 교체 (settings.py 처럼 Depends(get_db) 사용).
+  데이터 흐름: trips → trip_days → (diaries, photos) 를 묶어 DayPage/TripDiary 로 변환.
+  남은 것: 사진 정적 서빙(6-2), 실제 생성 VLM→LLM(6-3), 재생성 백그라운드(6-4).
 """
 
-import time
+from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
 
+from app.db.models import Diary, Photo, Trip, TripDay
+from app.db.session import get_db
 from app.schemas.diary import (
     DayPage,
     DayPhoto,
@@ -30,157 +31,195 @@ router = APIRouter(tags=["diary"])
 
 
 # ─────────────────────────────────────────────────────────────
-# 더미 데이터 (6단계에서 실제 DB 조회로 교체)
-#   _DUMMY_DAYS = 각 날의 "완성된(ready)" 모습 2일치. genStatus·본문은
-#   아래 _gen_status / _day_view 가 "시간"에 따라 계산해 덮어씁니다.
-#   (서버가 뜬 뒤 시간이 지나면 다음 날이 ready로 — 5-3 폴링 확인용)
-#   사진 URL은 picsum placeholder (실제 변환은 6단계).
+# DB row → 응답 스키마 변환 헬퍼
 # ─────────────────────────────────────────────────────────────
-_DUMMY_DAYS: list[DayPage] = [
-    DayPage(
-        tripDayId=1,
-        dayNumber=1,
-        date="2026-05-01",
-        locationSummary="신시모도",
-        weather="2600",  # ☀️
-        subtitle="시모도의 빛으로 적신 갯벌",
-        emotion="1f60c",  # 😌
-        symbol="1f30a",  # 🌊
-        content="신시모도에 발을 디딘 날, 세상의 모든 소음이 저만치 흩어지는 기분이었다.",
+
+# DB의 weather 는 한글 텍스트("맑음" 등)로 들어있는데, 프론트는 Twemoji 코드포인트(hex)를
+# 기대합니다. 그대로 주면 화면이 깨지므로 여기서 안전하게 변환합니다.
+# (생성기가 처음부터 코드포인트로 뱉도록 고치는 건 6-3에서. 여기선 기존 데이터 방어용.)
+_WEATHER_CODEPOINTS = {
+    "맑음": "2600",  # ☀️
+    "흐림": "2601",  # ☁️
+    "비": "1f327",  # 🌧️
+    "눈": "2744",  # ❄️
+    "실내": "",  # 날씨 아님 → 표시 안 함
+    "미상": "",  # 알 수 없음 → 표시 안 함
+}
+
+
+def _weather_codepoint(value: str | None) -> str:
+    """weather 값을 안전한 코드포인트 문자열로. 모르면 빈 문자열."""
+    if not value:
+        return ""
+    if value in _WEATHER_CODEPOINTS:
+        return _WEATHER_CODEPOINTS[value]
+    # 이미 코드포인트(hex/하이픈)면 그대로 통과
+    if all(c in "0123456789abcdefABCDEF-" for c in value):
+        return value
+    return ""
+
+
+def _gen_status(diary: Diary | None) -> str:
+    """그 날의 생성 상태. (6-1 단순 규칙: 본문 있는 일기가 있으면 ready)
+    실패 판정·생성 이력(diary_generations) 반영은 6-4에서."""
+    if diary is not None and diary.content:
+        return "ready"
+    return "generating"
+
+
+def _base_url(request: Request) -> str:
+    """요청이 들어온 host 기준 베이스 URL. (실기기에선 PC의 IP가 잡혀 그대로 접속 가능)"""
+    return str(request.base_url).rstrip("/")
+
+
+def _abs_url(base: str, stored: str | None) -> str:
+    """DB의 상대경로(test_images/...)를 실제 접속 가능한 절대 URL로.
+    한글 파일명은 퍼센트 인코딩(슬래시는 보존)해 어떤 클라이언트에서도 열리게 합니다."""
+    if not stored:
+        return ""
+    return f"{base}/{quote(stored.lstrip('/'), safe='/')}"
+
+
+def _photo_url(db: Session, base: str, photo_id: int | None) -> str:
+    """photos.id → 접속 가능한 file_url. 없으면 빈 문자열. (trip 대표사진 해석용)"""
+    if photo_id is None:
+        return ""
+    photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    return _abs_url(base, photo.file_url) if photo else ""
+
+
+def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
+    """trip_day + 그날 diary + 사진들을 묶어 DayPage 로 만듭니다."""
+    diary = db.query(Diary).filter(Diary.trip_day_id == trip_day.id).first()
+    photos = (
+        db.query(Photo)
+        .filter(Photo.trip_day_id == trip_day.id, Photo.deleted_at.is_(None))
+        .order_by(Photo.display_order)
+        .all()
+    )
+    return DayPage(
+        tripDayId=trip_day.id,
+        dayNumber=trip_day.day_number,
+        date=trip_day.date.isoformat(),  # date → "YYYY-MM-DD"
+        locationSummary=trip_day.location_summary or "",
+        weather=_weather_codepoint(trip_day.weather),
+        subtitle=trip_day.subtitle or "",
+        emotion=trip_day.emotion or "",
+        symbol=(diary.symbol if diary else "") or "",
+        content=(diary.content if diary else "") or "",
         photos=[
             DayPhoto(
-                id=1,
-                thumbnailUrl="https://picsum.photos/seed/sd-1/200/200",
-                fileUrl="https://picsum.photos/seed/sd-1/800/800",
-            ),
+                id=p.id,
+                thumbnailUrl=_abs_url(base, p.thumbnail_url or p.file_url),
+                fileUrl=_abs_url(base, p.file_url),
+            )
+            for p in photos
         ],
-        genStatus="ready",
-    ),
-    DayPage(
-        tripDayId=2,
-        dayNumber=2,
-        date="2026-05-02",
-        locationSummary="제부도",
-        weather="1f3e0",  # 🏠
-        subtitle="제부의 오후, 일상의 빛과 맛",
-        emotion="1f604",  # 😄
-        symbol="1f41a",  # 🐚
-        content="제부도는 언제나 빛으로 가득 찬 공간이다. 친구들과 웃고, 활기찬 순간들을 카메라에 담는 시간은 그 자체로 기쁨이었다.",
-        photos=[
-            DayPhoto(
-                id=4,
-                thumbnailUrl="https://picsum.photos/seed/sd-4/200/200",
-                fileUrl="https://picsum.photos/seed/sd-4/800/800",
-            ),
-            DayPhoto(
-                id=5,
-                thumbnailUrl="https://picsum.photos/seed/sd-5/200/200",
-                fileUrl="https://picsum.photos/seed/sd-5/800/800",
-            ),
-        ],
-        genStatus="ready",
-    ),
-]
-
-_DUMMY_TRIP = TripDiary(
-    tripId=1,
-    title="신시모-제부-부산-포항, 바다의 빛과 시간 여행",
-    representImage="https://picsum.photos/seed/sd-cover/400/400",
-    status="draft",
-    days=_DUMMY_DAYS,
-)
-
-
-# ── "시간차" 생성 시뮬레이션 (데모용) ──
-# 서버가 뜬 시점부터 _READY_INTERVAL_SEC 마다 한 날씩 ready가 됩니다. (0번째 날은 처음부터 ready)
-_START = time.monotonic()
-_READY_INTERVAL_SEC = 6.0
-
-
-def _gen_status(index: int) -> str:
-    """index번째 날의 현재 생성 상태를 '경과 시간'으로 계산합니다."""
-    elapsed = time.monotonic() - _START
-    ready_count = 1 + int(elapsed // _READY_INTERVAL_SEC)
-    return "ready" if index < ready_count else "generating"
-
-
-def _day_view(index: int) -> DayPage:
-    """index번째 날을 '현재 시각 기준' 모습으로 만들어 돌려줍니다.
-    아직 생성 중이면 본문·사진 등 생성 결과는 비워서 보냅니다(기본 정보만).
-    """
-    base = _DUMMY_DAYS[index]
-    if _gen_status(index) == "ready":
-        return base  # 이미 genStatus="ready" + 본문 채워져 있음
-    return base.model_copy(
-        update={
-            "genStatus": "generating",
-            "subtitle": "",
-            "emotion": "",
-            "symbol": "",
-            "content": "",
-            "photos": [],
-        }
+        genStatus=_gen_status(diary),
     )
 
 
-def _find_index(trip_day_id: int) -> int:
-    """trip_day_id 로 날의 위치(index)를 찾습니다. 없으면 404."""
-    for i, day in enumerate(_DUMMY_DAYS):
-        if day.tripDayId == trip_day_id:
-            return i
-    raise HTTPException(status_code=404, detail="TripDay not found")
-
-
-# ① 여행 전체 조회 — 처음 진입 시 N일치 한 번에 (각 날은 현재 시각 기준 상태로)
-@router.get("/trips/{trip_id}", response_model=TripDiary)
-def get_trip(trip_id: int) -> TripDiary:
-    if trip_id != _DUMMY_TRIP.tripId:
+def _get_trip_or_404(db: Session, trip_id: int) -> Trip:
+    trip = (
+        db.query(Trip)
+        .filter(Trip.id == trip_id, Trip.deleted_at.is_(None))
+        .first()
+    )
+    if trip is None:
         raise HTTPException(status_code=404, detail="Trip not found")
-    # 데모용: 화면에 들어올 때마다 "생성중" 타이머를 다시 시작 → 매번 전환을 볼 수 있게.
-    # (실제 DB 연결되는 6단계에선 이 줄을 지웁니다 — 진짜 생성 상태를 읽으니까)
-    global _START
-    _START = time.monotonic()
-    days = [_day_view(i) for i in range(len(_DUMMY_DAYS))]
-    return _DUMMY_TRIP.model_copy(update={"days": days})
+    return trip
+
+
+def _get_trip_day_or_404(db: Session, trip_day_id: int) -> TripDay:
+    trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
+    if trip_day is None:
+        raise HTTPException(status_code=404, detail="TripDay not found")
+    return trip_day
+
+
+# ─────────────────────────────────────────────────────────────
+# 엔드포인트
+# ─────────────────────────────────────────────────────────────
+
+# ① 여행 전체 조회 — 처음 진입 시 N일치 한 번에
+@router.get("/trips/{trip_id}", response_model=TripDiary)
+def get_trip(
+    trip_id: int, request: Request, db: Session = Depends(get_db)
+) -> TripDiary:
+    trip = _get_trip_or_404(db, trip_id)
+    base = _base_url(request)
+    trip_days = (
+        db.query(TripDay)
+        .filter(TripDay.trip_id == trip_id)
+        .order_by(TripDay.day_number)
+        .all()
+    )
+    return TripDiary(
+        tripId=trip.id,
+        title=trip.title,
+        representImage=_photo_url(db, base, trip.cover_photo_id),
+        status=trip.status,
+        days=[_build_day(db, td, base) for td in trip_days],
+    )
 
 
 # ② 상태 폴링 — "각 날이 ready냐?"만 가볍게
 @router.get("/trips/{trip_id}/day-statuses", response_model=list[DayStatus])
-def get_day_statuses(trip_id: int) -> list[DayStatus]:
-    if trip_id != _DUMMY_TRIP.tripId:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    return [
-        DayStatus(tripDayId=d.tripDayId, genStatus=_gen_status(i))
-        for i, d in enumerate(_DUMMY_DAYS)
-    ]
+def get_day_statuses(trip_id: int, db: Session = Depends(get_db)) -> list[DayStatus]:
+    _get_trip_or_404(db, trip_id)
+    trip_days = (
+        db.query(TripDay)
+        .filter(TripDay.trip_id == trip_id)
+        .order_by(TripDay.day_number)
+        .all()
+    )
+    result: list[DayStatus] = []
+    for td in trip_days:
+        diary = db.query(Diary).filter(Diary.trip_day_id == td.id).first()
+        result.append(DayStatus(tripDayId=td.id, genStatus=_gen_status(diary)))
+    return result
 
 
 # ③ 일차 조회 — 어떤 날이 ready되면 그 날 본문만 다시 가져오기
 @router.get("/trip-days/{trip_day_id}", response_model=DayPage)
-def get_trip_day(trip_day_id: int) -> DayPage:
-    return _day_view(_find_index(trip_day_id))
+def get_trip_day(
+    trip_day_id: int, request: Request, db: Session = Depends(get_db)
+) -> DayPage:
+    trip_day = _get_trip_day_or_404(db, trip_day_id)
+    return _build_day(db, trip_day, _base_url(request))
 
 
-# ④ 일차 저장 — 여행지(locationSummary)만 수정
+# ④ 일차 저장 — 여행지(location_summary)만 수정
 @router.patch("/trip-days/{trip_day_id}", response_model=DayPage)
-def update_trip_day(trip_day_id: int, body: DayUpdate) -> DayPage:
-    day = _day_view(_find_index(trip_day_id))
-    # 더미: 받은 값을 그대로 반영해 돌려줌 (실제 DB 저장은 6단계)
-    return day.model_copy(update={"locationSummary": body.locationSummary})
+def update_trip_day(
+    trip_day_id: int,
+    body: DayUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> DayPage:
+    trip_day = _get_trip_day_or_404(db, trip_day_id)
+    trip_day.location_summary = body.locationSummary
+    db.commit()
+    db.refresh(trip_day)
+    return _build_day(db, trip_day, _base_url(request))
 
 
-# ⑤ 재생성 — 실패한 날 다시 생성 요청
+# ⑤ 재생성 — 실제 재생성(VLM→LLM)은 6-4에서 백그라운드로 연결. 지금은 현재 상태만 반환.
 @router.post("/trip-days/{trip_day_id}/regenerate", response_model=DayStatus)
-def regenerate_trip_day(trip_day_id: int) -> DayStatus:
-    index = _find_index(trip_day_id)
-    # 더미: 요청 즉시 generating 으로 응답 (실제 생성은 6단계)
-    return DayStatus(tripDayId=_DUMMY_DAYS[index].tripDayId, genStatus="generating")
+def regenerate_trip_day(
+    trip_day_id: int, db: Session = Depends(get_db)
+) -> DayStatus:
+    trip_day = _get_trip_day_or_404(db, trip_day_id)
+    diary = db.query(Diary).filter(Diary.trip_day_id == trip_day_id).first()
+    return DayStatus(tripDayId=trip_day.id, genStatus=_gen_status(diary))
 
 
 # ⑥ 최종 저장 — 여행 상태를 'completed'로
 @router.patch("/trips/{trip_id}", response_model=TripStatusUpdate)
-def update_trip_status(trip_id: int, body: TripStatusUpdate) -> TripStatusUpdate:
-    if trip_id != _DUMMY_TRIP.tripId:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    # 더미: 받은 status 를 그대로 echo (실제 DB 저장은 6단계)
+def update_trip_status(
+    trip_id: int, body: TripStatusUpdate, db: Session = Depends(get_db)
+) -> TripStatusUpdate:
+    trip = _get_trip_or_404(db, trip_id)
+    trip.status = body.status
+    db.commit()
     return body

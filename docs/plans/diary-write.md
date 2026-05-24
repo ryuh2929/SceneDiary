@@ -208,11 +208,15 @@ type DayPage = {
 
 > 메모: baseURL은 `EXPO_PUBLIC_API_BASE_URL`(없으면 실기기 hostUri:8000 / 웹 localhost:8000). mock 파일 `data/diary_writing.ts`는 5-2부터 미사용(정리 대상). 시간차 더미·타이머 리셋은 데모용 — 6단계에서 실제 DB 상태 조회로 교체.
 
-### 6단계 — AI 로직 + DB 저장
+### 6단계 — AI 로직 + DB 저장 (진행 중)
+작은 단계로 진행. 6-1~6-3 완료(2026-05-24).
 - [x] `backend/app/db/session.py`, `models.py`(7개 모델), Alembic baseline ✅ 완료 (`docs/plans/db-setup.md`)
-- [ ] **`trip_days.represent_image` 컬럼 추가** → `models.py` + Alembic 마이그레이션 (6절 참고)
-- [ ] `services/storage.py`(이미지 저장), `services/diary_generator.py`(VLM→LLM)
-- [ ] 일차별 생성/저장 라우터 실제 로직 연결
+- [x] **6-1** 읽기 엔드포인트 → 실제 DB 조회 (`routers/diary.py`). 더미 제거, `Depends(get_db)`로 trips→trip_days→(diaries,photos) 조회. genStatus=일기 본문 유무(임시). weather 한글→코드포인트 방어 변환.
+- [x] **6-2** 사진 정적 서빙 — `backend/test_images`를 `/test_images`로 마운트(`main.py`), `file_url`/`thumbnail_url`/대표사진을 요청 host 기준 절대 URL로(한글 파일명 인코딩).
+- [x] **6-3** 생성기 `services/diary_generator.py` — Ollama `gemma4:e4b`(vision) 멀티모달로 하루 사진→일기 JSON(subtitle/content/emotion/symbol). openai SDK를 `/v1`에 연결(swappable). 이모지→코드포인트 변환. **실측 검증**(사진1장 ~15초, JSON·이모지 정상).
+- [ ] **6-4** 재생성 트리거를 백그라운드로 + 결과를 `diaries`/`trip_days`에 저장 + 폴링이 실제 진행 반영. genStatus를 `diary_generations.status` 기반으로 정교화.
+- [x] `trip_days.represent_image` 컬럼 추가 — 마이그레이션 완료(`docs/plans/db-setup.md` 이력)
+- [ ] (후속) 2단계화(VLM 분석→`photo_generations` 로깅→LLM), `services/storage.py`(업로드 저장), weather를 생성기가 코드포인트로 직접 출력, 시간차 더미 잔재 제거
 
 ---
 
@@ -237,7 +241,7 @@ type DayPage = {
 | 3 | mock으로 전체 흐름 (일차 순차→저장→Detail) 동작 | ✅ |
 | 4 | 더미 응답이지만 백엔드 API가 응답함 | ✅ |
 | 5 | 실제 API 호출로 흐름 동작 | ✅ |
-| 6 | 실제 사진 → 실제 AI → 실제 DB 저장 동작 | ⬜ 다음 (DB 모델·마이그레이션은 완료) |
+| 6 | 실제 사진 → 실제 AI → 실제 DB 저장 동작 | 🟡 진행 중 (6-1 DB조회·6-2 사진서빙·6-3 생성기 완료 / 6-4 백그라운드+저장 남음) |
 
 ---
 
@@ -261,4 +265,5 @@ type DayPage = {
 | 2026-05-21 | **2단계 완료** — 읽기전용 멀티데이 뷰어 재구성(`diary_writing.tsx`), 타입(`types/diary_writing.ts`)·mock(`data/diary_writing.ts`, 실제 DB trip 1 전사) 분리. trip 대표사진은 `cover_photo_id`로 확정(새 컬럼 폐기). weather 코드포인트 통일·사진 정적 서빙은 백엔드 후속(6절)으로 분리 |
 | 2026-05-22 | **3단계 완료** — mock 전체 흐름 구현(`diary_writing.tsx` 단일 파일). `days`를 `useState`로 관리, `useEffect`+`setTimeout`으로 다음 날 시간차 ready 시뮬레이션. "다음날로"=mock 저장 로그, 마지막 "저장하기"=`router.push('/Detail')` 이동만, `handleRegenerate`=generating→3초→ready. 1·2·3 흐름 검증 완료 |
 | 2026-05-22 | **4단계 완료** — 백엔드 API 계약 확정. `schemas/diary.py`(응답 4 + 요청/상태 3, 프론트 TS와 1:1·카멜케이스), `routers/diary.py`(6개 엔드포인트 + 더미 응답), `main.py` 등록. 업로드/생성 ①은 앞 화면 담당이라 제외. TestClient로 6개+404 검증. 요청/상태 TS 타입은 5단계로. genStatus 출처=최신 `diary_generations.status` 번역(6단계 구현) |
+| 2026-05-24 | **6단계 진행(6-1~6-3)** — 6-1 읽기 엔드포인트를 실제 DB 조회로(`routers/diary.py`, 더미 제거, weather 한글→코드포인트 방어). 6-2 사진 정적 서빙(`main.py` `/test_images` 마운트 + URL 절대화·한글 인코딩, 실제 사진 `backend/test_images/`). 6-3 생성기(`services/diary_generator.py`) Ollama `gemma4:e4b`(vision)로 사진→일기 JSON, 이모지→코드포인트, 실측 검증. 남은 6-4=백그라운드 생성+DB 저장+폴링 연동 |
 | 2026-05-23 | **5단계 완료** — 프론트↔백엔드 연동(5-1~5-5). 프론트: `services/diary-api.ts`(호출 6 + `request<T>`), 요청 TS 타입 3개, mock→fetch, `setInterval` 폴링 + ready 시 본문 fetch, 핸들러 실제 호출(save/regenerate/complete), 에러 처리(재시도·`actionError`·성공해야 진행). 백엔드: 더미를 "시간차"로(`_gen_status`/`_day_view`, `GET /trips` 진입 시 타이머 리셋)해 폴링 전환을 눈으로 확인 가능. 서버 on/off로 정상·에러 흐름 검증. `data/diary_writing.ts` mock은 미사용 전환 |
