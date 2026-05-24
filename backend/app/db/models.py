@@ -94,7 +94,7 @@ class Trip(Base):
     # → photos.id (대표 사진. 선택값)
     cover_photo_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
-    # 상태: 'draft', 'published' 등. DB 기본값 'draft'.
+    # 상태: 'draft'(생성 직후, DB 기본값) → 'completed'(최종 저장 시). 'published'는 미사용.
     status: Mapped[str] = mapped_column(String(20), server_default=text("'draft'"))
 
     created_at: Mapped[datetime] = mapped_column(DateTime)
