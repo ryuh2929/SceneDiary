@@ -24,8 +24,8 @@ export type DayPage = {
   weather: string; // trip_days.weather — Twemoji 코드포인트(hex). emotion·symbol과 동일 방식
   subtitle: string; // trip_days.subtitle — 소제목
   emotion: string; // trip_days.emotion — Twemoji 코드포인트(hex)
-  symbol: string; // diaries.symbol — Twemoji 코드포인트(hex). 빈 문자열일 수 있음
-  content: string; // diaries.content — 본문
+  symbol: string; // trip_days.symbol — Twemoji 코드포인트(hex). 빈 문자열일 수 있음
+  content: string; // trip_days.content — 본문
   photos: DayPhoto[]; // 그날 다이어리용 사진들
   genStatus: GenStatus; // 위 참고
 };
