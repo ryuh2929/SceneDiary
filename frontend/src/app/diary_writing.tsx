@@ -36,6 +36,7 @@ import {
   regenerateDay,
   completeTrip,
 } from "@/services/diary-api";
+import LocationPicker from "@/components/ui/GoogleMap/LocationPicker";
 
 // 디자인 토큰(색상). 아이콘 색처럼 className으로 주기 번거로운 곳에 hex로 직접 씁니다.
 // 값은 tailwind.config.js의 팀 색상과 동일합니다. (settings 화면과 같은 방식)
@@ -94,6 +95,8 @@ export default function DiaryWritingScreen() {
   // 하루치 데이터. genStatus·본문이 이후에 바뀌므로 trip과 별도 상태로 보관합니다.
   // 처음엔 빈 배열, fetch 성공 시 백엔드가 준 days로 채웁니다. (genStatus도 백엔드 값 그대로)
   const [days, setDays] = useState<DayPage[]>([]);
+  // 여행지 지도 피커 열림 여부.
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // 여행 전체를 불러옵니다. (화면 진입 시 + 에러 후 "다시 시도"에서 재호출)
   const loadTrip = useCallback(async () => {
@@ -207,9 +210,25 @@ export default function DiaryWritingScreen() {
       setActionError("재생성 요청에 실패했어요.");
     }
   };
-  // 여행지 편집(현재 위치 / Google Maps 피커). (후속 작업)
-  const handleEditLocation = () => {
-    console.log("여행지 편집(지도) 예정:", day.locationSummary);
+  // 여행지 편집: 지도 피커를 엽니다. (앱 전용 — 웹은 안내 모달)
+  const handleEditLocation = () => setPickerOpen(true);
+
+  // 피커에서 위치를 고르면: 현재 날 여행지를 화면에 즉시 반영하고 바로 저장합니다.
+  // (마지막 날처럼 "다음날로"를 안 거치는 경우에도 보존되도록 여기서 PATCH)
+  const handlePickLocation = async (placeName: string) => {
+    setPickerOpen(false);
+    setActionError(null);
+    setDays((prev) =>
+      prev.map((d, i) =>
+        i === dayIndex ? {...d, locationSummary: placeName} : d,
+      ),
+    );
+    try {
+      await saveDayLocation(day.tripDayId, placeName); // PATCH /trip-days/{id}
+    } catch (e) {
+      console.error(e);
+      setActionError("여행지를 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
+    }
   };
 
   // [5단계] 정상 데이터가 오기 전까지의 화면 분기.
@@ -424,6 +443,13 @@ export default function DiaryWritingScreen() {
           </View>
         </View>
       )}
+
+      {/* 여행지 지도 피커 (앱 전용 오버레이 / 웹은 안내 모달) */}
+      <LocationPicker
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={handlePickLocation}
+      />
     </View>
   );
 }

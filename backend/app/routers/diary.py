@@ -22,7 +22,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 # 합치기 후: 일기 본문은 trip_days 에 들어가서 Diary 모델은 더 이상 없음.
-from app.db.models import DiaryGeneration, Photo, Trip, TripDay
+# PhotoGeneration = 사진별 VLM 분석 이력(2단계화에서 사용).
+from app.db.models import DiaryGeneration, Photo, PhotoGeneration, Trip, TripDay
 from app.db.session import SessionLocal, get_db
 from app.schemas.diary import (
     DayPage,
@@ -45,9 +46,9 @@ _MODEL_NAME = os.getenv("DIARY_MODEL", "gemma4:e4b")
 # DB row → 응답 스키마 변환 헬퍼
 # ─────────────────────────────────────────────────────────────
 
-# DB의 weather 는 한글 텍스트("맑음" 등)로 들어있는데, 프론트는 Twemoji 코드포인트(hex)를
-# 기대합니다. 그대로 주면 화면이 깨지므로 여기서 안전하게 변환합니다.
-# (생성기가 처음부터 코드포인트로 뱉도록 고치는 건 6-3에서. 여기선 기존 데이터 방어용.)
+# 생성기는 이제 weather 를 Twemoji 코드포인트로 직접 저장합니다(emotion·symbol 과 동일).
+# 다만 재생성 전의 옛 데이터에는 한글 텍스트("맑음" 등)가 남아 있을 수 있어, 읽을 때
+# 안전하게 변환합니다. 이미 코드포인트면 그대로 통과 → 이 표는 옛 데이터용 fallback.
 _WEATHER_CODEPOINTS = {
     "맑음": "2600",  # ☀️
     "흐림": "2601",  # ☁️
@@ -231,9 +232,12 @@ def update_trip_day(
 
 # ── 백그라운드 생성 작업 ──
 def _run_generation(trip_day_id: int, gen_id: int) -> None:
-    """(백그라운드) 사진 → 생성기 → DB 저장. 요청과 별개로 도니까 새 DB 세션을 엽니다."""
+    """(백그라운드) 2단계 생성 + DB 저장. 요청과 별개로 도니까 새 DB 세션을 엽니다.
+      1단계: 사진별 analyze_photo → photo_generations 기록(이미 분석된 사진은 재사용)
+      2단계: 모은 분석으로 write_diary → trip_days + diary_generations(success) 저장
+    """
     # openai 의존을 서버 시작과 분리하려고 여기서 지연 import.
-    from app.services.diary_generator import generate_day_diary
+    from app.services.diary_generator import analyze_photo, write_diary
 
     db = SessionLocal()
     started = time.monotonic()
@@ -245,13 +249,56 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             .order_by(Photo.display_order)
             .all()
         )
-        paths = [_BACKEND_DIR / p.file_url for p in photos]
-        paths = [p for p in paths if p.exists()]
         # 콘솔 로그(영문/숫자만 — 어떤 터미널에서도 안 깨지게)
-        print(f"[diary-gen] start: trip_day={trip_day_id}, photos={len(paths)}")
+        print(f"[diary-gen] start: trip_day={trip_day_id}, photos={len(photos)}")
 
-        result = generate_day_diary(
-            paths,
+        # ── 1단계: 사진별 분석. 이미 성공한 분석이 있으면 재사용(재생성이 빨라짐) ──
+        analyses: list[str] = []
+        for p in photos:
+            cached = (
+                db.query(PhotoGeneration)
+                .filter(
+                    PhotoGeneration.photo_id == p.id,
+                    PhotoGeneration.status == "success",
+                )
+                .order_by(PhotoGeneration.id.desc())
+                .first()
+            )
+            if cached is not None and cached.analysis_text:
+                analyses.append(cached.analysis_text)  # 재사용: AI 재호출 없음
+                continue
+
+            path = _BACKEND_DIR / p.file_url
+            if not path.exists():
+                continue  # 파일이 없으면 그 사진은 건너뜀
+            try:
+                analysis = analyze_photo(path)
+                db.add(
+                    PhotoGeneration(
+                        photo_id=p.id,
+                        model_used=_MODEL_NAME,
+                        analysis_text=analysis["analysis_text"],
+                        analysis_json=analysis["analysis_json"],
+                        status="success",
+                        created_at=datetime.now(),
+                    )
+                )
+                analyses.append(analysis["analysis_text"])
+            except Exception as exc:  # 사진 1장 분석 실패는 기록만 하고 계속 진행
+                db.add(
+                    PhotoGeneration(
+                        photo_id=p.id,
+                        model_used=_MODEL_NAME,
+                        status="failure",
+                        created_at=datetime.now(),
+                    )
+                )
+                print(f"[diary-gen] photo analyze FAILED: photo={p.id}: {exc}")
+        db.commit()  # 분석 이력 먼저 저장(2단계가 실패해도 분석은 남도록)
+
+        # ── 2단계: 모은 분석으로 일기 작성(사진 없이 텍스트만) ──
+        result = write_diary(
+            analyses,
             location=trip_day.location_summary or "",
             date=trip_day.date.isoformat(),
         )
@@ -263,6 +310,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
         trip_day.generated_at = datetime.now()
         trip_day.subtitle = result["subtitle"]
         trip_day.emotion = result["emotion"]
+        trip_day.weather = result["weather"]  # 생성기가 코드포인트로 줌(없으면 빈 문자열)
 
         gen = db.query(DiaryGeneration).filter(DiaryGeneration.id == gen_id).first()
         gen.status = "success"
@@ -271,7 +319,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
         elapsed = time.monotonic() - started
         print(
             f"[diary-gen] done: trip_day={trip_day_id} in {elapsed:.1f}s "
-            f"(content {len(result['content'])} chars)"
+            f"(analyses {len(analyses)}, content {len(result['content'])} chars)"
         )
     except Exception as exc:  # 실패 기록 → genStatus 가 failed 로 보이게
         db.rollback()

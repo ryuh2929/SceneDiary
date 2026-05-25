@@ -1,21 +1,17 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python Debugger: FastAPI",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "uvicorn",
-            "args": [
-                "app.main:app", // 혹은 backend.app.main:app
-                "--reload"
-            ],
-            "cwd": "${workspaceFolder}/backend", // 👈 디버거가 backend 폴더 안에서 실행되도록 설정!
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/backend" // 👈 이 코드를 꼭 추가해주세요!
-            },
-            "jinja": true,
-            "justMyCode": true
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: FastAPI",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      // 🔥 워크스페이스 폴더 내부의 가상환경 파이썬 디버거 엑세스를 명확히 강제합니다.
+      "python": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+      "jinja": true,
+      "cwd": "${workspaceFolder}/backend",
+      "subProcess": false
+    }
+  ]
 }
