@@ -1,0 +1,225 @@
+import React, { useState } from 'react';
+import { View, Text, Image, ScrollView, Pressable } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { X, MapPin, Calendar, Plus } from 'lucide-react-native';
+import Twemoji from 'react-native-twemoji';
+
+export default function TravelDetailUI() {
+  const router = useRouter();
+  //1. 홈에서 보낸 대량의 파라미터들을 가져옵니다.
+  const { id, day, title, location, mainImage, startDate, endDate, symbol, details } = useLocalSearchParams<{
+    id: string;
+    day: string;
+    title: string;
+    location: string;
+    mainImage: string;
+    startDate: string;
+    endDate: string;
+    symbol: string;
+    details: string; 
+  }>();
+
+  //2. 문자열로 압축되어 온 details 데이터를 진짜 쓸 수 있게 배열로 해제합니다.
+  const parsedDetails = details ? JSON.parse(details) : [];
+
+  // 홈에서 특정 Day를 누르고 들어왔으면 그 Day로 시작하고, 아니면 Day 1로 시작
+  const [activeDay, setActiveDay] = useState(Number(day) || 1);
+
+  //3. [중요] 전체 상세 데이터 중 '현재 활성화된 Day 탭'에 해당하는 데이터만 찾아냅니다!
+  const currentDayData = parsedDetails.find((d: any) => Number(d.day) === activeDay);
+
+  //4. 생성할 탭 목록 배열 자동 생성 (예: 데이터가 3개면 [1, 2, 3] 탭이 생김)
+  const dayTabs = parsedDetails.map((d: any) => Number(d.day)).sort((a: number, b: number) => a - b);
+
+  return (
+    <ScrollView className="flex-1 bg-background" showsVerticalScrollIndicator={false} bounces={false}>
+
+      {/* 상단 히어로 이미지 */}
+      <View className="relative h-80 w-full">
+        <Image
+          source={{ uri: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e' }}
+          className="absolute inset-0 w-full h-full"
+          resizeMode="cover"
+        />
+
+        {/* 그라데이션 오버레이 */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.2)', 'transparent', '#F4F6F9']}
+          locations={[0, 0.5, 1]}
+          className="absolute inset-0 p-md"
+        >
+          {/* 닫기 버튼 */}
+          <View className="flex-row justify-end pt-safe">
+            <Pressable onPress={() => router.back()} className="w-10 h-10 rounded-full bg-black/30 items-center justify-center">
+              <X size={20} color="#FFFFFF" />
+            </Pressable>
+          </View>
+
+          {/* 타이틀 정보 */}
+          <View className="absolute bottom-lg left-md">
+            <Text className="text-xl font-sans font-bold text-textPrimary mb-sm">
+              {title || '여행 정보'}
+            </Text>
+            <View className="flex-row items-center gap-md">
+              <View className="flex-row items-center gap-xs">
+                <MapPin size={14} color="#39536B" />
+                <Text className="text-sm font-sans text-textSecondary">{location || '위치 미정'}</Text>
+              </View>
+              <View className="flex-row items-center gap-xs">
+                <Calendar size={14} color="#39536B" />
+                <Text className="text-sm font-sans text-textSecondary">
+                  {(() => {
+                    if (!startDate || !endDate) return '날짜 미정';
+                    
+                    //만약 데이터가 이미 '04.01' 형태로 들어온 경우 앞의 연도를 강제로 붙여줍니다.
+                    const format = (dateStr: string) => {
+                      const clean = dateStr.replaceAll('-', '.');
+                      if (clean.length <= 5) {
+                        return `26.${clean}`; // '04.01' -> '26.04.01'
+                      }
+                      return clean.startsWith('20') ? clean.slice(2) : clean; // '2026.04.01' -> '26.04.01'
+                    };
+
+                    return `${format(startDate)} ~ ${format(endDate)}`;
+                  })()}
+                </Text>
+              </View>
+              
+              {symbol && (
+                <View className="w-10 h-10 items-center justify-center overflow-hidden">
+                  <View
+                    style={{
+                      transform: [
+                        { scale: 0.15 }, 
+                        { translateY: -30 } 
+                      ]
+                    }}
+                    
+                  >
+                    <Twemoji>{symbol}</Twemoji>
+                  </View>
+                </View>
+                )}
+            </View>
+          </View>
+        </LinearGradient>
+      </View>
+
+      
+      {/* Day 탭 */}
+        <View className="flex-row items-end px-9 mt-sm">
+          {(dayTabs.length > 0 ? dayTabs : [1]).map((d: number) => (
+            <Pressable
+              key={d}
+              onPress={() => setActiveDay(d)}
+              // activeDay일 때는 px-lg(크게), 아닐 때는 px-sm(정확히 숫자만 감싸게 고정)으로 크기를 이원화
+              className={`py-xs rounded-t-lg mr-xs shadow-sm ${
+                activeDay === d 
+                  ? 'px-lg bg-primary min-w-[70px] items-center' // 활성화 탭: 넓은 패딩 + 최소 너비 지정으로 듬직하게
+                  : 'px-sm bg-muted min-w-[36px] items-center'   // 일반 숫자 탭: 좁은 패딩 + 정사각형에 가까운 콤팩트한 크기
+              }`}
+            >
+              <Text
+                className={`${
+                  activeDay === d 
+                    ? 'font-logo text-xl text-white' // 선택 시 필기체 느낌의 큰 글씨
+                    : 'font-sans text-base font-bold text-textSecondary' // 미선택 시 깔끔한 고딕 숫자
+                }`}
+              >
+                {activeDay === d ? `Day ${d}` : d}
+              </Text>
+            </Pressable>
+          ))}
+
+          {/* 최대 7개 미만일 때만 + 버튼 표시 */}
+          {dayTabs.length < 7 && (
+            <Pressable className=" rounded-t-lg h-[30px] bg-muted min-w-[36px] items-center justify-center shadow-sm">
+              <Plus size={16} color="#39536B" strokeWidth={3} />
+            </Pressable>
+          )}
+        </View>
+
+      {/* 메인 콘텐츠 카드 */}
+      <View className="px-md  pb-xl">
+        <View className="bg-surface rounded-lg p-md shadow-sm border border-border">
+
+          {/* 소제목 & 감정 이모지 */}
+          <View className="flex-row justify-between items-center mb-sm w-full">
+            <Text className="text-lg font-bold text-textPrimary font-sans mb-xs" numberOfLines={1}>
+          {currentDayData?.title || '벚꽃 아래에서'}
+            </Text>
+            {/* 오른쪽: 홈 화면 방식의 이모지 상자 스타일 그대로 적용 */}
+          <View 
+            style={{
+              width: 28,
+              height: 28,
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            {currentDayData?.emoji && (
+              <View
+                style={{
+                  transform: [
+                    { scale: 0.15 },
+                    { translateX: 0 },
+                    { translateY: 30 }
+                  ]
+                }}
+              >
+                <Twemoji>{currentDayData.emoji}</Twemoji>
+              </View>
+            )}
+          </View>
+        </View>
+
+
+        {/* 📍 세부 위치 정보 연동 */}
+        <View className="flex-row items-center gap-xs ">
+          <MapPin size={10} color="#39536B" />
+          <Text className="text-sm text-textSecondary font-sans mr-1">
+            {currentDayData?.location || '위치 정보 없음'}
+          </Text>
+          
+           {/* 날짜 & 날씨 */}
+            <Text className="text-sm text-textSecondary font-sans mr-2">
+              {(() => {
+                const targetDate = currentDayData?.date || startDate;
+                if (!targetDate) return '날짜 미정';
+
+                const clean = targetDate.replaceAll('-', '.');
+                //뒤에서부터 5글자만 남겨서 항상 '월.일' (예: 04.01) 형식만 쏙 뽑아냅니다.
+                return clean.length >= 5 ? clean.slice(-5) : clean;
+              })()}
+            </Text>
+            <View className="flex-row items-center gap-xs px-sm py-xs rounded-full">
+             <Text className="text-sm text-textSecondary font-sans font-bold">
+              {`${currentDayData?.weatherEmoji || '☀️'} ${currentDayData?.weather || '맑음'}`}
+            </Text>
+            </View>
+          </View>
+
+         
+          {/* 본문 사진 */}
+          <Image
+            source={{ uri: currentDayData?.image || mainImage || 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e' }}
+            className="w-full h-60 rounded-lg mb-md mt-md"
+            resizeMode="cover"
+          />
+
+          {/* 일기 텍스트 */}
+          <View className="bg-muted p-md rounded-md border border-border">
+            <Text className="text-textSecondary text-md font-sans">
+              도쿄의 봄은 분홍빛이었다. 우에노공원 벚꽃 터널을 걸으며 꽃잎이 어깨 위에 내려앉았다.
+              벤치에 앉아 도시락을 먹으며 하나미를 즐겼다. 일본의 봄은 정말 특별하다.
+            </Text>
+          </View>
+
+        </View>
+      </View>
+
+    </ScrollView>
+  );
+}

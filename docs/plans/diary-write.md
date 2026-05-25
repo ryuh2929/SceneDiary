@@ -1,425 +1,257 @@
 # 일기 작성 페이지 개발 계획
 
+> 2026-05-21 팀 회의로 흐름이 크게 바뀜. 이 문서는 **새 흐름** 기준으로 재정리됨. (옛 "사진 선택→AI→단일 편집" 흐름은 폐기)
+
 ## 1. 개요
 
 ### 페이지 역할
-사용자가 여행 사진 여러 장을 선택하면, AI가 자동으로 일기를 생성해주고, 사용자가 그 결과를 편집해서 저장할 수 있는 페이지.
+AI가 **하루치씩 생성**하는 여행 일기를, 사용자가 **하루씩 순서대로 검토**하는 화면.
+대부분 **읽기 전용**이며, 유일하게 편집 가능한 것은 **여행지(지도)** 뿐. 마지막 날에 저장하면 상세(Detail) 페이지로 이동한다.
+
+> ⚠️ **사진 업로드·압축·Trip/trip_days 생성·생성 로딩**은 이 화면이 **아니라 앞 화면**에서 일어남 (이 문서 범위 밖, 5절 참고).
 
 ### 담당
-- 페이지: 일기 작성 (Diary Write)
-- 관련 소스: `frontend/src/app/diary_writring.tsx`
-- 백엔드 엔드포인트: `/api/diaries/*` (예정)
+- 페이지: 일기 작성/검토 (Diary Write)
+- 관련 소스: `frontend/src/app/diary_writing.tsx`
+- 저장 후 이동: `frontend/src/app/Detail.tsx`
+- 백엔드 엔드포인트: `/api/...` (4절, 미확정)
 
 ### 사용 기술
 | 영역 | 기술 |
 |---|---|
 | 프론트엔드 | Expo v55, React Native, TypeScript, NativeWind(Tailwind), Expo Router |
 | 백엔드 | FastAPI, Python 3.12, SQLAlchemy |
-| DB | PostgreSQL + pgvector |
+| DB | PostgreSQL + PostGIS |
 | AI | OpenAI Vision (VLM) + GPT (LLM) |
-| 이미지 선택 | expo-image-picker |
+| 이모지 | react-native-twemoji (weather·emotion·symbol = Twemoji 코드포인트) |
 | 아이콘 | lucide-react-native |
+| 지도(예정) | Google Maps API + 현재 위치 |
 
 ---
 
 ## 2. 사용자 흐름 (User Flow)
 
 ```
-[1] 사용자가 "일기 작성" 진입
+[앞 화면 — 사진 업로드 / 생성 로딩]  ← 이 문서 범위 밖
+  1. 사진 여러 장 업로드 → 프론트에서 VLM 적정 크기로 압축
+  2. Trip 1개 생성
+  3. 사진 메타데이터로 분류 → trip_days N개 생성 (이때 총 일수 N 확정)
+  4. 1일차 사진 전체(최대 5장으로 제한 예정)를 백엔드 VLM이 분석 → LLM 일기 생성
+       - 동시에 VLM이 사진 중 trip 전체를 대표하는 사진 1장도 선택
         ↓
-[2] 갤러리에서 사진 여러 장 선택
-        ↓
-[3] "AI 일기 생성" 버튼 클릭
-        ↓
-[4] 백엔드가 이미지를 받아 VLM으로 분석 → LLM으로 일기 텍스트 생성
-        ↓
-[5] 생성된 일기가 편집 화면(diary_writring.tsx)에 자동으로 채워짐
-        ↓
-[6] 사용자가 제목, 본문, 날짜, 여행지, 날씨 등을 수정
-        ↓
-[7] "저장하기" 클릭 → DB 저장
+[diary_writing 화면 — 여기서부터 보임]
+  5. 1일차 일기 표시 (검토)
+  6. 2~N일차는 백엔드에서 계속 생성 중
+  7. "다음날로" 버튼 (다음날이 준비됐을 때만 활성)
+       - 비활성 시 문구: "다음 추억 생성중"
+       - 누르면 현재 날을 diaries 에 저장 후 다음날로 이동
+  8. 마지막 날에서만 "저장하기" → trips.status = 'completed' → Detail 페이지로 이동
 ```
 
-### 핵심 인터랙션
-- **다중 사진 선택**: 한 번에 여러 장을 골라야 함 (단일 선택 X)
-- **AI 생성 대기**: 보통 5~15초 걸림. 로딩 UI 필수
-- **편집 가능**: 생성된 내용은 모두 사용자가 수정 가능해야 함
+### 핵심 인터랙션 / 규칙
+- **순방향 일방통행**: 자유 이동·뒤로가기·작성 중단 **없음** (프로토타입 단순화).
+- **읽기 전용 검토**: 제목·소제목·본문·감정·날씨·날짜는 **표시만**.
+- **유일한 편집 = 여행지(`location_summary`)**: 사진에 위치 메타데이터가 없을 수 있어, 탭하면 **현재 위치 또는 지도(Google Maps)** 에서 직접 선택.
+- **점진적 생성**: 다음날 일기가 백엔드에서 완성돼야 "다음날로"가 활성화됨.
+- **하루치씩 저장**: "다음날로" 누를 때 현재 날 일기를 `diaries`에 저장.
+- **생성 실패한 날**: 상단 제목 + 대표사진 바만 남기고, 본문 자리에 **"일기 다시 생성하기"** 버튼 노출.
 
 ---
 
-## 3. 데이터 구조 (Type Definition)
+## 3. 화면 구성 & 데이터 매핑
 
-### Diary (일기 단위)
+### 화면 요소 → DB 컬럼
+
+| 화면 요소 | 출처 | 범위 | 편집 |
+|---|---|---|---|
+| 상단 큰 제목 | `trips.title` | 여행 전체(매 페이지 동일) | 읽기전용 |
+| 상단 좌측 대표사진 | trip 대표사진 (`trips.cover_photo_id` — VLM이 선택, 새 컬럼 불필요) | 여행 전체(매 페이지 동일) | 읽기전용 |
+| 소제목 | `trip_days.subtitle` | 날마다 | 읽기전용 |
+| 여행지 | `trip_days.location_summary` | 날마다 | **편집 O (지도)** |
+| 날짜 | `trip_days.date` | 날마다 | 읽기전용 (`YYYY.MM.DD (요일)`) |
+| 날씨 아이콘 | `trip_days.weather` (Twemoji 코드포인트) | 날마다 | 읽기전용 |
+| 감정 이모지 | `trip_days.emotion` (Twemoji 코드포인트) | 날마다 | 읽기전용 |
+| 상징 이모지 | `diaries.symbol` (Twemoji 코드포인트) | 날마다 | 읽기전용 |
+| 본문(+글자수) | `diaries.content` | 날마다 | 읽기전용 (글자수 표시 유지) |
+| 하단 "대표 사진" 바 | 그날 `photos[].thumbnail_url` 만 (개수 고정, **+버튼 없음**) — 그날 다이어리용 사진들 | 날마다 | 읽기전용(표시만) |
+
+### 타입 스케치 (2단계에서 `frontend/src/types/diary.ts`로 분리)
 ```typescript
-type Diary = {
-  id?: string;              // 신규 생성 시에는 없음, 저장 후 부여
-  title: string;            // 제목
-  location: string;         // 여행지
-  date: string;             // YYYY-MM-DD
-  weather: {
-    condition: string;      // "맑음", "흐림", "비" 등
-    temperature: string;    // "23°C" 같은 표현
-  };
-  mainImage: string;        // 대표 사진 URL
-  content: string;          // 본문 (AI가 생성한 일기 텍스트)
-  images: string[];         // 첨부 사진 URL 배열
-  createdAt?: string;       // 저장 시점 (서버가 채움)
+// 여행 전체 (모든 페이지 공통)
+type TripDiary = {
+  tripId: number;          // trips.id
+  title: string;           // trips.title — 매 페이지 동일
+  representImage: string;  // trips.cover_photo_id가 가리키는 사진 URL — VLM이 고른 trip 대표(매 페이지 동일)
+  status: string;          // trips.status — 최종 저장 시 'completed'
+  days: DayPage[];         // 길이 = N (총 일수)
+};
+
+// 하루치 = trip_day + 그날 diary (페이지 1장)
+type DayPage = {
+  tripDayId: number;       // trip_days.id
+  dayNumber: number;       // trip_days.day_number (1..N)
+  date: string;            // trip_days.date "YYYY-MM-DD"
+  locationSummary: string; // trip_days.location_summary — ✏️ 편집 가능
+  weather: string;         // trip_days.weather — Twemoji 코드포인트(hex) → 이모지
+  subtitle: string;        // trip_days.subtitle
+  emotion: string;         // trip_days.emotion — Twemoji 코드포인트(hex)
+  symbol: string;          // diaries.symbol — Twemoji 코드포인트(hex)
+  content: string;         // diaries.content — 본문
+  photos: { id: number; thumbnailUrl: string; fileUrl: string }[]; // 그날 다이어리용 사진들
+  genStatus: 'ready' | 'generating' | 'failed'; // 프론트 표시용 생성 상태
 };
 ```
 
-### 검토 필요 (팀 합의 후 확정)
-- 현재 목업의 `days: [{ content, images }]` 구조 → 다일 여행 지원할지?
-  - MVP: 단일 일자로 단순화 (`content`, `images` 직접 필드)
-  - 확장 시: `days[]` 배열로 변경
-- `weatherTemp` 필드를 `weather` 객체로 묶을지 분리할지
+### 페이지 상태 3가지
+- **ready(정상)**: 전체 표시
+- **generating(생성중)**: 진입 불가 (이전 날의 "다음날로"가 비활성, 문구 "다음 추억 생성중")
+- **failed(실패)**: 제목 + 대표사진 바만, 본문 자리에 "일기 다시 생성하기"
 
 ---
 
-## 4. API 계약 (Backend Endpoints)
+## 4. API 계약 (미확정 — 4단계에서 코드로 확정)
 
-### 4.1 일기 생성 (AI)
-**`POST /api/diaries/generate`**
+새 흐름에 맞춰 대략 다음이 필요. (필드/경로는 4단계에서 Pydantic ↔ TS 타입으로 1:1 확정)
 
-요청 (multipart/form-data):
-```
-images: File[]    // 사용자가 선택한 사진들
-```
+- **(앞 화면) 업로드/생성 시작**: 사진 업로드 → Trip + trip_days 생성 트리거
+- **생성 상태 폴링**: 각 trip_day의 `genStatus`(생성중/완료/실패)를 주기적으로 조회 → "다음날로" 활성화 판단
+- **일차 일기 조회**: 특정 trip_day의 일기/사진 묶음 조회
+- **일차 저장(PATCH)**: 현재 날 일기(주로 `location_summary`) 저장
+- **일차 재생성**: 실패한 날 다시 생성 요청
+- **최종 저장**: `trips.status = 'completed'` 로 변경
 
-응답 (200 OK):
-```json
-{
-  "title": "제주도 둘째날",
-  "content": "오늘은 성산일출봉에 올랐다. 바람이 제법 불었지만 ...",
-  "suggestedLocation": "성산일출봉, 제주",
-  "suggestedDate": "2026-05-20",
-  "imageUrls": [
-    "https://.../photo1.jpg",
-    "https://.../photo2.jpg"
-  ]
-}
-```
-
-응답 (실패):
-- 400: 이미지 없음/포맷 오류
-- 500: AI 생성 실패
-
-### 4.2 일기 저장
-**`POST /api/diaries`**
-
-요청 (application/json):
-```json
-{
-  "title": "제주도 둘째날",
-  "location": "성산일출봉, 제주",
-  "date": "2026-05-20",
-  "weather": { "condition": "맑음", "temperature": "23°C" },
-  "mainImage": "https://.../photo1.jpg",
-  "content": "오늘은 성산일출봉에 ...",
-  "images": ["https://.../photo1.jpg", "https://.../photo2.jpg"]
-}
-```
-
-응답 (200 OK):
-```json
-{
-  "id": "uuid-...",
-  "createdAt": "2026-05-20T15:30:00Z"
-}
-```
-
-### 4.3 일기 조회 (편집 진입 시)
-**`GET /api/diaries/{id}`** — 추후 단계에서 추가
+> 폴링 vs 푸시(WebSocket/SSE)는 4단계에서 결정. 프로토타입은 폴링으로 충분.
 
 ---
 
-## 5. 단계별 개발 계획
+## 5. 단계별 개발 계획 (이 화면 기준)
 
-### 0단계 — 환경 설정
+### 0단계 — 환경 설정 ✅ 완료
+- `npx expo start` → `w` 웹 미리보기, 핫리로드 동작 확인.
 
-**목표**: 코드 변경이 즉시 화면에 반영되는 개발 환경 구성
+### 1단계 — UI 정적 변환 ✅ 완료 (2026-05-21)
+디자인팀 최종 목업을 React Native로 변환해 화면에 표시. **단, 입력 가능한 편집형으로 만들어서 2단계에서 읽기 전용으로 전환 필요.**
 
-**작업**
-- [ ] `cd frontend && npm install` (의존성 설치)
-- [ ] `npx expo start` 실행
-- [ ] 웹 미리보기로 화면 띄움 (`w` 키 입력)
-- [ ] 핫리로드 동작 확인 (간단한 텍스트 수정 후 자동 반영되는지)
-
-**검증**: `diary_writring.tsx`의 텍스트를 수정하면 브라우저에서 즉시 변경이 보임
-
-**자주 발생하는 문제**
-- Expo v55 + React 19 호환성 문제 → AGENTS.md의 Expo 공식 문서 참고
-- Windows에서 Watchman 설치가 없으면 핫리로드 느림 → 무시 가능
-
----
-
-### 1단계 — UI 정적 변환
-
-**목표**: 디자인팀의 React Web 목업을 React Native 코드로 변환하여 화면에 표시
-
-**현재 상태**: `diary_writring.tsx`는 `<div>`, `<img>`, `<button>`, `<input>`, `<textarea>` 등 **HTML 태그**를 쓴 React Web 코드 (다른 디자인 도구에서 export됨)
-
-**변환 표**
-
-| 현재 (React Web) | 변환 후 (React Native) |
+**HTML → RN 변환표**
+| React Web | React Native |
 |---|---|
-| `<div>` | `<View>` |
-| `<header>`, `<section>` | `<View>` |
-| `<img src={...} />` | `<Image source={{ uri: ... }} />` |
-| `<button onClick={...}>` | `<Pressable onPress={...}>` |
-| `<input type="text" value={x} onChange={(e) => ...e.target.value}>` | `<TextInput value={x} onChangeText={(t) => ...}>` |
-| `<textarea>` | `<TextInput multiline>` |
-| `<span>`, `<p>`, `<h1>`, `<label>` | `<Text>` |
+| `<div>` / `<header>` | `<View>` |
+| `<img src>` | `<Image source={{uri}}>` (expo-image) |
+| `<button onClick>` | `<Pressable onPress>` |
+| `<input>` / `<textarea>` | `<TextInput>` (multiline) |
+| `<span>`/`<h1>`/`<label>` | `<Text>` |
 | `lucide-react` | `lucide-react-native` |
-| `className="..."` | NativeWind는 className 그대로 지원 |
 
-**작업**
-- [ ] `lucide-react-native` 설치: `npm install lucide-react-native`
-- [ ] `react-native-svg` 설치 (lucide의 의존성): `npm install react-native-svg`
-- [ ] `diary_writring.tsx` 상단에 컴포넌트 함수 선언 추가 (현재 `return (` 으로 시작하는 조각만 있음)
-- [ ] HTML 태그를 RN 컴포넌트로 일괄 교체
-- [ ] 더미 데이터를 useState로 박아두고 화면에 표시되는지 확인
+**색/폰트 매핑** (목업 색이 프로젝트에 없어 팀 토큰으로 매핑, 공유 `tailwind.config.js`는 미수정)
+| 목업 | 매핑 |
+|---|---|
+| `text-cobalt-950` | `text-textPrimary` (#152538) |
+| `text-cobalt-400/800` | `text-textSecondary` (#39536B) |
+| `text-[#6366f1]` | `text-primary` (#5B7DBB) |
+| `bg-[#f8f9fc]` | `bg-background` (#F4F6F9) |
+| `font-diary` | `font-sans` (GowunDodum) |
 
-**참고: 화면 구성 요소**
-- 헤더 (뒤로가기, 제목, 저장 버튼)
-- 요약 카드 (대표 사진 + 제목 입력)
-- 정보 입력 행 (여행지, 날짜)
-- 날씨 행
-- 본문 (툴바 + textarea + 글자수 표시)
-- 대표 사진 가로 스크롤
-- 하단 고정 저장 버튼
+**이모지**: `weather`·`emotion`·`symbol`은 Twemoji 코드포인트(hex)로 저장 → `codepointToEmoji()`로 변환 후 `<Twemoji style={{width,height}}>`로 렌더(이 라이브러리는 `size` prop 없음). 미지원 이모지(예: 🥹 `1f979`)는 시스템 이모지로 자동 대체.
 
-**검증**: 화면에 목업 디자인이 그대로 보임. 입력란에 글자가 타이핑됨.
+> 참고: 1단계 코드는 `weather`를 문자열→lucide 아이콘으로 매핑했음. 2단계에서 **Twemoji 코드포인트 방식으로 교체** 필요.
 
-**자주 발생하는 실수**
-- `style={{ ... }}` 와 `className` 혼용 시 NativeWind가 무시될 수 있음 → className 통일
-- `<Text>` 안에 `<Text>`가 아닌 다른 컴포넌트 넣으면 에러 → 텍스트는 반드시 `<Text>` 직속
-- `onChange={(e) => e.target.value}` 잔존 → RN에서는 `onChangeText={(text) => ...}`
+### 2단계 — 새 흐름에 맞춰 화면 재구성 ✅ 완료 (2026-05-21)
+**목표**: 1단계의 편집형 화면을 "읽기 전용 일차별 검토 뷰어"로 전환 (mock 데이터).
 
----
+- [x] 헤더 **뒤로가기 버튼 제거** → 일차 표시("N일차 · 총 M일")로 교체
+- [x] 제목·소제목·본문을 **읽기 전용(Text)** 으로 전환 (본문 글자수 표시는 유지)
+- [x] 감정·상징·**날씨**를 Twemoji 이모지로 표시 (날씨를 lucide → Twemoji 코드포인트로 교체). `EmojiIcon`에 빈 문자열 가드 추가(symbol 미설정 대비)
+- [x] 여행지 칸은 편집 진입점으로 유지 (`Pressable`+지도핀, 지도 피커는 stub `handleEditLocation`)
+- [x] 하단 "대표 사진" 바: **그날 사진들만 표시**(읽기전용), **+버튼 제거**
+- [x] 상단 좌측 대표사진 = VLM이 고른 **trip 대표사진**(읽기전용, 매 페이지 동일). 기존 `trips.cover_photo_id` 사용(새 컬럼 불필요)
+- [x] 하단 버튼 3상태: **"다음날로"**(다음날 ready 시 활성) / **"다음 추억 생성중"**(비활성+스피너) / 마지막날 **"저장하기"**
+- [x] **실패 상태 UI**: 제목+대표사진바 + "일기 다시 생성하기" (+ generating 진입 시 방어용 스피너)
+- [x] 타입을 `frontend/src/types/diary_writing.ts`로 분리 (`TripDiary`, `DayPage`, `DayPhoto`, `GenStatus`)
+- [x] mock 데이터 `frontend/src/data/diary_writing.ts` — **실제 DB trip 1(5일치) 전사** (settings.ts 방식)
 
-### 2단계 — 이미지 선택 기능
+> mock 메모: weather는 실제 한글값을 코드포인트로 변환해 넣음(원본 주석). symbol은 DB가 비어 빈 문자열. 사진 URL은 `test_images/...` 로컬 경로라 안 열려 picsum placeholder 사용(id·개수·순서는 실제). 전부 ready라, 생성중/실패는 4·5일차 genStatus를 잠깐 바꿔 확인.
 
-**목표**: 사용자가 갤러리에서 사진 여러 장을 선택해서 화면에 표시
+**검증**: ✅ mock 5일치로 화면이 일차별로 보이고, "다음날로"로 1→5 진행, 마지막날 "저장하기", genStatus 토글로 생성중/실패 화면 확인. tsc 통과.
 
-**작업**
-- [ ] `expo-image-picker` 설치: `npx expo install expo-image-picker`
-- [ ] `frontend/src/types/diary.ts` 생성 — Diary, Photo 타입 정의
-- [ ] `frontend/src/components/diary/PhotoPicker.tsx` 생성 — 사진 선택 컴포넌트
-- [ ] iOS/Android 권한 요청 처리 (`requestMediaLibraryPermissionsAsync`)
-- [ ] 다중 선택 옵션 활성화 (`allowsMultipleSelection: true`)
-- [ ] 선택된 이미지를 state에 저장하고 썸네일 그리드로 표시
-- [ ] 사진 삭제 (선택 취소) 기능
+### 3단계 — Mock 전체 흐름 ✅ 완료 (2026-05-22)
+- [x] mock에서 2~N일차 `genStatus`가 **시간차로 ready 되도록** 시뮬레이션 (setTimeout) — `days`를 `useState`로 들고, 1일차만 ready·나머지 generating으로 시작. 현재 날에 도착하면 `useEffect`가 다음 날을 3초 뒤 ready로 전환.
+- [x] "다음날로"로 순차 진행 → 현재 날 저장(mock, `console.log`) → 마지막 "저장하기" → `router.push('/Detail')` 이동
+- [x] 생성중 대기 / 실패→재생성 흐름 검증 — `handleRegenerate`가 그 날을 generating→3초→ready로. (실패 화면은 1일차 mock `genStatus`를 잠깐 `'failed'`로 바꿔 확인 후 원복)
 
-**핵심 코드 패턴**
-```typescript
-const result = await ImagePicker.launchImageLibraryAsync({
-  mediaTypes: ImagePicker.MediaTypeOptions.Images,
-  allowsMultipleSelection: true,
-  quality: 0.8,
-});
-if (!result.canceled) {
-  setImages(result.assets);
-}
-```
+> 메모: Detail 이동은 **이동만**(`router.push('/Detail')`) — 우리 `TripDiary`→Detail params(`id/title/details` 등) 매핑은 5단계(API 연동)로 분리. 정식 경로는 `/Detail`(대문자) — 기존 `Home.tsx`는 `/detail` 소문자로 써서 타입 에러가 나 있음(이 화면 밖, 별도 정정 대상).
 
-**검증**: "사진 선택" 버튼 → 갤러리 열림 → 여러 장 선택 → 화면에 썸네일이 표시됨
+### 4단계 — 백엔드 API 계약 정의 ✅ 완료 (2026-05-22)
+- [x] 응답 스키마를 Pydantic으로 확정 (`schemas/diary.py`) — `GenStatus`, `DayPhoto`, `DayPage`, `TripDiary`. 프론트 `types/diary_writing.ts`와 1:1. 필드명은 카멜케이스로 통일(settings.py 관습).
+- [x] 요청/상태 스키마 — `DayStatus`(폴링), `DayUpdate`(여행지 저장 body), `TripStatusUpdate`(최종 저장 body).
+- [x] 라우터 6개 + 더미 응답 (`routers/diary.py`), `main.py` 등록. TestClient로 6개 + 404 검증.
+- [ ] **요청/상태 TS 타입**(DayStatus/DayUpdate/TripStatusUpdate)은 5단계(API 클라이언트 작성) 때 추가 — 응답 타입은 이미 1:1.
 
-**자주 발생하는 실수**
-- 웹에서는 `allowsMultipleSelection` 동작 방식이 다름 → 모바일 우선 테스트
-- 권한 거부 시 에러 처리 누락
-- `result.uri`는 deprecated, `result.assets[].uri` 사용
+> **확정된 엔드포인트** (업로드/생성 시작 ①은 앞 화면 담당이라 제외 — 6절):
+> | # | 메서드 · 경로 | 요청 | 응답 | 비고 |
+> |---|---|---|---|---|
+> | 여행 전체 조회 | `GET /trips/{trip_id}` | — | `TripDiary` | 진입 시 N일치 한 번에 |
+> | 상태 폴링 | `GET /trips/{trip_id}/day-statuses` | — | `list[DayStatus]` | 가벼운 상태만 |
+> | 일차 조회 | `GET /trip-days/{trip_day_id}` | — | `DayPage` | ready된 날 본문 재조회 |
+> | 일차 저장 | `PATCH /trip-days/{trip_day_id}` | `DayUpdate` | `DayPage` | 여행지만 (지도 좌표는 추후) |
+> | 재생성 | `POST /trip-days/{trip_day_id}/regenerate` | — | `DayStatus` | 더미는 즉시 generating |
+> | 최종 저장 | `PATCH /trips/{trip_id}` | `TripStatusUpdate` | `TripStatusUpdate` | status='completed' |
+>
+> 폴링 방식 채택(푸시 아님 — 프로토타입엔 충분). genStatus 출처 = 최신 `diary_generations.status` 번역(success→ready 등), 실제 번역·DB 조회·사진 id→URL 변환은 6단계.
 
----
+### 5단계 — 프론트 ↔ 백엔드 연동 ✅ 완료 (2026-05-23)
+작은 단계로 쪼개 진행, 각 단계 tsc + 실제 서버로 검증.
+- [x] 5-1 — API 클라이언트 `services/diary-api.ts`(호출 함수 6개 + 공통 `request<T>` 헬퍼, baseURL은 settings-api 방식 재사용) + 요청/상태 TS 타입 3개(`DayStatus/DayUpdate/TripStatusUpdate`) 추가
+- [x] 5-2 — 초기 데이터 mock → `GET /trips/1` fetch. `trip`/`loading`/`error` 상태 + 진입 시 useEffect, 로딩/에러 화면 분기
+- [x] 5-3 — 가짜 `setTimeout` → 실제 폴링(`setInterval`로 `day-statuses` 3초마다) + ready 전환 시 `GET /trip-days/{id}`로 본문 채우기. **백엔드 더미를 "시간차"로** 수정(`_gen_status`/`_day_view`, `GET /trips` 진입 시 타이머 리셋)
+- [x] 5-4 — 핸들러를 실제 호출로: `handleNext`=`saveDayLocation`(PATCH), `handleSave`=`completeTrip`(PATCH)→Detail, `handleRegenerate`=`regenerateDay`(POST)
+- [x] 5-5 — 에러 처리: 로딩 실패 시 "다시 시도" 버튼(`loadTrip` 분리), 액션 실패 시 하단 `actionError` 안내(`text-error`), **성공해야** 진행/이동. Alert 대신 화면 내 상태(웹 안정성·팀 관습)
 
-### 3단계 — Mock 데이터로 전체 흐름 시뮬레이션
+> 메모: baseURL은 `EXPO_PUBLIC_API_BASE_URL`(없으면 실기기 hostUri:8000 / 웹 localhost:8000). mock 파일 `data/diary_writing.ts`는 5-2부터 미사용(정리 대상). 시간차 더미·타이머 리셋은 데모용 — 6단계에서 실제 DB 상태 조회로 교체.
 
-**목표**: 백엔드 없이 사진 선택 → 가짜 AI 생성 → 편집 → 저장 흐름 전체를 동작시킴
-
-**작업**
-- [ ] `frontend/src/mocks/diary.ts` 생성
-  - `mockGenerateDiary(images)`: 2초 대기 후 더미 일기 데이터 반환
-  - `mockSaveDiary(data)`: 1초 대기 후 성공 응답
-- [ ] 페이지에 로딩 상태 추가 (`isGenerating` state)
-- [ ] "AI 일기 생성" 버튼 → mock 함수 호출 → 로딩 표시 → 결과 반영
-- [ ] "저장하기" 버튼 → mock 함수 호출 → 성공 시 화면 닫기 or 메시지
-
-**Mock 함수 예시**
-```typescript
-export async function mockGenerateDiary(images: string[]): Promise<Diary> {
-  await new Promise((r) => setTimeout(r, 2000));
-  return {
-    title: "오늘의 여행",
-    location: "어딘가",
-    date: "2026-05-20",
-    content: "사진 " + images.length + "장으로 만든 더미 일기...",
-    weather: { condition: "맑음", temperature: "22°C" },
-    mainImage: images[0],
-    images,
-  };
-}
-```
-
-**검증**: 사진 선택 → 생성 버튼 → 로딩 보임 → 2초 후 편집 화면 자동 채워짐 → 저장 → 성공
-
-**왜 mock 단계가 중요한가**
-- 백엔드와 분리되어 UX 흐름을 먼저 검증할 수 있음
-- 로딩/에러 상태 UI를 미리 만들 수 있음
-- 4~5단계에서 실제 API로 교체할 때 구조 변경 없음
+### 6단계 — AI 로직 + DB 저장 ✅ 핵심 완료 (2026-05-24)
+작은 단계로 진행. 6-1~6-4 완료 → "사진→AI→DB→화면" 전체 동작. (남은 건 후속 고도화)
+- [x] `backend/app/db/session.py`, `models.py`(7개 모델), Alembic baseline ✅ 완료 (`docs/plans/db-setup.md`)
+- [x] **6-1** 읽기 엔드포인트 → 실제 DB 조회 (`routers/diary.py`). 더미 제거, `Depends(get_db)`로 trips→trip_days→(diaries,photos) 조회. genStatus=일기 본문 유무(임시). weather 한글→코드포인트 방어 변환.
+- [x] **6-2** 사진 정적 서빙 — `backend/test_images`를 `/test_images`로 마운트(`main.py`), `file_url`/`thumbnail_url`/대표사진을 요청 host 기준 절대 URL로(한글 파일명 인코딩).
+- [x] **6-3** 생성기 `services/diary_generator.py` — Ollama `gemma4:e4b`(vision) 멀티모달로 하루 사진→일기 JSON(subtitle/content/emotion/symbol). openai SDK를 `/v1`에 연결(swappable). 이모지→코드포인트 변환. **실측 검증**(사진1장 ~15초, JSON·이모지 정상).
+- [x] **6-4** 재생성을 **백그라운드**(FastAPI BackgroundTasks)로 실행 → 결과를 `diaries`(content/symbol/word_count/generated_at)·`trip_days`(subtitle/emotion)에 저장 → 폴링이 generating→ready 반영. genStatus를 **최신 `diary_generations.status` 번역**으로 정교화(running→generating/failure→failed/success→ready). 콘솔 로그 `[diary-gen] start/done`. **실측 검증**(2·3·4일차 생성, 11~27초, 동시 작업 OK).
+- [x] **id 자동증가 마이그레이션** — 7개 테이블 PK가 자동증가 없는 BigInteger라 INSERT 시 NULL 위반. `f3a9c1d4b2e6`로 전 테이블에 IDENTITY 추가 + 시퀀스를 max(id) 다음으로. (`alembic.ini` 한글 주석→영문: cp949 디코드 에러 회피)
+- [x] `trip_days.represent_image` 컬럼 추가 — 마이그레이션 완료(`docs/plans/db-setup.md` 이력)
+- [ ] (후속) 2단계화(VLM 분석→`photo_generations` 로깅→LLM), `services/storage.py`(업로드 저장)+앞 업로드 화면의 생성 트리거(①), weather를 생성기가 코드포인트로 직접 출력
 
 ---
 
-### 4단계 — 백엔드 API 계약 정의
+## 6. 미해결 / 분리 작업 (이 화면 밖이지만 연관)
 
-**목표**: 프론트와 백엔드가 주고받을 데이터 형식을 코드로 확정. 백엔드는 더미 응답으로 먼저 구현.
-
-**프론트 작업**
-- [ ] `frontend/src/api/client.ts` 생성
-  - baseURL (`http://localhost:8000` or env 변수)
-  - 공통 헤더, 에러 처리
-- [ ] `frontend/src/api/diary.ts` 생성
-  - `generateDiary(images: File[])`: `POST /api/diaries/generate`
-  - `saveDiary(data: Diary)`: `POST /api/diaries`
-
-**백엔드 작업**
-- [ ] `backend/app/routers/diary.py` 생성
-  - `POST /api/diaries/generate` — 일단 더미 일기 반환
-  - `POST /api/diaries` — 일단 더미 id 반환
-- [ ] `backend/app/schemas/diary.py` 생성 — Pydantic 모델로 요청/응답 검증
-- [ ] `backend/app/main.py` 수정 — 라우터 등록
-
-**검증**:
-- 프론트에서 `curl http://localhost:8000/api/diaries/generate` 호출 시 더미 응답 반환
-- Pydantic 검증이 동작 (잘못된 요청 → 422 응답)
-
-**계약 일치 체크리스트**
-- [ ] `frontend/src/types/diary.ts`의 타입과 `backend/app/schemas/diary.py`의 Pydantic 모델이 1:1 대응
-- [ ] 필드명, 타입, 옵셔널 여부 모두 일치
-
----
-
-### 5단계 — 프론트엔드 ↔ 백엔드 연동
-
-**목표**: 3단계의 mock 함수를 4단계의 실제 API 호출로 교체
-
-**작업**
-- [ ] 페이지에서 `mockGenerateDiary` → `api.generateDiary` 교체
-- [ ] `mockSaveDiary` → `api.saveDiary` 교체
-- [ ] 에러 처리 추가 (네트워크 오류, 서버 오류, 검증 오류)
-- [ ] 환경 변수로 API baseURL 관리 (`process.env.EXPO_PUBLIC_API_URL` 등)
-
-**검증**:
-- 프론트 → 백엔드 → 더미 응답 → 프론트 화면 반영
-- 네트워크 끊었을 때 에러 메시지 표시됨
-- 백엔드 콘솔에 요청 로그 찍힘
-
-**자주 발생하는 실수**
-- CORS 설정 안 하면 웹에서 호출 차단됨 → 백엔드에 CORS 미들웨어 추가 필요
-- 모바일 에뮬레이터에서 `localhost`는 본인 PC가 아님 → `10.0.2.2`(Android) 또는 `host.docker.internal`
-- multipart 업로드 시 헤더 자동 설정 (axios면 FormData만 넘기면 됨)
-
----
-
-### 6단계 — AI 로직 + DB 저장
-
-**목표**: 백엔드 더미 응답을 실제 OpenAI 호출과 DB 저장으로 교체
-
-**작업**
-- [ ] `backend/app/db/session.py` — SQLAlchemy 엔진/세션 (DATABASE_URL 사용)
-- [ ] `backend/app/db/models.py` — Diary 테이블 정의
-- [ ] DB 마이그레이션 (수동 SQL or Alembic)
-- [ ] `backend/app/services/storage.py` — 업로드 이미지 저장
-  - MVP: 로컬 폴더 (`backend/uploads/`)
-  - 확장: S3
-- [ ] `backend/app/services/diary_generator.py`
-  - OpenAI Vision API로 각 이미지 분석 → 짧은 설명 추출
-  - 설명들을 합쳐서 LLM에 일기 생성 프롬프트 전달
-  - 생성된 일기 텍스트 반환
-- [ ] `routers/diary.py` 더미 응답 → 실제 로직 호출로 교체
-
-**OpenAI 호출 흐름**
-```
-이미지 N장
-  → VLM (gpt-4o vision) 으로 각 이미지 설명 생성
-  → 설명들을 프롬프트로 합침
-  → LLM (gpt-4o) 으로 일기 생성
-  → 결과 반환
-```
-
-**검증**:
-- 실제 사진으로 일기가 그럴듯하게 생성됨
-- DB에 저장 후 PostgreSQL에서 SELECT로 확인 가능
-- 토큰 사용량 모니터링 (비용 관리)
-
-**자주 발생하는 실수**
-- OpenAI API 키 누출 (코드에 하드코딩 X, 반드시 env)
-- 이미지 크기가 너무 크면 API 호출 실패 → 업로드 시 리사이즈
-- DB 마이그레이션 안 하고 코드부터 짜면 런타임 에러
-
----
-
-## 6. 최종 폴더 구조
-
-```
-SceneDiary/
-├── frontend/src/
-│   ├── app/
-│   │   └── diary_writring.tsx           # 메인 페이지 (편집 화면)
-│   ├── components/
-│   │   └── diary/
-│   │       ├── PhotoPicker.tsx          # 사진 선택 컴포넌트
-│   │       ├── SummaryCard.tsx          # 제목+썸네일 카드 (선택적 분리)
-│   │       └── DiaryEditor.tsx          # 본문 편집 영역 (선택적 분리)
-│   ├── types/
-│   │   └── diary.ts                     # Diary, Photo 타입
-│   ├── api/
-│   │   ├── client.ts                    # HTTP 클라이언트 공통
-│   │   └── diary.ts                     # 일기 API 함수
-│   └── mocks/
-│       └── diary.ts                     # mock 함수 (단계 3용, 단계 5에서 제거 가능)
-│
-└── backend/app/
-    ├── main.py                          # 라우터 등록
-    ├── routers/
-    │   └── diary.py                     # /api/diaries 엔드포인트
-    ├── schemas/
-    │   └── diary.py                     # Pydantic 모델
-    ├── services/
-    │   ├── diary_generator.py           # AI 일기 생성
-    │   └── storage.py                   # 이미지 저장
-    └── db/
-        ├── session.py                   # DB 세션
-        └── models.py                    # DB 테이블 정의
-```
-
-**분리 시점 가이드**
-- `components/diary/` 아래 컴포넌트들은 `diary_writring.tsx`가 200줄 넘으면 분리
-- 200줄 안 넘으면 한 파일에 그대로 둬도 됨 (불필요한 추상화 피함)
+- **[DB] trip 대표사진** — ✅ 결정: 새 컬럼 없이 기존 `trips.cover_photo_id` 사용(VLM이 고른 trip 대표). 추가 컬럼 불필요.
+- **[백엔드] `weather`를 Twemoji 코드포인트로 통일** — 현재 생성기/데이터는 한글 텍스트("맑음","실내","미상","흐림")를 넣음(게다가 "실내·미상"은 날씨도 아님). emotion·symbol처럼 코드포인트로 출력하도록 생성기 수정 + 기존 데이터 정리 필요.
+- **[백엔드/인프라] 사진 정적 서빙** — `photos.file_url`/`thumbnail_url`이 `test_images/...` 로컬 경로라 프론트에서 안 열림. 정적 서버나 스토리지 URL로 바꿔야 실제 이미지 표시 가능. (지금 mock은 picsum placeholder)
+- **[앞 화면] 사진 업로드 + 압축 + Trip/trip_days 생성 + 생성 로딩** — 별도 화면/라우트. 이 화면은 그 결과(`TripDiary`)를 받아 시작.
+- **[지도] 여행지 피커** — Google Maps + 현재 위치. 이 화면의 유일한 편집 기능.
+- **[정정] `models.py`의 `trips.status` 주석** — `'draft'/'published'`로 적혀 있으나 실제 테스트 데이터 값은 **`'completed'`**. 나중에 주석만 맞추면 됨.
 
 ---
 
 ## 7. 진행 체크포인트
 
-각 단계 완료 시 다음을 확인하고 다음 단계로 진행:
-
-| 단계 | 완료 기준 |
-|---|---|
-| 0 | 화면이 뜨고 핫리로드 동작 |
-| 1 | 목업 디자인이 React Native로 보임. 입력 가능 |
-| 2 | 사진 다중 선택이 동작. 썸네일 표시됨 |
-| 3 | mock으로 전체 흐름 (선택→생성→편집→저장) 동작 |
-| 4 | 더미 응답이지만 백엔드 API가 응답함 |
-| 5 | 실제 API 호출로 흐름 동작 (백엔드 더미 응답으로) |
-| 6 | 실제 사진 → 실제 AI → 실제 DB 저장 동작 |
+| 단계 | 완료 기준 | 상태 |
+|---|---|---|
+| 0 | 화면이 뜨고 핫리로드 동작 | ✅ |
+| 1 | 목업 디자인이 React Native로 보임 | ✅ |
+| 2 | 읽기전용 일차별 뷰어 + 버튼 3상태/실패상태 (mock) | ✅ |
+| 3 | mock으로 전체 흐름 (일차 순차→저장→Detail) 동작 | ✅ |
+| 4 | 더미 응답이지만 백엔드 API가 응답함 | ✅ |
+| 5 | 실제 API 호출로 흐름 동작 | ✅ |
+| 6 | 실제 사진 → 실제 AI → 실제 DB 저장 동작 | ✅ 핵심 완료 (6-1~6-4. 후속 고도화만 남음) |
 
 ---
 
 ## 8. 작업 시 원칙
-
-1. **한 번에 한 단계만**: 단계를 건너뛰면 어느 부분이 망가졌는지 추적 불가
-2. **검증 후 다음 단계**: 각 단계 완료 기준을 충족한 뒤에만 진행
-3. **mock 활용**: 백엔드 안 되어도 프론트 작업 멈추지 않게
-4. **계약 먼저**: 4단계에서 API 형식 정한 뒤에는 함부로 바꾸지 않기 (팀원 영향)
-5. **타입 일치**: `types/diary.ts`(프론트)와 `schemas/diary.py`(백엔드) 항상 동기화
+1. **한 번에 한 단계만** — 단계를 건너뛰면 추적 불가
+2. **검증 후 다음 단계**
+3. **mock 활용** — 백엔드 없이 프론트 흐름 먼저 검증
+4. **계약 먼저** — 4단계에서 API 형식 정한 뒤 함부로 변경 금지(팀원 영향)
+5. **타입 일치** — `types/diary.ts`(프론트) ↔ `schemas/`(백엔드) 동기화
 
 ---
 
@@ -428,3 +260,13 @@ SceneDiary/
 | 날짜 | 내용 |
 |---|---|
 | 2026-05-20 | 최초 작성 |
+| 2026-05-21 | 현재 상태 반영 — 파일명 정정, 1단계 완료, 색/폰트 매핑표, 6단계 DB 완료 표시 |
+| 2026-05-21 | **흐름 전면 개편** — 팀 회의 반영. "사진선택→AI→단일편집"에서 **"AI가 하루치씩 생성, 사용자가 순방향으로 하루씩 검토(읽기전용, 여행지만 편집), 마지막날 저장→Detail"** 로 변경. 데이터 매핑을 실제 DB 컬럼 기준으로 재정리, API 계약·개발 단계 재작성, 미해결 작업 정리 |
+| 2026-05-21 | 정정 — ①날씨도 Twemoji 코드포인트(문자열→lucide 아님), ②1일차 사진 전체(최대 5장) VLM 분석, ③상단 좌측 대표사진은 VLM이 고른 **trip** 대표사진(`trips.trip_represent_image` 추가, 하단 일자별 사진 바와 별개) |
+| 2026-05-21 | **2단계 완료** — 읽기전용 멀티데이 뷰어 재구성(`diary_writing.tsx`), 타입(`types/diary_writing.ts`)·mock(`data/diary_writing.ts`, 실제 DB trip 1 전사) 분리. trip 대표사진은 `cover_photo_id`로 확정(새 컬럼 폐기). weather 코드포인트 통일·사진 정적 서빙은 백엔드 후속(6절)으로 분리 |
+| 2026-05-22 | **3단계 완료** — mock 전체 흐름 구현(`diary_writing.tsx` 단일 파일). `days`를 `useState`로 관리, `useEffect`+`setTimeout`으로 다음 날 시간차 ready 시뮬레이션. "다음날로"=mock 저장 로그, 마지막 "저장하기"=`router.push('/Detail')` 이동만, `handleRegenerate`=generating→3초→ready. 1·2·3 흐름 검증 완료 |
+| 2026-05-22 | **4단계 완료** — 백엔드 API 계약 확정. `schemas/diary.py`(응답 4 + 요청/상태 3, 프론트 TS와 1:1·카멜케이스), `routers/diary.py`(6개 엔드포인트 + 더미 응답), `main.py` 등록. 업로드/생성 ①은 앞 화면 담당이라 제외. TestClient로 6개+404 검증. 요청/상태 TS 타입은 5단계로. genStatus 출처=최신 `diary_generations.status` 번역(6단계 구현) |
+| 2026-05-24 | **스키마 리팩터 — diaries→trip_days 합치기** (팀 합의, 1:1이라). `diaries` 제거, 내용 4컬럼(content/symbol/word_count/generated_at)을 `trip_days`로. `title`은 trips.title과 중복이라 버림, user_id는 trips에서 파생. `diary_generations`는 유지하되 FK를 `diary_id`→`trip_day_id`로. 마이그레이션 `a7d2f4b8c1e9`(downgrade로 분리 복귀 가능). `models.py`·`routers/diary.py` 갱신(코드 단순화, 6-4 닭-알 해소). **API(DayPage)·프론트 무변경.** 적용·검증 완료 |
+| 2026-05-24 | **6-4 완료 + 전체 동작** — 재생성을 FastAPI BackgroundTasks로 백그라운드 실행→`diaries`/`trip_days` 저장→폴링 반영(`routers/diary.py`). genStatus=최신 `diary_generations.status` 번역. 콘솔 로그 추가. **id 자동증가 마이그레이션**(`f3a9c1d4b2e6`, 전 테이블 IDENTITY+시퀀스 보정 — INSERT 시 NULL PK 위반 해결), `alembic.ini` 한글→영문(cp949 디코드 에러). 실측: 2·3·4일차 생성 11~27초, 동시 OK. → 사진→AI→DB→화면 MVP 완성 |
+| 2026-05-24 | **6단계 진행(6-1~6-3)** — 6-1 읽기 엔드포인트를 실제 DB 조회로(`routers/diary.py`, 더미 제거, weather 한글→코드포인트 방어). 6-2 사진 정적 서빙(`main.py` `/test_images` 마운트 + URL 절대화·한글 인코딩, 실제 사진 `backend/test_images/`). 6-3 생성기(`services/diary_generator.py`) Ollama `gemma4:e4b`(vision)로 사진→일기 JSON, 이모지→코드포인트, 실측 검증. 남은 6-4=백그라운드 생성+DB 저장+폴링 연동 |
+| 2026-05-23 | **5단계 완료** — 프론트↔백엔드 연동(5-1~5-5). 프론트: `services/diary-api.ts`(호출 6 + `request<T>`), 요청 TS 타입 3개, mock→fetch, `setInterval` 폴링 + ready 시 본문 fetch, 핸들러 실제 호출(save/regenerate/complete), 에러 처리(재시도·`actionError`·성공해야 진행). 백엔드: 더미를 "시간차"로(`_gen_status`/`_day_view`, `GET /trips` 진입 시 타이머 리셋)해 폴링 전환을 눈으로 확인 가능. 서버 on/off로 정상·에러 흐름 검증. `data/diary_writing.ts` mock은 미사용 전환 |

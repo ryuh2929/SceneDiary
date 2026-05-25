@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Image } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+<<<<<<< HEAD
 import SimpleView from "./simpleView"; // 이사 간 카드뷰 불러오기
 
 export interface MarkerItem {
@@ -14,6 +15,8 @@ export interface MarkerItem {
   day: string;
   iconName: string;
 }
+=======
+>>>>>>> dev
 
 export default function MapScreen() {
   const [markers] = useState([
@@ -23,10 +26,13 @@ export default function MapScreen() {
       lon: 126.978,
       title: "서울시청",
       img: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e",
+<<<<<<< HEAD
       emoji: "😍",
       location: "서울",
       day: "1일차",
       iconName: "",
+=======
+>>>>>>> dev
     },
     {
       id: 2,
@@ -34,10 +40,13 @@ export default function MapScreen() {
       lon: 126.98,
       title: "인사동",
       img: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e",
+<<<<<<< HEAD
       emoji: "🏮",
       location: "종로",
       day: "1일차",
       iconName: "",
+=======
+>>>>>>> dev
     },
     {
       id: 3,
@@ -45,6 +54,7 @@ export default function MapScreen() {
       lon: 126.99,
       title: "남산타워",
       img: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e",
+<<<<<<< HEAD
       emoji: "🗼",
       location: "용산",
       day: "2일차",
@@ -53,6 +63,11 @@ export default function MapScreen() {
   ]);
 
   const [selectedItem, setSelectedItem] = useState<MarkerItem | null>(null);
+=======
+    },
+  ]);
+
+>>>>>>> dev
   return (
     <View className="flex-1 bg-background">
       <MapView
@@ -70,7 +85,10 @@ export default function MapScreen() {
             key={item.id}
             coordinate={{ latitude: item.lat, longitude: item.lon }}
             tracksViewChanges={true}
+<<<<<<< HEAD
             onPress={() => setSelectedItem(item)}
+=======
+>>>>>>> dev
           >
             <View className="items-center w-[60px] h-[75px]">
               <View className="w-[56px] h-[56px] p-[2px] bg-surface border-2 border-primary rounded-full shadow-md items-center justify-center">
@@ -84,8 +102,11 @@ export default function MapScreen() {
           </Marker>
         ))}
       </MapView>
+<<<<<<< HEAD
 
       {selectedItem && <SimpleView item={selectedItem} />}
+=======
+>>>>>>> dev
     </View>
   );
 }
