@@ -1,75 +1,76 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Link, usePathname } from 'expo-router';
+import { Link, usePathname,Href } from 'expo-router';
 import { Home, Map, Settings, LucideIcon } from 'lucide-react-native';
 
 type NavItem = {
-  path: '/' | '/map' | '/settings';
+  // path: '/(tabs)' | '/(tabs)/map' | '/(tabs)/settings';
+  path: string;
+  href: Href;
   icon: LucideIcon;
   label: string;
 };
 
 const navItems: NavItem[] = [
-  { path: '/', icon: Home, label: '홈' },
-  { path: '/map', icon: Map, label: '지도' },
-  { path: '/settings', icon: Settings, label: '설정' },
+  { path: 'home', href: '/(tabs)', icon: Home, label: '홈' },
+  { path: 'map', href: '/(tabs)/map', icon: Map, label: '지도' },
+  { path: 'settings', href: '/(tabs)/settings', icon: Settings, label: '설정' },
 ];
 
 export default function BottomNav() {
-  const pathname = usePathname();
+  const pathname = usePathname();       
+          
 
   return (
-    /* 
-       [컨테이너] 
-       - bg-surface: 화이트 배경 (#FFFFFF)
-       - border-t border-border: 상단 테두리 (#A9C3E6)
-       - pb-safe: iOS 노치/하단 바 대응 (NativeWind v4 전용)
-    */
     <View className="absolute bottom-0 left-0 right-0 z-50 bg-surface border-t border-border pb-safe shadow-lg">
       <View className="flex-row items-center justify-around h-16 px-md">
-        {navItems.map(({ path, icon: Icon, label }) => {
-          // 현재 경로와 일치하는지 확인
-          const isActive = pathname === path;
+        {navItems.map(({ path, href, icon: Icon, label }) => {
           
-          // 활성화 여부에 따른 색상 결정 (config 내 정의된 색상 사용)
-          const iconColor = isActive ? "#5B7DBB" : "#39536B"; // tabActive : tabInactive
+          // 단순 일치가 아니라 조건별로 활성화 탭을 묶어줌
+          let isActive = false;
+          
+          if (path === 'map') {
+            isActive = pathname.startsWith('/map');
+          } else if (path === 'settings') {
+            isActive = pathname.startsWith('/settings');
+          } else if (path === 'home') {
+            // 현재 경로가 지도나 설정이 아니라면
+            // 무조건 '홈' 탭이 활성화된 것으로 판단하여 불을 켜줍니다!
+            isActive = !pathname.startsWith('/map') && !pathname.startsWith('/settings');
+          }
+          
+          // 테일윈드 씹힘 방지를 위한 헥사코드 강제 바인딩 스타일
+          const activeColor = "#5B7DBB";
+          const inactiveColor = "#39536B";
+          const iconColor = isActive ? activeColor : inactiveColor;
 
           return (
-            <Link key={path} href={path} asChild>
+            <Link key={label} href={href} asChild>
               <Pressable 
-                className={`flex-1 flex-col items-center justify-center py-xs rounded-md ${
-                  isActive ? 'opacity-100' : 'opacity-70'
-                }`}
+                className="flex-1 flex-col items-center justify-center py-xs rounded-md"
+                style={{ opacity: isActive ? 1 : 0.7 }}
               >
-                {/* 
-                   [아이콘] 
-                   - text-tabActive (#5B7DBB) / text-tabInactive (#39536B)
-                */}
+                {/* 아이콘 색상 및 두께 제어 */}
                 <Icon
                   size={24}
                   color={iconColor}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
 
-                {/* 
-                   [텍스트]
-                   - font-sans: GowunDodum 폰트 적용
-                   - text-sm: 12px 적용
-                */}
+                {/* 텍스트 컬러 스타일 안정화 */}
                 <Text 
-                  className={`text-sm font-sans mt-xs ${
-                    isActive ? 'text-tabActive font-bold' : 'text-tabInactive'
-                  }`}
+                  className={`text-sm font-sans mb-1 mt-xs ${isActive ? 'font-bold' : ''}`}
+                  style={{ color: iconColor }} 
                 >
                   {label}
                 </Text>
                 
-                {/* 
-                   [활성화 표시 점]
-                   - bg-primary (#5B7DBB)
-                */}
+                {/* 하단 활성화 블루 점 점등 */}
                 {isActive && (
-                  <View className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" />
+                  <View 
+                    className="absolute bottom-1 w-1 h-1 rounded-full" 
+                    style={{ backgroundColor: "#F6D9A6" }}
+                  />
                 )}
               </Pressable>
             </Link>

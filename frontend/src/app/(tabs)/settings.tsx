@@ -1,5 +1,13 @@
-import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import React, { useMemo, useState } from 'react';
+import {
+  Bell,
+  Compass,
+  Moon,
+  Pencil,
+  Sparkles,
+  User,
+  type LucideIcon,
+} from 'lucide-react-native';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, {
   interpolateColor,
@@ -9,7 +17,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { dummySettingsProfile, SettingsToggle } from '@/data/settings';
+import {
+  dummySettingsProfile,
+  SettingsToggle,
+  TravelTypeIconName,
+} from '@/data/settings';
+import { fetchSettingsProfile } from '@/services/settings-api';
 
 const colors = {
   primary: '#5B7DBB',
@@ -27,15 +40,54 @@ const colors = {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+const travelTypeIcons: Record<TravelTypeIconName, LucideIcon> = {
+  compass: Compass,
+};
+
+const toggleIcons: Record<SettingsToggle['id'], LucideIcon> = {
+  darkMode: Moon,
+  pushNotification: Bell,
+};
+
 type AppIconProps = {
-  icon: SymbolViewProps['name'];
+  icon: TravelTypeIconName;
   size?: number;
   color?: string;
 };
 
-function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
-  return <SymbolView name={icon} size={size} tintColor={color} />;
-}
+const ProfileIcon = React.memo(function ProfileIcon() {
+  return <User size={32} color={colors.primary} strokeWidth={2.2} />;
+});
+
+const EditIcon = React.memo(function EditIcon() {
+  return <Pencil size={13} color={colors.textMuted} strokeWidth={2.2} />;
+});
+
+const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
+  return <Sparkles size={15} color={colors.primary} strokeWidth={2.2} />;
+});
+
+const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
+  // lucide 아이콘은 SVG 기반이라 iOS, Android, Web에서 같은 형태로 렌더링됩니다.
+  const Icon = travelTypeIcons[icon] ?? Compass;
+
+  return <Icon size={size} color={color} strokeWidth={2.2} />;
+});
+
+const ToggleIcon = React.memo(function ToggleIcon({
+  id,
+  size = 16,
+  color = colors.textMuted,
+}: {
+  id: SettingsToggle['id'];
+  size?: number;
+  color?: string;
+}) {
+  // 다크 모드와 푸시 알림 아이콘은 설정 UI의 고정 요소라서 API 데이터가 아니라 프론트에서 직접 결정합니다.
+  const Icon = toggleIcons[id];
+
+  return <Icon size={size} color={color} strokeWidth={2.2} />;
+});
 
 function SettingsCard({
   children,
@@ -123,7 +175,10 @@ function PersonaChip({
       accessibilityState={{ selected }}
       onPress={onPress}
       className={`rounded-full px-3 py-2 ${selected ? 'bg-primary' : 'bg-muted'}`}>
-      <Text className={`text-sm font-bold ${selected ? 'text-textOnPrimary' : 'text-textSecondary'}`}>
+      <Text
+        className={`text-sm font-bold ${
+          selected ? 'text-textOnPrimary' : 'text-textSecondary'
+        }`}>
         {label}
       </Text>
     </Pressable>
@@ -143,22 +198,21 @@ function ToggleRow({
     <SettingsCard className="flex-row items-center justify-between py-sm">
       <View className="flex-row items-center gap-sm">
         <View className="h-9 w-9 items-center justify-center rounded-lg bg-muted">
-          <AppIcon icon={item.icon} size={16} color={colors.textMuted} />
+          <ToggleIcon id={item.id} />
         </View>
         <Text className="text-md font-semibold text-textPrimary">{item.label}</Text>
       </View>
 
-      <ToggleSwitch
-        value={value}
-        onValueChange={onValueChange}
-      />
+      <ToggleSwitch value={value} onValueChange={onValueChange} />
     </SettingsCard>
   );
 }
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const profile = dummySettingsProfile;
+  const [profile, setProfile] = useState(dummySettingsProfile);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // 토글 값은 화면에서 즉시 확인할 수 있도록 로컬 상태로 관리하고, 이후 DB/API 값으로 대체하기 쉽게 id 기준 객체로 변환합니다.
   const initialToggles = useMemo(
@@ -170,10 +224,52 @@ export default function SettingsScreen() {
     [profile.toggles],
   );
   const [toggles, setToggles] = useState(initialToggles);
+
   // 페르소나는 하나만 선택되도록 선택된 id만 저장합니다.
   const [selectedPersonaId, setSelectedPersonaId] = useState(
     profile.persona.tags.find((tag) => tag.selected)?.id ?? profile.persona.tags[0]?.id,
   );
+  const selectedPersona = useMemo(
+    () => profile.persona.tags.find((tag) => tag.id === selectedPersonaId),
+    [profile.persona.tags, selectedPersonaId],
+  );
+
+  useEffect(() => {
+    let ignore = false;
+
+    fetchSettingsProfile()
+      .then((settingsProfile) => {
+        if (ignore) {
+          return;
+        }
+
+        setProfile(settingsProfile);
+        setToggles(
+          Object.fromEntries(
+            settingsProfile.toggles.map((toggle) => [toggle.id, toggle.enabled]),
+          ) as Record<SettingsToggle['id'], boolean>,
+        );
+        setSelectedPersonaId(
+          settingsProfile.persona.tags.find((tag) => tag.selected)?.id ??
+            settingsProfile.persona.tags[0]?.id,
+        );
+        setProfileError(null);
+      })
+      .catch((error: Error) => {
+        if (!ignore) {
+          setProfileError(error.message);
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoadingProfile(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // 하단 네브바는 별도 컴포넌트가 담당하므로, 이 화면은 안전 영역과 본문 여백만 책임집니다.
   const contentInset = Platform.select({
@@ -189,41 +285,39 @@ export default function SettingsScreen() {
       contentContainerStyle={contentInset}
       showsVerticalScrollIndicator={false}>
       <View className="mx-auto w-full max-w-[420px] flex-1">
-        <Text className="mb-xl text-lg font-bold text-textPrimary">설정</Text>
+        <View className="mb-xl flex-row items-center justify-between">
+          <Text className="text-lg font-bold text-textPrimary">설정</Text>
+          {isLoadingProfile ? (
+            <Text className="text-sm font-semibold text-textSecondary">불러오는 중</Text>
+          ) : null}
+        </View>
+
+        {profileError ? (
+          <View className="mb-md rounded-lg border border-[#E8B4B4] bg-[#FFF4F4] px-md py-sm">
+            <Text className="text-sm font-semibold text-[#8A2D2D]">{profileError}</Text>
+          </View>
+        ) : null}
 
         <View className="items-center">
           <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-primaryLight">
-            <SymbolView
-              name={{ ios: 'person', android: 'person', web: 'person' }}
-              size={32}
-              tintColor={colors.primary}
-            />
+            <ProfileIcon />
           </View>
 
           <View className="mt-md flex-row items-center gap-xs">
             <Text className="text-[20px] font-extrabold text-textPrimary">{profile.nickname}</Text>
-            <SymbolView
-              name={{ ios: 'pencil', android: 'edit', web: 'edit' }}
-              size={13}
-              tintColor={colors.textMuted}
-            />
+            <EditIcon />
           </View>
         </View>
 
         <View className="mt-lg gap-md">
           <SettingsCard>
             <View className="flex-row items-center gap-sm">
-              <SymbolView
-                name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }}
-                size={15}
-                tintColor={colors.primary}
-              />
+              <PersonaTitleIcon />
               <Text className="text-md font-bold text-textPrimary">{profile.persona.title}</Text>
             </View>
 
             <View className="mt-sm flex-row flex-wrap gap-sm">
               {profile.persona.tags.map((tag) => (
-                // 페르소나 칩은 선택 여부에 따라 색을 분리해 실제 선택 UI로 바꾸기 쉽게 둡니다.
                 <PersonaChip
                   key={tag.id}
                   label={tag.label}
@@ -234,7 +328,7 @@ export default function SettingsScreen() {
             </View>
 
             <Text className="mt-sm text-sm font-medium text-textSecondary">
-              {profile.persona.description}
+              {selectedPersona?.description ?? profile.persona.description}
             </Text>
           </SettingsCard>
 
