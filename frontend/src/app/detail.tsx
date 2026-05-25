@@ -109,7 +109,7 @@ export default function TravelDetailUI() {
       
       {/* Day 탭 */}
         <View className="flex-row items-end px-9 mt-sm">
-          {(dayTabs.length > 0 ? dayTabs : [1]).map((d: number) => (
+          {(dayTabs?.length > 0 ? dayTabs : [1]).map((d: number) => (
             <Pressable
               key={d}
               onPress={() => setActiveDay(d)}

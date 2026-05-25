@@ -1,54 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { View, Text, Image, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronRight, ChevronDown, MapPin, Plus } from 'lucide-react-native';
 import Twemoji from 'react-native-twemoji';
 import BottomNav from '@/components/bottom-nav';
+import { getTrips } from '@/api/home';
+import { Trip } from '@/types/api';        // 💡 Trip 인터페이스 임포트
 
-//상세리스트
-type DayDetail = {
-  id: string;
-  day: number;
-  title: string;
-  location: string;
-  image: string;
-  emoji: string;
-};
-//특정 여행
-type TravelCard = {
-  id: string;
-  title: string;
-  location: string;
-  startDate: string;
-  endDate: string;
-  mainImage: string;
-  symbol: string;
-  details: DayDetail[];
-};
-
-const travelData: TravelCard[] = [
-  {
-    id: '1',
-    title: '도쿄 벚꽃 여행',
-    location: '도쿄, 일본',
-    startDate: '04.01',
-    endDate: '04.03',
-    mainImage: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e',
-    symbol: '🌸',
-    details: [
-      { id: 'd1', day: 1, title: '벚꽃 아래에서', location: '우에노공원', emoji: '🌸', image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e' },
-      { id: 'd2', day: 2, title: '시부야의 밤', location: '시부야', emoji: '✨', image: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26' },
-      { id: 'd3', day: 3, title: '신주쿠 교엔 산책', location: '신주쿠', emoji: '🌿', image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e' },
-    ],
-  },
-];
 
 export default function HomeScreen() {
   const router = useRouter();
   const [currentYear, setCurrentYear] = useState<number>(2026);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<number|null>(null);
 
-  const toggleExpand = (id: string) => {
+  // 1️⃣ 서버에서 받아올 대왕 알갱이(Trip) 수납함 만들기 (처음엔 빈손이니까 null)
+  const [tripData, setTripData] = useState<Trip[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 3️⃣ 화면이 켜지자마자 API를 찌르는 파수꾼(useEffect) 배치
+  useEffect(() => {
+    const loadTripData = async () => {
+      try {
+        setIsLoading(true);   // 로딩 스피너 켜기
+        setError(null);       // 에러 기록 초기화
+        setTripData([]);
+        // 💡 방금 만든 API 함수 호출!
+        const data = await getTrips(currentYear);
+        console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+        setTripData(data);    // 받아온 데이터를 useState 수납함에 쏙 저장
+      } catch (err) {
+        setTripData([]);
+        setError("여행 정보를 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setIsLoading(false);  // 성공하든 실패하든 로딩 스피너 끄기
+      }
+    };
+
+    loadTripData();
+  }, [currentYear]);
+
+  const toggleExpand = (id: number) => {
     setExpandedId(expandedId === id ? null : id);
   };
 
@@ -78,7 +70,7 @@ export default function HomeScreen() {
       
         {/* 여행 리스트 */}
         <View className="px-md mt-lg mb-md gap-lg">
-          {travelData.map((item) => {
+          {tripData.map((item) => {
             const isExpanded = expandedId === item.id;
             return (
               <View key={item.id} className="bg-surface rounded-lg overflow-hidden shadow-sm border border-border">
@@ -88,20 +80,20 @@ export default function HomeScreen() {
                           onPress={() => router.push({ pathname: '/detail', 
                                   params: { id: item.id,
                                   title: item.title,
-                                  location: item.location,
-                                  mainImage: item.mainImage,
-                                  startDate: item.startDate,
-                                  endDate: item.endDate,
-                                  symbol: item.symbol,
-                                  details: JSON.stringify(item.details)
+                                  location: item.destination,
+                                  mainImage: item.cover_photo_id,
+                                  startDate: item.start_date,
+                                  endDate: item.end_date,
+                                  symbol: "0",
+                                  details: JSON.stringify(item.tripDays)
                                 } })
                                 }
                   >
-                  <Image source={{ uri: item.mainImage }} className="w-full h-full" resizeMode="cover" />
+                  {/* <Image source={{ uri: item.cover_photo_id }} className="w-full h-full" resizeMode="cover" /> */}
 
                   {/* 날짜 뱃지 */}
                   <View className="absolute top-md left-md bg-muted rounded-md px-sm py-xs items-center shadow-sm">
-                    <Text className="text-sm font-sans text-textPrimary">{item.startDate} ~ {item.endDate}</Text>
+                    <Text className="text-sm font-sans text-textPrimary">{item.start_date} ~ {item.end_date}</Text>
                   </View>
 
                   {/* 심볼 */} 
@@ -114,7 +106,7 @@ export default function HomeScreen() {
                       ]
                     }}
                   >
-                    <Twemoji>{item.symbol}</Twemoji>
+                    {/* <Twemoji>{item.symbol}</Twemoji> */}
                   </View>
                                  
                 </View>
@@ -126,12 +118,12 @@ export default function HomeScreen() {
                   <Text className="text-lg font-bold text-textPrimary mb-xs font-sans">{item.title}</Text>
                   <View className="flex-row items-center gap-xs">
                     <MapPin size={12} color="#39536B" />
-                    <Text className="text-sm text-textSecondary font-sans">{item.location}</Text>
+                    <Text className="text-sm text-textSecondary font-sans">{item.destination}</Text>
                   </View>
                 </View>
 
                 {/* 아코디언 토글 */}
-                {item.details.length > 0 && (
+                {item.tripDays?.length > 0 && (
                   <Pressable
                     onPress={() => toggleExpand(item.id)}
                     className={
@@ -140,7 +132,7 @@ export default function HomeScreen() {
                     }
                   >
                     <Text className="text-sm text-primary font-sans">
-                      {isExpanded ? '접기' : `여행 상세 (${item.details.length}일)`}
+                      {isExpanded ? '접기' : `여행 상세 (${item.tripDays?.length}일)`}
                     </Text>
                     <ChevronDown
                       size={14}
@@ -154,28 +146,28 @@ export default function HomeScreen() {
                 {/* 상세 항목 */}
                 {isExpanded && (
                   <View className="bg-muted px-md pb-md pt-sm gap-sm">
-                    {item.details.map((detail) => (
+                    {item.tripDays.map((detail) => (
                       <Pressable
                         key={detail.id}
                         className="flex-row items-center bg-surface p-sm rounded-md shadow-sm"
                         onPress={() => router.push({ pathname: '/detail', 
                                   params: { id: item.id,
-                                  title: item.title,
-                                  location: item.location,
-                                  mainImage: item.mainImage,
-                                  startDate: item.startDate,
-                                  endDate: item.endDate,
-                                  symbol: item.symbol,
-                                  day: detail.day,
-                                  details: JSON.stringify(item.details)//상세 일기 배열 데이터를 문자열로 변환해서 보냄
+                                  title: detail.subtitle,
+                                  location: detail.location_summary,
+                                  mainImage: detail.represent_image,
+                                  startDate: item.start_date,
+                                  endDate: item.end_date,
+                                  symbol: detail.symbol,
+                                  day: detail.day_number,
+                                  details: JSON.stringify(item.tripDays)//상세 일기 배열 데이터를 문자열로 변환해서 보냄
                                  } })
                                 }
                       >
-                        <Image source={{ uri: detail.image }} className="w-14 h-14 rounded-md mr-md" resizeMode="cover" />
+                        {/* <Image source={{ uri: detail.represent_image }} className="w-14 h-14 rounded-md mr-md" resizeMode="cover" /> */}
                               <View className="flex-1">
                                 <View className="flex-row items-center justify-between mb-xs w-full pr-sm">
                                   {/* 왼쪽: Day 텍스트 */}
-                                  <Text className="text-sm font-bold text-primary font-sans">Day {detail.day}</Text>
+                                  <Text className="text-sm font-bold text-primary font-sans">Day {detail.day_number}</Text>
                                   
                                   {/* 오른쪽: 이모지 상자 */}
                                   <View 
@@ -195,18 +187,18 @@ export default function HomeScreen() {
                                               ]
                                   }}
                                 >
-                                  <Twemoji>{detail.emoji}</Twemoji>
+                                  <Twemoji>{detail.emotion}</Twemoji>
                                 </View>
                               </View>
 
                           </View>
                           {/* 타이틀 및 위치 정보 */}
                           <Text className="text-md font-bold text-textPrimary font-sans mb-xs" numberOfLines={1}>
-                            {detail.title}
+                            {detail.subtitle}
                           </Text>
                           <View className="flex-row items-center gap-xs">
                             <MapPin size={10} color="#39536B" />
-                            <Text className="text-sm text-textSecondary font-sans">{detail.location}</Text>
+                            <Text className="text-sm text-textSecondary font-sans">{detail.location_summary}</Text>
                           </View>                    
                         </View>                        
                       </Pressable>
