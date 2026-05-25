@@ -3,47 +3,41 @@ import { View, Text, Image, TouchableOpacity } from "react-native";
 import { router, useRouter } from "expo-router";
 import { Twemoji } from "react-native-twemoji";
 // import { FontAwesome5 } from "@expo/vector-icons";
-
+import { Days } from "@/types/api"; // 👈 API 타입 불러오기
 interface SimpleViewProps {
-  item: {
-    id: number; //시리얼 번호
-    location: string;
-    emoji: string;
-    day: string;
-    title: string;
-    img: string;
-    iconName: string;
-    // 필요한 다른 데이터들...
-  };
+  item: Days;
 }
-
 export default function SimpleView({ item }: SimpleViewProps) {
   return (
     <View className="absolute bottom-28 left-5 right-5 bg-white p-4 rounded-3xl shadow-lg">
       <TouchableOpacity
         onPress={() => {
+          if (!item || !item.id) {
+            console.log("아이템 정보가 없습니다!");
+            return;
+          }
           router.push({
-            pathname: "/Detail",
-            params: { id: item.id },
+            pathname: "/detail",
+            params: { id: `${item.id}` },
           });
         }}
       >
         <View className="flex-row items-center space-x-2">
-          <Image
-            source={{ uri: item.img }}
-            className="w-[48px] h-[48px] rounded-full"
-          />
           <View>
-            <Text className="text-xl font-bold p-3">{item.title}</Text>
+            <Text className="text-xl font-bold p-3">{item.subtitle}</Text>
             <View className="flex-row p-3">
-              <Text className="text-sm text-gray-500">📍 {item.location}</Text>
-              <Text>{item.location}</Text>
-              <Text>{item.day}</Text>
+              <Text className="text-sm text-gray-500">
+                📍 {item.location_summary}
+              </Text>
+              <Text>{item.date}</Text>
             </View>
           </View>
           <View className="ml-2">
-            {/* <FontAwesome5 name={item.iconName} size={56} color="#FF6B6B" /> */}
-            <Twemoji emoji={item.emoji} size={24}></Twemoji>
+            {item.emotion ? (
+              <Twemoji emoji={item.emotion} size={24} />
+            ) : (
+              <Text>🙂</Text> // 데이터가 없을 때의 대체재
+            )}
           </View>
         </View>
       </TouchableOpacity>

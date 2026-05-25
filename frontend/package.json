@@ -4,10 +4,10 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
+    "android": "EXPO_NO_AUTH=1 expo start --android",
+    "ios": "EXPO_NO_AUTH=1 expo start --ios",
+    "web": "EXPO_NO_AUTH=1 expo start --web",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
     "lint": "expo lint"
   },
   "dependencies": {
@@ -19,6 +19,7 @@
     "@react-navigation/elements": "^2.9.10",
     "@react-navigation/native": "^7.1.33",
     "@teovilla/react-native-web-maps": "^0.9.5",
+    "axios": "^1.16.1",
     "expo": "^54.0.0",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.13",
@@ -53,8 +54,10 @@
     "tailwindcss": "^3.4.19"
   },
   "devDependencies": {
+    "@types/axios": "^0.9.36",
     "@types/react": "~19.1.10",
     "@types/react-native-maps": "^0.24.1",
+    "cross-env": "^10.1.0",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.9.2"
   },
