@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: FastAPI",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      // 🔥 워크스페이스 폴더 내부의 가상환경 파이썬 디버거 엑세스를 명확히 강제합니다.
+      "python": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+      "jinja": true,
+      "cwd": "${workspaceFolder}/backend",
+      "subProcess": false
+    }
+  ]
+}

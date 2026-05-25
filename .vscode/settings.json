@@ -1,3 +1,17 @@
 {
-  "python-envs.defaultEnvManager": "ms-python.python:system"
+  // 1. 작업 영역의 기본 파이썬 인터프리터 경로를 내 가상환경으로 고정합니다.
+  "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+
+  // 2. 새 터미널이 열릴 때 자동으로 가상환경을 활성화하도록 유도합니다.
+  "python.terminal.activateEnvInCurrentTerminal": true,
+
+  // 3. 파이썬 환경 매니저 설정을 가상환경 중심으로 변경합니다.
+  "python-envs.defaultEnvManager": "ms-python.python:venv",
+  "python-envs.pythonProjects": [
+    {
+      "path": "backend",
+      "envManager": "ms-python.python:venv", // 👈 기존 system에서 venv로 변경!
+      "packageManager": "ms-python.python:pip"
+    }
+  ]
 }
