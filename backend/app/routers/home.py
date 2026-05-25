@@ -1,28 +1,41 @@
-from urllib.parse import quote
-
-from fastapi import APIRouter, Depends, HTTPException, Request
+from typing import List
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import extract
+from fastapi.encoders import jsonable_encoder
 
-from app.db.models import Diary, Photo, Trip, TripDay
+from app.db.models import Trip, TripDay
 from app.db.session import get_db
-from app.schemas.diary import (
-    DetailList,MainList
-)
+from app.schemas.home import MainList
 
 router = APIRouter(tags=["home"])
 
-@router.get("/trips/{trip_id}", response_model=MainList)
-def get_trip(
-    trip_id: int, request: Request, db: Session = Depends(get_db)
-) -> MainList:
-    trip = _get_trip_or_404(db, trip_id)
-    base = _base_url(request)
-    trip_days = (
+
+def _get_tripList(db: Session, year: int) -> List[Trip]:
+    trip = (
+        db.query(Trip)
+        .filter(extract('year', Trip.start_date) == year, 
+        Trip.deleted_at.is_(None))
+        .all()
+    )
+    return trip
+
+def _get_detaiList(db:Session, trip_id:int) -> List[TripDay]:
+    detailList = (
         db.query(TripDay)
-        .filter(TripDay.trip_id == trip_id)
+        .filter(trip_id == TripDay.trip_id)
         .order_by(TripDay.day_number)
         .all()
     )
-    return MainList(
+    return detailList
+
+@router.get("/trips", response_model=List[MainList])
+def get_mainlList(
+    year: int, db: Session = Depends(get_db)
+):
+    tripList = _get_tripList(db, year)
+    
+    for item in tripList:
+        item.tripDays = _get_detaiList(db,item.id)
         
-    )
+    return jsonable_encoder(tripList)
