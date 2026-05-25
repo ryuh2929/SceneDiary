@@ -39,6 +39,10 @@ def get_mainlList(
     # 해당 연도의 여행 리스트 조회
     tripList = _get_tripList(db, year)
     
+    if not tripList:  # None(데이터 없음) 일 때 
+        return {"message": "해당 여행 정보를 찾을 수 없습니다."} 
+    
+    
     # 각 여행 객체를 순회하며 일차별 상세 스케줄을 동적으로 주입
     for item in tripList:
         # 스키마(MainList)의 'tripDays' 필드명과 일치하는 속성에 자식 리스트를 대입

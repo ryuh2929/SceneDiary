@@ -15,9 +15,7 @@ def _get_detailPage(db:Session,trip_id:int)-> Trip:
     trip =(
         db.query(Trip)
         .filter(Trip.id == trip_id,Trip.deleted_at.is_(None))
-        # .all()을 썼기 때문에, 조회된 결과가 딱 1개여도 파이썬은 무조건
-        # 대괄호로 감싸인 리스트 형태(예: [Trip객체])로 데이터를 반환
-        .all()
+        .first()
     )
     return trip
 
@@ -34,13 +32,19 @@ def _get_dayDetail(db:Session, trip_id:int)->List[TripDay]:
     return dayDetail
 
 # 여행 상세 조회 API — 특정 여행 정보와 함께 Day 1부터 Day N까지의 일정을 한 번에 반환
-@router.get("/trip_days",response_model=List[DetailPage])
+@router.get("/trip_days",response_model=DetailPage)
 def get_detailPage(
     trip_id:int, db: Session = Depends(get_db)
 ):
+    # 내부 조회 함수가 .first()를 사용하여 단일 'Trip 객체' 알맹이 하나만 딱 줍니다.
     detailPage = _get_detailPage(db,trip_id)
     
-    for item in detailPage:
-        item.tripDetail = _get_dayDetail(db,item.id)
+    if not detailPage:  # detailPage가 None(데이터 없음) 일 때 
+     return {"message": "해당 여행 정보를 찾을 수 없습니다."}
+    
+    # 꺼내온 단일 여행 객체(detailPage)에 곧바로 접근하여, 해당 여행에 묶여 있는 
+    # 모든 일차별 스케줄 리스트를 DB에서 싹 긁어와 'tripDetail' 필드 자리에 직접 꽂아줍니다.
+    detailPage.tripDetail= _get_dayDetail(db,trip_id)
+    
     
     return jsonable_encoder(detailPage)
