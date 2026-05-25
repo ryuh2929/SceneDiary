@@ -134,7 +134,8 @@ export default function TravelDetailUI() {
 
           {/* 최대 7개 미만일 때만 + 버튼 표시 */}
           {dayTabs.length < 7 && (
-            <Pressable className=" rounded-t-lg h-[30px] bg-muted min-w-[36px] items-center justify-center shadow-sm">
+            <Pressable onPress={()=>router.push('/add')}
+            className=" rounded-t-lg h-[30px] bg-muted min-w-[36px] items-center justify-center shadow-sm">
               <Plus size={16} color="#39536B" strokeWidth={3} />
             </Pressable>
           )}

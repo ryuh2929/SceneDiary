@@ -14,7 +14,7 @@ type DayDetail = {
   image: string;
   emoji: string;
 };
-//여행
+//특정 여행
 type TravelCard = {
   id: string;
   title: string;
@@ -62,19 +62,20 @@ export default function HomeScreen() {
             <Pressable onPress={() => setCurrentYear(prev => prev - 1)} className="p-xs">
               <ChevronLeft size={20} color="#39536B" />
             </Pressable>
+            {/* 연도 */}
             <Text className="text-lg font-bold text-textPrimary font-sans">{currentYear}</Text>
             <Pressable onPress={() => setCurrentYear(prev => prev + 1)} className="p-xs">
               <ChevronRight size={20} color="#39536B" />
             </Pressable>
           </View>
         </View>
-          <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 180 }}
-        >
         
-
+          <ScrollView
+          className="flex-1" 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 180 }}
+          >
+      
         {/* 여행 리스트 */}
         <View className="px-md mt-lg mb-md gap-lg">
           {travelData.map((item) => {
@@ -221,6 +222,7 @@ export default function HomeScreen() {
 
       {/* FAB */}
       <Pressable
+        onPress={()=>router.push('/add')}
         className="absolute right-md bg-fab w-14 h-14 rounded-full items-center justify-center shadow-lg"
         style={{ zIndex: 99, bottom: 125 }}
       >
