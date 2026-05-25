@@ -56,14 +56,10 @@ export default {
     experiments: {
       typedRoutes: true,
     },
-    owner: "my-team-name", // 팀 이름을 아무거나 적으세요
     extra: {
       EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
       EXPO_PUBLIC_GOOGLE_MAPS_API_KEY:
         process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
-      eas: {
-        projectId: "550e8400-e29b-41d4-a716-446655440000", // 임의의 UUID를 생성해서 넣으세요
-      },
     },
   },
 };
