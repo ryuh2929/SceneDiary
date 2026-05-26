@@ -8,6 +8,27 @@ import { getTrips } from '@/api/home';
 import { Trip } from '@/types/api';        // 💡 Trip 인터페이스 임포트
 
 
+// Twemoji 코드포인트(hex) → 실제 이모지 문자. 예: "1f5fc"→🗼, "1f1f0-1f1f7"→🇰🇷
+function codepointToEmoji(codepoint: string): string {
+  return codepoint
+    .split("-")
+    .map((cp) => String.fromCodePoint(parseInt(cp, 16)))
+    .join("");
+}
+
+// 감정·상징·날씨 이모지를 Twemoji(그림) 로 그립니다.
+// react-native-twemoji 는 size prop이 없어서 style 로 크기를 줘야 합니다.
+// 이 라이브러리에 없는(최신) 이모지는 시스템 이모지로 자동 대체합니다.
+// 빈 문자열(예: symbol 미설정)이면 아무것도 그리지 않습니다.
+function EmojiIcon({codepoint, size}: {codepoint: string; size: number}) {
+  if (!codepoint) return null;
+  const char = codepointToEmoji(codepoint);
+  if (Twemoji.supportedEmojis.includes(char)) {
+    return <Twemoji style={{width: size, height: size}}>{char}</Twemoji>;
+  }
+  return <Text style={{fontSize: size}}>{char}</Text>;
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const [currentYear, setCurrentYear] = useState<number>(2026);
@@ -84,7 +105,7 @@ export default function HomeScreen() {
                                   mainImage: item.cover_photo_id,
                                   startDate: item.start_date,
                                   endDate: item.end_date,
-                                  symbol: "0",
+                                  symbol: "",
                                   details: JSON.stringify(item.tripDays)
                                 } })
                                 }
@@ -99,14 +120,9 @@ export default function HomeScreen() {
                   {/* 심볼 */} 
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
                   <View
-                    style={{
-                      transform: [
-                        { scale: 0.15 }, 
-                        { translateY: 10 } 
-                      ]
-                    }}
+                    style={{transform: [{ scale: 0.15 }, { translateY: 10 }]}}
                   >
-                    {/* <Twemoji>{item.symbol}</Twemoji> */}
+                    {/* <EmojiIcon codepoint={symbol} size={28} /> */}
                   </View>
                                  
                 </View>
