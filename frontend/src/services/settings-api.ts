@@ -77,6 +77,28 @@ export async function updateSettingsToggle(toggleId: SettingsToggle['id'], enabl
   return normalizeSettingsProfile(profile);
 }
 
+export async function updateNickname(nickname: string) {
+  const deviceId = await getOrCreateDeviceId();
+  const query = new URLSearchParams({ device_id: deviceId });
+
+  // 닉네임은 현재 device_id 유저의 users.nickname 컬럼에 저장됩니다.
+  const response = await fetch(`${getApiBaseUrl()}/settings/nickname?${query.toString()}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ nickname }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update nickname.');
+  }
+
+  const profile = (await response.json()) as SettingsProfile;
+
+  return normalizeSettingsProfile(profile);
+}
+
 function normalizeTravelTypeIcon(icon: unknown): TravelTypeIconName {
   // 백엔드가 재시작되지 않은 경우 예전 { ios, android, web } 형태가 올 수 있어서 프론트에서 한 번 더 정리합니다.
   const iconKey =

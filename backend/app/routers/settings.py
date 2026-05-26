@@ -7,6 +7,7 @@ from app.db.session import get_db
 from app.models.users import User
 from app.schemas.settings import (
     SettingsProfile,
+    UpdateNicknameRequest,
     UpdateSettingsToggleRequest,
     UpdateWritingPersonaRequest,
 )
@@ -156,6 +157,32 @@ def update_settings_toggle(
     elif payload.toggle_id == "pushNotification":
         user.push_enabled = payload.enabled
 
+    user.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(user)
+
+    return to_settings_profile(user)
+
+
+@router.patch("/nickname", response_model=SettingsProfile)
+def update_nickname(
+    payload: UpdateNicknameRequest,
+    device_id: str = Query(...),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    nickname = payload.nickname.strip()
+
+    # 빈 닉네임이나 지나치게 긴 닉네임은 DB에 저장하지 않습니다.
+    # 현재 users.nickname 컬럼은 CHAR(50)이므로 프런트 제한보다 넉넉하게 50자로 검증합니다.
+    if not nickname:
+        raise HTTPException(status_code=400, detail="Nickname is required")
+
+    if len(nickname) > 50:
+        raise HTTPException(status_code=400, detail="Nickname is too long")
+
+    user = find_user_or_404(db, device_id)
+    user.nickname = nickname
     user.updated_at = datetime.now(timezone.utc)
 
     db.commit()

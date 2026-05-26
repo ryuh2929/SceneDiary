@@ -52,3 +52,9 @@ class UpdateSettingsToggleRequest(BaseModel):
     # 프런트 id는 camelCase를 쓰고, 백엔드에서 실제 DB 컬럼명으로 매핑합니다.
     toggle_id: SettingsToggleId
     enabled: bool
+
+
+class UpdateNicknameRequest(BaseModel):
+    # 사용자가 설정 화면에서 수정한 닉네임입니다.
+    # 공백 제거와 길이 검증은 라우터에서 한 번 더 처리합니다.
+    nickname: str
