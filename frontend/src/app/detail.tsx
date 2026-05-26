@@ -181,35 +181,36 @@ export default function TravelDetailUI() {
         </View>
 
       {/* 메인 콘텐츠 카드 */}
-      <View className="px-md  pb-xl">
+      <View className="px-md  pb-xl pt-sm -mt-[8px]">
         <View className="bg-surface rounded-lg p-md shadow-sm border border-border">
 
           {/* 소제목 & 감정 이모지 */}
-          <View className="flex-row justify-between items-center mb-sm w-full">
-            <Text className="text-lg font-bold text-textPrimary font-sans mb-xs" numberOfLines={1}>
-          {currentDayData?.subtitle  ||  '상세 일정이 없습니다.'}
-            </Text>
+          <View className="flex-row justify-between items-end mb-md w-full">
+            <View className="flex-1 mr-xs">
+              <Text className="text-lg font-bold text-textPrimary font-sans">
+                {currentDayData?.subtitle || '상세 일정이 없습니다.'}
+              </Text>
+            </View>
             {/* 오른쪽: 홈 화면 방식의 이모지 상자 스타일 그대로 적용 */}
           <View 
             style={{
-              width: 28,
-              height: 28,
+              width: 44,
+              height: 44,
               flexDirection: "row",
               justifyContent: "center",
               alignItems: "center",
+              marginTop: 2,
             }}
           >
             {currentDayData?.emotion && (
               <View
                 style={{
                   transform: [
-                    { scale: 0.15 },
-                    { translateX: 0 },
-                    { translateY: 30 }
+                    { scale:2 },
                   ]
                 }}
               >
-                <Twemoji>{currentDayData.emotion}</Twemoji>
+                <Twemoji>{String.fromCodePoint(parseInt(currentDayData.emotion, 16))}</Twemoji>
               </View>
             )}
           </View>
@@ -217,7 +218,7 @@ export default function TravelDetailUI() {
 
 
         {/* 📍 세부 위치 정보 연동 */}
-        <View className="flex-row items-center gap-xs ">
+        <View className="flex-row items-center gap-xs mb-sm">
           <MapPin size={10} color="#39536B" />
           <Text className="text-sm text-textSecondary font-sans mr-1">
             {currentDayData?.location_summary || '위치 정보 없음'}
