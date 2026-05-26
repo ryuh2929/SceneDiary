@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-import type { SettingsProfile, TravelTypeIconName } from '@/data/settings';
+import type { SettingsProfile, SettingsToggle, TravelTypeIconName } from '@/data/settings';
 import { getOrCreateDeviceId } from '@/services/device-id';
 
 function getApiBaseUrl() {
@@ -48,6 +48,28 @@ export async function updateWritingPersona(personaId: string) {
 
   if (!response.ok) {
     throw new Error('Failed to update writing persona.');
+  }
+
+  const profile = (await response.json()) as SettingsProfile;
+
+  return normalizeSettingsProfile(profile);
+}
+
+export async function updateSettingsToggle(toggleId: SettingsToggle['id'], enabled: boolean) {
+  const deviceId = await getOrCreateDeviceId();
+  const query = new URLSearchParams({ device_id: deviceId });
+
+  // 화면에서 쓰는 토글 id와 값을 보내면 백엔드가 실제 DB 컬럼으로 매핑해서 저장합니다.
+  const response = await fetch(`${getApiBaseUrl()}/settings/toggle?${query.toString()}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ toggle_id: toggleId, enabled }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update settings toggle.');
   }
 
   const profile = (await response.json()) as SettingsProfile;

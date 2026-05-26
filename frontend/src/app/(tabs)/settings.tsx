@@ -22,7 +22,11 @@ import {
   SettingsToggle,
   TravelTypeIconName,
 } from '@/data/settings';
-import { fetchSettingsProfile, updateWritingPersona } from '@/services/settings-api';
+import {
+  fetchSettingsProfile,
+  updateSettingsToggle,
+  updateWritingPersona,
+} from '@/services/settings-api';
 
 const colors = {
   primary: '#5B7DBB',
@@ -214,6 +218,7 @@ export default function SettingsScreen() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isSavingPersona, setIsSavingPersona] = useState(false);
+  const [savingToggleId, setSavingToggleId] = useState<SettingsToggle['id'] | null>(null);
 
   // 토글 값은 화면에서 즉시 확인할 수 있도록 로컬 상태로 관리하고, 이후 DB/API 값으로 대체하기 쉽게 id 기준 객체로 변환합니다.
   const initialToggles = useMemo(
@@ -320,6 +325,35 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleToggleChange = async (toggleId: SettingsToggle['id'], enabled: boolean) => {
+    if (savingToggleId) {
+      return;
+    }
+
+    const previousValue = toggles[toggleId];
+
+    // 토글은 손맛이 중요하므로 먼저 화면을 바꾸고, 저장 실패 시 이전 값으로 되돌립니다.
+    setToggles((current) => ({ ...current, [toggleId]: enabled }));
+    setSavingToggleId(toggleId);
+    setProfileError(null);
+
+    try {
+      const updatedProfile = await updateSettingsToggle(toggleId, enabled);
+
+      setProfile(updatedProfile);
+      setToggles(
+        Object.fromEntries(
+          updatedProfile.toggles.map((toggle) => [toggle.id, toggle.enabled]),
+        ) as Record<SettingsToggle['id'], boolean>,
+      );
+    } catch (error) {
+      setToggles((current) => ({ ...current, [toggleId]: previousValue }));
+      setProfileError(error instanceof Error ? error.message : 'Failed to update settings toggle.');
+    } finally {
+      setSavingToggleId(null);
+    }
+  };
+
   // 하단 네브바는 별도 컴포넌트가 담당하므로, 이 화면은 안전 영역과 본문 여백만 책임집니다.
   const contentInset = Platform.select({
     ios: { paddingTop: 20, paddingBottom: insets.bottom + 24 },
@@ -403,9 +437,7 @@ export default function SettingsScreen() {
               key={toggle.id}
               item={toggle}
               value={toggles[toggle.id]}
-              onValueChange={(value) =>
-                setToggles((current) => ({ ...current, [toggle.id]: value }))
-              }
+              onValueChange={(value) => handleToggleChange(toggle.id, value)}
             />
           ))}
         </View>

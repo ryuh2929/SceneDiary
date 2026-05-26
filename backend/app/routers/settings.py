@@ -5,7 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.users import User
-from app.schemas.settings import SettingsProfile, UpdateWritingPersonaRequest
+from app.schemas.settings import (
+    SettingsProfile,
+    UpdateSettingsToggleRequest,
+    UpdateWritingPersonaRequest,
+)
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -129,6 +133,29 @@ def update_writing_persona(
 
     user = find_user_or_404(db, device_id)
     user.writing_persona = persona_id
+    user.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(user)
+
+    return to_settings_profile(user)
+
+
+@router.patch("/toggle", response_model=SettingsProfile)
+def update_settings_toggle(
+    payload: UpdateSettingsToggleRequest,
+    device_id: str = Query(...),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    user = find_user_or_404(db, device_id)
+
+    # 프런트에서 쓰는 토글 id를 실제 users 테이블 컬럼에 연결합니다.
+    # UI 이름이 바뀌어도 DB 컬럼명은 이 매핑만 수정하면 됩니다.
+    if payload.toggle_id == "darkMode":
+        user.dark_mode = payload.enabled
+    elif payload.toggle_id == "pushNotification":
+        user.push_enabled = payload.enabled
+
     user.updated_at = datetime.now(timezone.utc)
 
     db.commit()
