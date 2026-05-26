@@ -1,3 +1,10 @@
+export interface Photo {
+  id: number;
+  file_url: string;
+  thumbnail_url: string;
+  image_url: string; // 가공된 URL
+  thumbnail_image_url: string; // 가공된 썸네일 URL
+}
 export interface Days {
   id: number;
   trip_id: number;
@@ -14,6 +21,8 @@ export interface Days {
   representative_lat: number | null;
   representative_lon: number | null;
   represent_image: number | null;
+
+  photos: Photo[];
 }
 
 export interface Trip {
