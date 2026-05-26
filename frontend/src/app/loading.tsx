@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { Search } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Image, Search } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
@@ -12,28 +12,53 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+type PreparedPhoto = {
+  fileUri: string;
+  thumbnailUri: string;
+  originalFilename: string;
+  mimeType: string;
+  fileSizeBytes?: number;
+  width: number;
+  height: number;
+  displayOrder: number;
+};
+
 const colors = {
   primary: '#5B7DBB',
   primaryLight: '#A9C3E6',
   accent: '#F6D9A6',
-  background: '#F4F6F9',
   surface: '#FFFFFF',
   textPrimary: '#152538',
   textSecondary: '#39536B',
-  border: '#A9C3E6',
   muted: '#E8EDF5',
   textOnPrimary: '#FFFFFF',
 };
 
 const analysisSteps = [
-  '사진 메타데이터 분석 중',
-  '장소와 시간을 확인하는 중',
-  '여행 분위기를 정리하는 중',
-  '일기 초안을 준비하는 중',
+  '사진을 업로드할 준비 중',
+  '1024px 이미지 정보를 확인 중',
+  '썸네일 묶음을 정리 중',
+  '일기 초안을 준비 중',
 ];
+
+function parsePhotosParam(value: string | string[] | undefined): PreparedPhoto[] {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  if (!rawValue) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(decodeURIComponent(rawValue));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 export default function LoadingScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ photos?: string }>();
+  const photos = useMemo(() => parsePhotosParam(params.photos), [params.photos]);
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 16);
   const rotation = useSharedValue(0);
@@ -41,9 +66,9 @@ export default function LoadingScreen() {
   const [stepIndex, setStepIndex] = useState(0);
 
   const progressWidth = useMemo(() => `${progress}%` as `${number}%`, [progress]);
+  const photoCountLabel = photos.length > 0 ? `${photos.length}장` : '선택한 사진';
 
   useEffect(() => {
-    // 로딩 상태를 시각적으로 보여주기 위해 원형 테두리를 반복 회전시킵니다.
     rotation.value = withRepeat(
       withTiming(360, { duration: 1400, easing: Easing.linear }),
       -1,
@@ -52,14 +77,13 @@ export default function LoadingScreen() {
   }, [rotation]);
 
   useEffect(() => {
-    // 실제 분석 API 연결 전까지는 진행률과 안내 문구를 목업 상태로 갱신합니다.
     const progressTimer = setInterval(() => {
       setProgress((current) => {
-        if (current >= 92) {
+        if (current >= 96) {
           return current;
         }
 
-        return current + 7;
+        return current + 6;
       });
     }, 520);
 
@@ -81,8 +105,7 @@ export default function LoadingScreen() {
     <View
       className="flex-1 items-center bg-surface px-lg"
       style={{ paddingTop: insets.top + 24, paddingBottom: bottomInset }}>
-      <View
-        className="mx-auto w-full max-w-[720px] flex-1 items-center justify-center px-xl">
+      <View className="mx-auto w-full max-w-[720px] flex-1 items-center justify-center px-xl">
         <View className="items-center">
           <View className="relative h-36 w-36 items-center justify-center">
             <View
@@ -107,14 +130,22 @@ export default function LoadingScreen() {
             </View>
           </View>
 
-          <Text className="mt-lg text-xl font-extrabold text-textPrimary">
+          <Text className="mt-lg text-center text-xl font-extrabold text-textPrimary">
             {analysisSteps[stepIndex]}
           </Text>
-          <Text className="mt-xs text-md font-semibold text-textSecondary">잠시만 기다려주세요...</Text>
+          <Text className="mt-xs text-center text-md font-semibold text-textSecondary">
+            {photoCountLabel}을 하루 기록으로 묶고 있어요
+          </Text>
+
+          <View className="mt-lg flex-row items-center rounded-lg bg-muted px-md py-sm">
+            <Image size={18} color={colors.primary} />
+            <Text className="ml-xs text-sm font-bold text-textSecondary">
+              file_url: 리사이징 이미지 · thumbnail_url: 미리보기 이미지
+            </Text>
+          </View>
 
           <View className="mt-xl w-[280px] max-w-full">
             <View className="h-[6px] overflow-hidden rounded-full bg-muted">
-              {/* 진행률은 실제 분석 API가 연결되면 서버 상태값으로 교체하면 됩니다. */}
               <View
                 className="h-full rounded-full bg-accent"
                 style={{ width: progressWidth }}
