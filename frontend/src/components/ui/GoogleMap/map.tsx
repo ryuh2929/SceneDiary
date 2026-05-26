@@ -18,8 +18,9 @@ function PhotoMarker({ item, photoUrl, onPress }: PhotoMarkerProps) {
   };
   const { width, height } = useWindowDimensions();
   const imageSize = Math.min(width * 0.2, 88);
+  const [isLoaded, setIsLoaded] = useState(false);
+
   if (Platform.OS === "android") {
-    const [isLoaded, setIsLoaded] = useState(false);
     // android버전
     return (
       <Marker coordinate={coordinate} pinColor="#5B7DBB" onPress={onPress} />
@@ -44,7 +45,7 @@ function PhotoMarker({ item, photoUrl, onPress }: PhotoMarkerProps) {
       <Marker
         coordinate={coordinate}
         anchor={{ x: 0.5, y: 1 }}
-        tracksViewChanges={false}
+        tracksViewChanges={!isLoaded}
         onPress={onPress}
       >
         <View
@@ -79,6 +80,7 @@ function PhotoMarker({ item, photoUrl, onPress }: PhotoMarkerProps) {
                   height: 52,
                   borderRadius: 26,
                 }}
+                onLoad={() => setIsLoaded(true)}
                 resizeMode="cover"
               />
             ) : (
