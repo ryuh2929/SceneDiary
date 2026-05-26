@@ -11,9 +11,8 @@ DB 테이블 모델 정의.
 users
   └── trips
         ├── (cover_photo_id) ─→ photos
-        └── trip_days
-              ├── diaries
-              │     └── diary_generations  (AI 생성 이력)
+        └── trip_days  (일기 내용 포함 — 구 diaries 합침)
+              ├── diary_generations  (AI 생성 이력)
               └── photos
                     └── photo_generations  (AI 분석 이력)
 """
@@ -95,7 +94,7 @@ class Trip(Base):
     # → photos.id (대표 사진. 선택값)
     cover_photo_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
-    # 상태: 'draft', 'published' 등. DB 기본값 'draft'.
+    # 상태: 'draft'(생성 직후, DB 기본값) → 'completed'(최종 저장 시). 'published'는 미사용.
     status: Mapped[str] = mapped_column(String(20), server_default=text("'draft'"))
 
     created_at: Mapped[datetime] = mapped_column(DateTime)
@@ -139,6 +138,19 @@ class TripDay(Base):
         comment="Twemoji codepoint (lowercase hex, multi-codepoint joined by -). e.g. 1f60a",
     )
 
+    # ── 일기 내용 (구 diaries 테이블에서 합침) ──
+    # 생성 전에는 비어 있을 수 있어 모두 nullable.
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)  # 일기 본문
+    # 일기의 상징 (Twemoji 코드포인트)
+    symbol: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Twemoji codepoint (lowercase hex, multi-codepoint joined by -). e.g. 1f60a, 1f1f0-1f1f7",
+    )
+    word_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # AI 생성 완료 시각 (미생성이면 NULL)
+    generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     # → photos.id (그날 대표 사진. 선택값. UI 하단 사진 바에서 고른 사진)
     represent_image: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
@@ -149,39 +161,7 @@ class TripDay(Base):
     )
 
 
-# ─────────────────────────────────────────────────────────────
-# diaries 테이블 - 일기
-# ─────────────────────────────────────────────────────────────
-class Diary(Base):
-    """일기 본문. trip_day 하나당 하나의 일기."""
-
-    __tablename__ = "diaries"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-
-    # → trip_days.id
-    trip_day_id: Mapped[int] = mapped_column(BigInteger)
-    # → users.id (작성자)
-    user_id: Mapped[int] = mapped_column(BigInteger)
-
-    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    # Text = 길이 제한 없는 긴 문자열 (일기 본문)
-    content: Mapped[str] = mapped_column(Text)
-
-    word_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # AI 생성 완료 시각 (수동 작성이면 NULL)
-    generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    # 일기의 상징 (Twemoji 코드포인트로 저장)
-    symbol: Mapped[str | None] = mapped_column(
-        String(50),
-        nullable=True,
-        comment="Twemoji codepoint (lowercase hex, multi-codepoint joined by -). e.g. 1f60a, 1f1f0-1f1f7",
-    )
-
-    created_at: Mapped[datetime] = mapped_column(DateTime)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.current_timestamp()
-    )
+# (구 diaries 테이블은 trip_days 로 합쳐짐 — content/symbol/word_count/generated_at 참고)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -254,8 +234,8 @@ class DiaryGeneration(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
-    # → diaries.id
-    diary_id: Mapped[int] = mapped_column(BigInteger)
+    # → trip_days.id (합치기 후: 일기 = trip_day)
+    trip_day_id: Mapped[int] = mapped_column(BigInteger)
 
     # 사용한 AI 모델명 (예: "gpt-4o")
     model_used: Mapped[str] = mapped_column(String(100))
