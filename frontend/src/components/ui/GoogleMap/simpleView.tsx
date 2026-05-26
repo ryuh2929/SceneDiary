@@ -1,43 +1,121 @@
-// 📄 따로 만든 파일: MapCard.tsx
-import { View, Text, Image, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  useWindowDimensions,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Days } from "@/types/api";
 import { router, useRouter } from "expo-router";
-import { Twemoji } from "react-native-twemoji";
-// import { FontAwesome5 } from "@expo/vector-icons";
-import { Days } from "@/types/api"; // 👈 API 타입 불러오기
+import { MapPin, Calendar } from "lucide-react-native";
+
 interface SimpleViewProps {
   item: Days;
 }
+
+function EmojiIcon({ codepoint, size }: { codepoint: string; size: number }) {
+  if (!codepoint) return null;
+  const char = codepointToEmoji(codepoint);
+
+  return <Text style={{ fontSize: size }}>{char}</Text>;
+}
+
+function codepointToEmoji(codepoint: string): string {
+  return codepoint
+    .split("-")
+    .map((cp) => String.fromCodePoint(parseInt(cp, 16)))
+    .join("");
+}
+
 export default function SimpleView({ item }: SimpleViewProps) {
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+
+  const photo =
+    item.photos?.find((p) => p.id === item.represent_image) || item.photos?.[0];
+
+  const horizontalMargin = width * 0.03;
+  const bottomOffset = height * 0.085 + insets.bottom;
+  const imageSize = Math.min(width * 0.2, 88);
+  const cardPadding = width * 0.015;
+  const borderRadius = width * 0.05;
+  const emojiSize = Math.min(width * 0.1, 42);
+
   return (
-    <View className="absolute bottom-28 left-5 right-5 bg-white p-4 rounded-3xl shadow-lg">
+    <View
+      style={{
+        position: "absolute",
+        left: horizontalMargin,
+        right: horizontalMargin,
+        bottom: bottomOffset,
+        backgroundColor: "#FFFFFF",
+        padding: cardPadding,
+        borderRadius,
+        shadowColor: "#000000",
+        shadowOpacity: 0.18,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 8,
+      }}
+    >
       <TouchableOpacity
+        activeOpacity={0.85}
         onPress={() => {
-          if (!item || !item.id) {
-            console.log("아이템 정보가 없습니다!");
-            return;
-          }
           router.push({
             pathname: "/detail",
             params: { id: `${item.id}` },
           });
         }}
       >
-        <View className="flex-row items-center space-x-2">
-          <View>
-            <Text className="text-xl font-bold p-3">{item.subtitle}</Text>
-            <View className="flex-row p-3">
-              <Text className="text-sm text-gray-500">
-                📍 {item.location_summary}
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {photo && (
+            <View
+              style={{
+                width: imageSize,
+                height: imageSize,
+                borderRadius: imageSize * 0.2,
+                overflow: "hidden",
+                marginRight: width * 0.02,
+              }}
+            >
+              <Image
+                source={{ uri: photo.thumbnail_image_url }}
+                style={{ width: imageSize, height: imageSize }}
+                resizeMode="cover"
+              />
+            </View>
+          )}
+
+          <View className="flex-1">
+            <Text
+              className="text-lg text-black font-bold"
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              {item.subtitle}
+            </Text>
+
+            <View className="mt-2 flex-row items-center">
+              <Text
+                className="text-sm text-gray-500 font-bold"
+                numberOfLines={1}
+              >
+                <MapPin size={imageSize * 0.15} color="#39536B" />{" "}
+                {item.location_summary}
               </Text>
-              <Text>{item.date}</Text>
+
+              <Text
+                className="text-sm text-gray-500 flex-1 ml-2"
+                numberOfLines={1}
+              >
+                <Calendar size={imageSize * 0.15} color="#39536B" /> {item.date}
+              </Text>
             </View>
           </View>
-          <View className="ml-2">
-            {item.emotion ? (
-              <Twemoji emoji={item.emotion} size={24} />
-            ) : (
-              <Text>🙂</Text> // 데이터가 없을 때의 대체재
-            )}
+
+          <View>
+            <EmojiIcon codepoint={item.emotion ?? ""} size={emojiSize} />
           </View>
         </View>
       </TouchableOpacity>

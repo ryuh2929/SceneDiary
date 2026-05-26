@@ -1,30 +1,159 @@
-import React, { useState, useEffect } from "react";
-import { View, Image } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import { Image, Platform, View, useWindowDimensions } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
-import SimpleView from "./simpleView"; // 이사 간 카드뷰 불러오기
-import { getTripDays } from "@/api/map"; // 👈 우리가 만든 API 호출 함수
-import { Days } from "@/types/api"; // 👈 아까 정의한 타입
+import SimpleView from "./simpleView";
+import { getTripDays } from "@/api/map";
+import { Days } from "@/types/api";
+
+type PhotoMarkerProps = {
+  item: Days;
+  photoUrl?: string;
+  onPress: () => void;
+};
+
+function PhotoMarker({ item, photoUrl, onPress }: PhotoMarkerProps) {
+  const coordinate = {
+    latitude: item.representative_lat || 0,
+    longitude: item.representative_lon || 0,
+  };
+  const { width, height } = useWindowDimensions();
+  const imageSize = Math.min(width * 0.2, 88);
+  if (Platform.OS === "android") {
+    const [isLoaded, setIsLoaded] = useState(false);
+    // android버전
+    return (
+      <Marker coordinate={coordinate} pinColor="#5B7DBB" onPress={onPress} />
+
+      // <Marker
+      //   // 1. [핵심] 커스텀 뷰(자식 컴포넌트)를 모두 제거합니다.
+      //   coordinate={coordinate}
+      //   onPress={onPress}
+      //   // 2. [가장 확실한 해결책] image 속성에 이미지 URL을 직접 넣습니다.
+      //   // 팁: URI가 HTTP인 경우, 안드로이드는 보안 정책상 기본적으로 차단합니다. HTTPS를 사용하세요.
+      //   image={{ uri: photoUrl, width: imageSize, height: imageSize }}
+      //   // 3. [중요] 안드로이드 성능 최적화를 위해 tracksViewChanges를 끕니다.
+      //   // 이제는 뷰가 아니라 이미지이므로 변경 사항을 추적할 필요가 없습니다.
+      //   tracksViewChanges={false}
+      //   // 4. [레이아웃 안정화] 마커의 중심점을 고정합니다.
+      //   anchor={{ x: 0.5, y: 0.5 }}
+      // ></Marker>
+    );
+  } else {
+    // ios 버전
+    return (
+      <Marker
+        coordinate={coordinate}
+        anchor={{ x: 0.5, y: 1 }}
+        tracksViewChanges={false}
+        onPress={onPress}
+      >
+        <View
+          style={{
+            width: 64,
+            height: 78,
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              width: 58,
+              height: 58,
+              borderRadius: 29,
+              backgroundColor: "#FFFFFF",
+              borderWidth: 3,
+              borderColor: "#5B7DBB",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              shadowColor: "#000000",
+              shadowOpacity: 0.22,
+              shadowRadius: 4,
+              shadowOffset: { width: 0, height: 2 },
+            }}
+          >
+            {photoUrl ? (
+              <Image
+                source={{ uri: photoUrl }}
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                }}
+                resizeMode="cover"
+              />
+            ) : (
+              <View
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  backgroundColor: "#D8E2EA",
+                }}
+              />
+            )}
+          </View>
+
+          <View
+            style={{
+              width: 0,
+              height: 0,
+              borderLeftWidth: 9,
+              borderRightWidth: 9,
+              borderTopWidth: 14,
+              borderLeftColor: "transparent",
+              borderRightColor: "transparent",
+              borderTopColor: "#5B7DBB",
+              marginTop: -2,
+            }}
+          />
+        </View>
+      </Marker>
+    );
+  }
+}
 
 export default function MapScreen() {
+  const mapRef = useRef<MapView | null>(null);
+
   const [dayMarkers, setDayMarkers] = useState<Days[]>([]);
   const [selectedItem, setSelectedItem] = useState<Days | null>(null);
-  // 2. useEffect 추가: 화면이 처음 뜰 때 1번만 실행
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const data = await getTripDays(); // API 호출
+        setDayMarkers([]);
+        const data = await getTripDays();
         console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
-        setDayMarkers(data); // 데이터를 상태에 저장
+        setDayMarkers(data);
       } catch (error) {
         console.error("데이터 불러오기 에러:", error);
       }
     };
 
     fetchData();
-  }, []); // 빈 배열 []은 처음 한 번만 실행하라는 의미
+  }, []);
+
+  const handleMarkerPress = (item: Days) => {
+    const latitude = item.representative_lat || 0;
+    const longitude = item.representative_lon || 0;
+
+    setSelectedItem(item);
+
+    mapRef.current?.animateCamera(
+      {
+        center: {
+          latitude,
+          longitude,
+        },
+      },
+      { duration: 200 }, // duration은 두 번째 인자로 넘겨야 합니다
+    );
+  };
+
   return (
     <View className="flex-1 bg-background">
       <MapView
+        ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={{ flex: 1 }}
         initialRegion={{
@@ -34,22 +163,20 @@ export default function MapScreen() {
           longitudeDelta: 0.0421,
         }}
       >
-        {dayMarkers.map((item) => (
-          <Marker
-            key={item.id}
-            coordinate={{
-              latitude: item.representative_lat || 0,
-              longitude: item.representative_lon || 0,
-            }}
-            tracksViewChanges={true}
-            onPress={() => setSelectedItem(item)}
-          >
-            <View className="items-center w-[60px] h-[75px]">
-              <View className="w-[56px] h-[56px] p-[2px] bg-surface border-2 border-primary rounded-full shadow-md items-center justify-center"></View>
-              <View className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-primary -mt-[2px]" />
-            </View>
-          </Marker>
-        ))}
+        {dayMarkers.map((item) => {
+          const photo =
+            item.photos?.find((p) => p.id === item.represent_image) ||
+            item.photos?.[0];
+
+          return (
+            <PhotoMarker
+              key={item.id}
+              item={item}
+              photoUrl={photo?.thumbnail_image_url}
+              onPress={() => handleMarkerPress(item)}
+            />
+          );
+        })}
       </MapView>
 
       {selectedItem && <SimpleView item={selectedItem} />}
