@@ -6,18 +6,15 @@ import { Platform } from 'react-native';
 
 const DEVICE_ID_STORAGE_KEY = 'scene_diary_device_id';
 
-// **테스트 끝나면 확인 필요**
-// 개발 중에는 기존 DB에 들어있는 테스트 유저를 계속 보기 위해 이 값을 우선 사용합니다.
-// 나중에 실제 사용자별 UUID를 쓰려면 .env의 EXPO_PUBLIC_TEST_DEVICE_ID를 지우고,
-// 아래 기본값도 빈 문자열로 바꾸거나 개발용 분기를 제거하면 됩니다.
-const DEFAULT_DEV_DEVICE_ID = 'korea-test-device-001';
-
 function getDevDeviceId() {
   if (!__DEV__) {
     return null;
   }
 
-  return process.env.EXPO_PUBLIC_TEST_DEVICE_ID || DEFAULT_DEV_DEVICE_ID;
+  // **테스트 끝나면 확인 필요**
+  // .env에 EXPO_PUBLIC_TEST_DEVICE_ID가 있을 때만 기존 DB의 테스트 유저를 사용합니다.
+  // 값을 지우면 웹은 localStorage, 모바일은 AsyncStorage에서 deviceId를 확인하고 없으면 새 UUID를 만듭니다.
+  return process.env.EXPO_PUBLIC_TEST_DEVICE_ID || null;
 }
 
 function createDeviceId() {
