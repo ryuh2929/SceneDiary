@@ -22,7 +22,7 @@ import {
   SettingsToggle,
   TravelTypeIconName,
 } from '@/data/settings';
-import { fetchSettingsProfile } from '@/services/settings-api';
+import { fetchSettingsProfile, updateWritingPersona } from '@/services/settings-api';
 
 const colors = {
   primary: '#5B7DBB',
@@ -213,6 +213,7 @@ export default function SettingsScreen() {
   const [profile, setProfile] = useState(dummySettingsProfile);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [isSavingPersona, setIsSavingPersona] = useState(false);
 
   // 토글 값은 화면에서 즉시 확인할 수 있도록 로컬 상태로 관리하고, 이후 DB/API 값으로 대체하기 쉽게 id 기준 객체로 변환합니다.
   const initialToggles = useMemo(
@@ -271,6 +272,54 @@ export default function SettingsScreen() {
     };
   }, []);
 
+  const handleSelectPersona = async (personaId: string) => {
+    if (personaId === selectedPersonaId || isSavingPersona) {
+      return;
+    }
+
+    const previousPersonaId = selectedPersonaId;
+
+    // 버튼을 누른 즉시 화면을 바꾸고, 서버 저장이 끝나면 응답값으로 한 번 더 동기화합니다.
+    setSelectedPersonaId(personaId);
+    setProfile((currentProfile) => ({
+      ...currentProfile,
+      persona: {
+        ...currentProfile.persona,
+        tags: currentProfile.persona.tags.map((tag) => ({
+          ...tag,
+          selected: tag.id === personaId,
+        })),
+      },
+    }));
+    setIsSavingPersona(true);
+    setProfileError(null);
+
+    try {
+      const updatedProfile = await updateWritingPersona(personaId);
+      const selectedId =
+        updatedProfile.persona.tags.find((tag) => tag.selected)?.id ??
+        updatedProfile.persona.tags[0]?.id;
+
+      setProfile(updatedProfile);
+      setSelectedPersonaId(selectedId);
+    } catch (error) {
+      setSelectedPersonaId(previousPersonaId);
+      setProfile((currentProfile) => ({
+        ...currentProfile,
+        persona: {
+          ...currentProfile.persona,
+          tags: currentProfile.persona.tags.map((tag) => ({
+            ...tag,
+            selected: tag.id === previousPersonaId,
+          })),
+        },
+      }));
+      setProfileError(error instanceof Error ? error.message : 'Failed to update writing persona.');
+    } finally {
+      setIsSavingPersona(false);
+    }
+  };
+
   // 하단 네브바는 별도 컴포넌트가 담당하므로, 이 화면은 안전 영역과 본문 여백만 책임집니다.
   const contentInset = Platform.select({
     ios: { paddingTop: 20, paddingBottom: insets.bottom + 24 },
@@ -322,7 +371,7 @@ export default function SettingsScreen() {
                   key={tag.id}
                   label={tag.label}
                   selected={tag.id === selectedPersonaId}
-                  onPress={() => setSelectedPersonaId(tag.id)}
+                  onPress={() => handleSelectPersona(tag.id)}
                 />
               ))}
             </View>

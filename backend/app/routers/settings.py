@@ -1,9 +1,11 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.users import User
-from app.schemas.settings import SettingsProfile
+from app.schemas.settings import SettingsProfile, UpdateWritingPersonaRequest
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -86,11 +88,9 @@ def to_settings_profile(user: User) -> SettingsProfile:
     )
 
 
-@router.get("/profile", response_model=SettingsProfile)
-def get_settings_profile(
-    device_id: str | None = Query(default=None),
-    db: Session = Depends(get_db),
-) -> SettingsProfile:
+def find_user_or_404(db: Session, device_id: str | None) -> User:
+    # 프런트에서 넘긴 device_id가 있으면 해당 기기의 유저를 우선 찾습니다.
+    # 아직 device_id 연결 전인 임시 화면 확인을 위해 값이 없을 때만 최신 유저를 fallback으로 사용합니다.
     query = db.query(User)
 
     if device_id:
@@ -100,5 +100,38 @@ def get_settings_profile(
 
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
+
+    return user
+
+
+@router.get("/profile", response_model=SettingsProfile)
+def get_settings_profile(
+    device_id: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    user = find_user_or_404(db, device_id)
+
+    return to_settings_profile(user)
+
+
+@router.patch("/persona", response_model=SettingsProfile)
+def update_writing_persona(
+    payload: UpdateWritingPersonaRequest,
+    device_id: str = Query(...),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    # 프런트가 보내는 값은 반드시 PERSONA_OPTIONS에 등록된 id만 허용합니다.
+    # 잘못된 값이 DB에 들어가면 이후 버튼 선택 상태를 맞출 수 없어서 여기서 차단합니다.
+    persona_id = payload.persona_id.strip().lower()
+
+    if persona_id not in PERSONA_OPTIONS:
+        raise HTTPException(status_code=400, detail="Unknown writing persona")
+
+    user = find_user_or_404(db, device_id)
+    user.writing_persona = persona_id
+    user.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(user)
 
     return to_settings_profile(user)

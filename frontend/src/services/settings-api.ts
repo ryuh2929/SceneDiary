@@ -33,6 +33,28 @@ export async function fetchSettingsProfile() {
   return normalizeSettingsProfile(profile);
 }
 
+export async function updateWritingPersona(personaId: string) {
+  const deviceId = await getOrCreateDeviceId();
+  const query = new URLSearchParams({ device_id: deviceId });
+
+  // 선택한 페르소나 id만 서버로 보내고, 서버는 현재 device_id 유저의 writing_persona 컬럼을 갱신합니다.
+  const response = await fetch(`${getApiBaseUrl()}/settings/persona?${query.toString()}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ persona_id: personaId }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update writing persona.');
+  }
+
+  const profile = (await response.json()) as SettingsProfile;
+
+  return normalizeSettingsProfile(profile);
+}
+
 function normalizeTravelTypeIcon(icon: unknown): TravelTypeIconName {
   // 백엔드가 재시작되지 않은 경우 예전 { ios, android, web } 형태가 올 수 있어서 프론트에서 한 번 더 정리합니다.
   const iconKey =
