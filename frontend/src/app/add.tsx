@@ -166,7 +166,12 @@ export default function AddScreen() {
 
     router.push({
       pathname: '/loading',
-      params: { photos: encodeURIComponent(JSON.stringify(photos)) },
+      params: {
+        photos: encodeURIComponent(JSON.stringify(photos)),
+        tripId: '1',
+        day: '1',
+        mode: 'initial',
+      },
     });
   };
 

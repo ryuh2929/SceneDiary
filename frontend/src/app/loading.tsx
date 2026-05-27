@@ -43,8 +43,19 @@ const analysisSteps = [
   '일기 초안을 준비하고 있어요',
 ];
 
+const nextDaySteps = [
+  '다음 일차를 준비하고 있어요',
+  '이전 기록을 이어보고 있어요',
+  '하루의 흐름을 맞추고 있어요',
+  '새 기록 초안을 준비하고 있어요',
+];
+
+function getFirstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 function parsePhotosParam(value: string | string[] | undefined): PreparedPhoto[] {
-  const rawValue = Array.isArray(value) ? value[0] : value;
+  const rawValue = getFirstParam(value);
   if (!rawValue) {
     return [];
   }
@@ -59,9 +70,18 @@ function parsePhotosParam(value: string | string[] | undefined): PreparedPhoto[]
 
 export default function LoadingScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ photos?: string }>();
+  const params = useLocalSearchParams<{
+    photos?: string;
+    tripId?: string;
+    day?: string;
+    mode?: string;
+  }>();
   const photos = useMemo(() => parsePhotosParam(params.photos), [params.photos]);
   const previewPhotos = useMemo(() => photos.slice(0, 5), [photos]);
+  const tripId = getFirstParam(params.tripId) ?? '1';
+  const day = getFirstParam(params.day) ?? '1';
+  const mode = getFirstParam(params.mode) ?? 'initial';
+  const isNextDayMode = mode === 'next-day';
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 16);
   const rotation = useSharedValue(0);
@@ -70,8 +90,13 @@ export default function LoadingScreen() {
   const [progress, setProgress] = useState(18);
   const [stepIndex, setStepIndex] = useState(0);
 
+  const steps = isNextDayMode ? nextDaySteps : analysisSteps;
   const progressWidth = useMemo(() => `${progress}%` as `${number}%`, [progress]);
   const photoCountLabel = photos.length > 0 ? `${photos.length}장의 사진` : '선택한 사진';
+  const helperText = isNextDayMode
+    ? `${day}일차 기록을 준비 중이에요`
+    : `${photoCountLabel}으로 하루 기록을 준비 중이에요`;
+  const buttonLabel = isNextDayMode ? `${day}일차 편집 화면으로 이동` : '작성 화면으로 이동';
 
   useEffect(() => {
     rotation.value = withRepeat(
@@ -111,14 +136,14 @@ export default function LoadingScreen() {
     }, 620);
 
     const stepTimer = setInterval(() => {
-      setStepIndex((current) => (current + 1) % analysisSteps.length);
+      setStepIndex((current) => (current + 1) % steps.length);
     }, 1700);
 
     return () => {
       clearInterval(progressTimer);
       clearInterval(stepTimer);
     };
-  }, []);
+  }, [steps.length]);
 
   const spinnerStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
@@ -253,13 +278,13 @@ export default function LoadingScreen() {
           </View>
 
           <Text className="mt-md text-center text-2xl font-extrabold text-textPrimary">
-            {analysisSteps[stepIndex]}
+            {steps[stepIndex]}
           </Text>
           <Text className="mt-xs text-center text-md font-semibold text-textSecondary">
-            {photoCountLabel}으로 하루 기록을 준비 중이에요
+            {helperText}
           </Text>
 
-          {photos.length > 3 ? (
+          {!isNextDayMode && photos.length > 3 ? (
             <Text className="mt-sm text-center text-sm font-bold text-textSecondary">
               외 {photos.length - 3}장 더
             </Text>
@@ -282,14 +307,19 @@ export default function LoadingScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="일기 작성 화면으로 이동"
-          onPress={() => router.replace('/diary_writing')}
+          onPress={() =>
+            router.replace({
+              pathname: '/diary_writing',
+              params: { tripId, day, mode },
+            })
+          }
           className="absolute bottom-md w-full max-w-[360px] overflow-hidden rounded-lg">
           <LinearGradient
             colors={[colors.primary, colors.primaryLight, colors.accent]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             className="h-14 items-center justify-center">
-            <Text className="text-md font-extrabold text-textOnPrimary">작성 화면으로 이동</Text>
+            <Text className="text-md font-extrabold text-textOnPrimary">{buttonLabel}</Text>
           </LinearGradient>
         </Pressable>
       </View>
