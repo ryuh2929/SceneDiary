@@ -43,6 +43,7 @@ const analysisSteps = [
   '일기 초안을 준비하고 있어요',
 ];
 
+// 작성 화면에서 다음 일차 생성 중에 다시 호출할 때 사용할 안내 문구입니다.
 const nextDaySteps = [
   '다음 일차를 준비하고 있어요',
   '이전 기록을 이어보고 있어요',
@@ -55,6 +56,7 @@ function getFirstParam(value: string | string[] | undefined) {
 }
 
 function parsePhotosParam(value: string | string[] | undefined): PreparedPhoto[] {
+  // add 화면에서 URL 파라미터로 넘긴 사진 배열을 다시 화면에서 쓸 수 있는 배열로 복원합니다.
   const rawValue = getFirstParam(value);
   if (!rawValue) {
     return [];
@@ -78,9 +80,11 @@ export default function LoadingScreen() {
   }>();
   const photos = useMemo(() => parsePhotosParam(params.photos), [params.photos]);
   const previewPhotos = useMemo(() => photos.slice(0, 5), [photos]);
+  // tripId/day/mode는 다른 담당 화면이 로딩 화면을 재사용할 때 이어받는 최소 연결 정보입니다.
   const tripId = getFirstParam(params.tripId) ?? '1';
   const day = getFirstParam(params.day) ?? '1';
   const mode = getFirstParam(params.mode) ?? 'initial';
+  // initial은 사진 선택 직후 첫 생성 로딩, next-day는 작성 화면에서 다음 일차 생성 중 재진입하는 로딩입니다.
   const isNextDayMode = mode === 'next-day';
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 16);
@@ -90,12 +94,15 @@ export default function LoadingScreen() {
   const [progress, setProgress] = useState(18);
   const [stepIndex, setStepIndex] = useState(0);
 
+  // 같은 로딩 화면을 상황별로 재사용하기 위해 모드에 따라 문구 묶음만 바꿉니다.
   const steps = isNextDayMode ? nextDaySteps : analysisSteps;
   const progressWidth = useMemo(() => `${progress}%` as `${number}%`, [progress]);
   const photoCountLabel = photos.length > 0 ? `${photos.length}장의 사진` : '선택한 사진';
+  // 사진 기반 첫 생성과 다음 일차 생성은 사용자가 기다리는 이유가 달라서 보조 문구를 분리합니다.
   const helperText = isNextDayMode
     ? `${day}일차 기록을 준비 중이에요`
     : `${photoCountLabel}으로 하루 기록을 준비 중이에요`;
+  // 버튼 문구도 현재 대기 중인 일차를 드러내서 다음 화면 이동 맥락을 맞춥니다.
   const buttonLabel = isNextDayMode ? `${day}일차 편집 화면으로 이동` : '작성 화면으로 이동';
 
   useEffect(() => {
@@ -310,6 +317,7 @@ export default function LoadingScreen() {
           onPress={() =>
             router.replace({
               pathname: '/diary_writing',
+              // 작성 화면에서 같은 여행과 일차 정보를 이어받을 수 있도록 그대로 넘깁니다.
               params: { tripId, day, mode },
             })
           }

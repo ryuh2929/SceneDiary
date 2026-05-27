@@ -40,6 +40,7 @@ const colors = {
 const MAX_IMAGE_SIZE = 1024;
 const THUMBNAIL_SIZE = 240;
 
+// 원본 비율을 유지하면서 긴 변만 기준 크기 이하로 줄입니다.
 function resizeAction(width: number, height: number, maxSize: number) {
   if (width >= height) {
     return { resize: { width: Math.min(width, maxSize) } };
@@ -59,6 +60,7 @@ async function getFileSizeBytes(uri: string) {
 }
 
 async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrder: number): Promise<PendingPhoto> {
+  // AI 분석용 이미지는 너무 커지지 않게 줄이고, 화면 미리보기용 썸네일은 별도로 생성합니다.
   const fileImage = await ImageManipulator.manipulateAsync(
     asset.uri,
     [resizeAction(asset.width, asset.height, MAX_IMAGE_SIZE)],
@@ -166,8 +168,10 @@ export default function AddScreen() {
 
     router.push({
       pathname: '/loading',
+      // 이후 작성 화면에서 어떤 여행/일차 흐름인지 이어받을 수 있도록 로딩 화면에 함께 전달합니다.
       params: {
         photos: encodeURIComponent(JSON.stringify(photos)),
+        // 실제 업로드 API가 연결되면 새로 생성된 tripId로 교체할 예정입니다.
         tripId: '1',
         day: '1',
         mode: 'initial',
