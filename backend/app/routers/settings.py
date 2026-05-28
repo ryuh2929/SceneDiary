@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.users import User
+from app.db.models import User
 from app.schemas.settings import (
     SettingsProfile,
     UpdateNicknameRequest,
@@ -93,13 +93,13 @@ def to_settings_profile(user: User) -> SettingsProfile:
     )
 
 
-def find_user_or_404(db: Session, device_id: str | None) -> User:
-    # 프런트에서 넘긴 device_id가 있으면 해당 기기의 유저를 우선 찾습니다.
-    # 아직 device_id 연결 전인 임시 화면 확인을 위해 값이 없을 때만 최신 유저를 fallback으로 사용합니다.
+def find_user_or_404(db: Session, user_uuid: str | None) -> User:
+    # 프런트에서 넘긴 user_uuid가 있으면 해당 기기의 유저를 우선 찾습니다.
+    # 아직 user_uuid 연결 전인 임시 화면 확인을 위해 값이 없을 때만 최신 유저를 fallback으로 사용합니다.
     query = db.query(User)
 
-    if device_id:
-        user = query.filter(User.device_id == device_id).first()
+    if user_uuid:
+        user = query.filter(User.user_uuid == user_uuid).first()
     else:
         user = query.order_by(User.created_at.desc()).first()
 
@@ -111,10 +111,10 @@ def find_user_or_404(db: Session, device_id: str | None) -> User:
 
 @router.get("/profile", response_model=SettingsProfile)
 def get_settings_profile(
-    device_id: str | None = Query(default=None),
+    user_uuid: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> SettingsProfile:
-    user = find_user_or_404(db, device_id)
+    user = find_user_or_404(db, user_uuid)
 
     return to_settings_profile(user)
 
@@ -122,7 +122,7 @@ def get_settings_profile(
 @router.patch("/persona", response_model=SettingsProfile)
 def update_writing_persona(
     payload: UpdateWritingPersonaRequest,
-    device_id: str = Query(...),
+    user_uuid: str = Query(...),
     db: Session = Depends(get_db),
 ) -> SettingsProfile:
     # 프런트가 보내는 값은 반드시 PERSONA_OPTIONS에 등록된 id만 허용합니다.
@@ -132,7 +132,7 @@ def update_writing_persona(
     if persona_id not in PERSONA_OPTIONS:
         raise HTTPException(status_code=400, detail="Unknown writing persona")
 
-    user = find_user_or_404(db, device_id)
+    user = find_user_or_404(db, user_uuid)
     user.writing_persona = persona_id
     user.updated_at = datetime.now(timezone.utc)
 
@@ -145,10 +145,10 @@ def update_writing_persona(
 @router.patch("/toggle", response_model=SettingsProfile)
 def update_settings_toggle(
     payload: UpdateSettingsToggleRequest,
-    device_id: str = Query(...),
+    user_uuid: str = Query(...),
     db: Session = Depends(get_db),
 ) -> SettingsProfile:
-    user = find_user_or_404(db, device_id)
+    user = find_user_or_404(db, user_uuid)
 
     # 프런트에서 쓰는 토글 id를 실제 users 테이블 컬럼에 연결합니다.
     # UI 이름이 바뀌어도 DB 컬럼명은 이 매핑만 수정하면 됩니다.
@@ -168,20 +168,20 @@ def update_settings_toggle(
 @router.patch("/nickname", response_model=SettingsProfile)
 def update_nickname(
     payload: UpdateNicknameRequest,
-    device_id: str = Query(...),
+    user_uuid: str = Query(...),
     db: Session = Depends(get_db),
 ) -> SettingsProfile:
     nickname = payload.nickname.strip()
 
     # 빈 닉네임이나 지나치게 긴 닉네임은 DB에 저장하지 않습니다.
-    # 현재 users.nickname 컬럼은 CHAR(50)이므로 프런트 제한보다 넉넉하게 50자로 검증합니다.
+    # 현재 users.nickname 컬럼은 VARCHAR(50)이므로 프런트 제한보다 넉넉하게 50자로 검증합니다.
     if not nickname:
         raise HTTPException(status_code=400, detail="Nickname is required")
 
     if len(nickname) > 50:
         raise HTTPException(status_code=400, detail="Nickname is too long")
 
-    user = find_user_or_404(db, device_id)
+    user = find_user_or_404(db, user_uuid)
     user.nickname = nickname
     user.updated_at = datetime.now(timezone.utc)
 

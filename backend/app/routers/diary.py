@@ -46,7 +46,7 @@ _MODEL_NAME = os.getenv("DIARY_MODEL", "gemma4:e4b")
 # DB row → 응답 스키마 변환 헬퍼
 # ─────────────────────────────────────────────────────────────
 
-# 생성기는 이제 weather 를 Twemoji 코드포인트로 직접 저장합니다(emotion·symbol 과 동일).
+# 생성기는 이제 weather 를 Twemoji 코드포인트로 직접 저장합니다(emotion 과 동일).
 # 다만 재생성 전의 옛 데이터에는 한글 텍스트("맑음" 등)가 남아 있을 수 있어, 읽을 때
 # 안전하게 변환합니다. 이미 코드포인트면 그대로 통과 → 이 표는 옛 데이터용 fallback.
 _WEATHER_CODEPOINTS = {
@@ -131,7 +131,6 @@ def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
         weather=_weather_codepoint(trip_day.weather),
         subtitle=trip_day.subtitle or "",
         emotion=trip_day.emotion or "",
-        symbol=trip_day.symbol or "",  # 합치기 후: trip_day 에서 직접
         content=trip_day.content or "",  # 합치기 후: trip_day 에서 직접
         photos=[
             DayPhoto(
@@ -305,7 +304,6 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
 
         # 결과 저장: 합치기 후 일기 내용이 trip_day 에 직접 들어감
         trip_day.content = result["content"]
-        trip_day.symbol = result["symbol"]
         trip_day.word_count = len(result["content"])
         trip_day.generated_at = datetime.now()
         trip_day.subtitle = result["subtitle"]

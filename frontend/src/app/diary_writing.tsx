@@ -272,7 +272,8 @@ export default function DiaryWritingScreen() {
       {/* ===== 본문 (스크롤 영역) ===== */}
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="mx-auto w-full max-w-[420px] gap-6 px-5 pb-8 pt-2">
-          {/* --- 요약 카드: trip 대표사진 + 제목(매 페이지 동일) + 그날 상징 이모지 --- */}
+          {/* --- 요약 카드: trip 대표사진 + 제목(매 페이지 동일) --- */}
+          {/* (구 day.symbol 자리 폐지: 여행 단위 trips.flag 로 통일 예정. 노출은 추후 작업) */}
           <View className="flex-row items-center gap-3 rounded-3xl bg-background p-4">
             <View className="h-16 w-16 overflow-hidden rounded-2xl">
               <Image
@@ -284,8 +285,6 @@ export default function DiaryWritingScreen() {
             <Text className="flex-1 text-center font-sans text-lg font-bold text-textPrimary">
               {trip.title}
             </Text>
-            {/* diaries.symbol (Twemoji) — 비어있으면 아무것도 안 그림 */}
-            <EmojiIcon codepoint={day.symbol} size={40} />
           </View>
 
           {/* ====== 상태별 본문 ====== */}
