@@ -16,7 +16,6 @@ export interface Days {
   subtitle: string | null;
   emotion: string | null;
   content: string | null;
-  symbol: string | null;
 
   representative_lat: number | null;
   representative_lon: number | null;
@@ -36,3 +35,50 @@ export interface Trip {
   status: string;            // varchar(20) (예: 'PLANNING', 'TRAVELING', 'COMPLETED')
   tripDays:Days[];
 }
+
+export type UploadedPhoto = {
+  id: number;
+  thumbnailUrl: string;
+  fileUrl: string;
+  originalFilename: string | null;
+  fileSizeBytes: number | null;
+  mimeType: string | null;
+  width: number | null;
+  height: number | null;
+  displayOrder: number;
+};
+
+export type LoadingStep =
+  | 'uploading'
+  | 'resizing_images'
+  | 'creating_thumbnails'
+  | 'analyzing_metadata'
+  | 'analyzing_photos'
+  | 'generating_diary'
+  | 'completed'
+  | 'failed';
+
+export type UploadedDay = {
+  tripDayId: number;
+  day: number;
+  date: string;
+  photos: UploadedPhoto[];
+};
+
+export type FirstDayUploadResponse = {
+  tripId: number;
+  tripDayId: number;
+  day: number;
+  status: LoadingStep;
+  photos: UploadedPhoto[];
+  days: UploadedDay[];
+};
+
+export type GenerationResponse = {
+  tripId: number;
+  tripDayId: number;
+  day: number;
+  status: LoadingStep;
+  progress: number;
+  errorMessage?: string | null;
+};

@@ -7,18 +7,8 @@ import {
   User,
   type LucideIcon,
 } from 'lucide-react-native';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Keyboard,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -27,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { NicknameModal } from '@/components/nickname-modal';
 import {
   dummySettingsProfile,
   SettingsToggle,
@@ -63,8 +54,6 @@ const toggleIcons: Record<SettingsToggle['id'], LucideIcon> = {
   darkMode: Moon,
   pushNotification: Bell,
 };
-
-const NICKNAME_MAX_LENGTH = 16;
 
 type AppIconProps = {
   icon: TravelTypeIconName;
@@ -233,10 +222,6 @@ export default function SettingsScreen() {
   const [isSavingPersona, setIsSavingPersona] = useState(false);
   const [savingToggleId, setSavingToggleId] = useState<SettingsToggle['id'] | null>(null);
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
-  const [nicknameInput, setNicknameInput] = useState(profile.nickname);
-  const [nicknameError, setNicknameError] = useState<string | null>(null);
-  const [isSavingNickname, setIsSavingNickname] = useState(false);
-  const nicknameInputRef = useRef<TextInput>(null);
 
   // 토글 값은 화면에서 즉시 확인할 수 있도록 로컬 상태로 관리하고, 이후 DB/API 값으로 대체하기 쉽게 id 기준 객체로 변환합니다.
   const initialToggles = useMemo(
@@ -373,59 +358,19 @@ export default function SettingsScreen() {
   };
 
   const openNicknameModal = () => {
-    // 모달 기본값은 이미 API 응답으로 화면에 들어와 있는 현재 닉네임을 사용합니다.
-    setNicknameInput(profile.nickname);
-    setNicknameError(null);
+    // 실제 모달은 ScrollView 밖의 별도 컴포넌트에서 열어 터치 이벤트가 섞이지 않게 합니다.
     setIsNicknameModalVisible(true);
   };
 
   const closeNicknameModal = () => {
-    if (isSavingNickname) {
-      return;
-    }
-
     setIsNicknameModalVisible(false);
-    setNicknameError(null);
   };
 
-  const handleSaveNickname = async () => {
-    const trimmedNickname = nicknameInput.trim();
-
-    if (!trimmedNickname) {
-      setNicknameError('닉네임을 입력해주세요.');
-      return;
-    }
-
-    if (trimmedNickname.length > NICKNAME_MAX_LENGTH) {
-      setNicknameError(`닉네임은 ${NICKNAME_MAX_LENGTH}자 이하로 입력해주세요.`);
-      return;
-    }
-
-    setIsSavingNickname(true);
-    setNicknameError(null);
+  const handleSaveNickname = async (nickname: string) => {
     setProfileError(null);
 
-    try {
-      const updatedProfile = await updateNickname(trimmedNickname);
-
-      setProfile(updatedProfile);
-      setIsNicknameModalVisible(false);
-    } catch (error) {
-      setNicknameError(error instanceof Error ? error.message : '닉네임 저장에 실패했습니다.');
-    } finally {
-      setIsSavingNickname(false);
-    }
-  };
-
-  const handleNicknameSavePressIn = () => {
-    // 저장 터치와 키보드 blur 처리가 같은 순간에 충돌하지 않도록 입력창 포커스를 먼저 해제합니다.
-    nicknameInputRef.current?.blur();
-    Keyboard.dismiss();
-
-    // blur/키보드 이벤트가 처리된 다음 순서에 저장을 실행해 모바일 첫 터치 누락을 줄입니다.
-    setTimeout(() => {
-      handleSaveNickname();
-    }, 0);
+    const updatedProfile = await updateNickname(nickname);
+    setProfile(updatedProfile);
   };
 
   // 하단 네브바는 별도 컴포넌트가 담당하므로, 이 화면은 안전 영역과 본문 여백만 책임집니다.
@@ -436,11 +381,12 @@ export default function SettingsScreen() {
   });
 
   return (
-    <ScrollView
-      className="flex-1 bg-background"
-      contentContainerClassName="min-h-full px-md"
-      contentContainerStyle={contentInset}
-      showsVerticalScrollIndicator={false}>
+    <>
+      <ScrollView
+        className="flex-1 bg-background"
+        contentContainerClassName="min-h-full px-md"
+        contentContainerStyle={contentInset}
+        showsVerticalScrollIndicator={false}>
       <View className="mx-auto w-full max-w-[420px] flex-1">
         <View className="mb-xl flex-row items-center justify-between">
           <Text className="text-lg font-bold text-textPrimary">설정</Text>
@@ -523,74 +469,14 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <Modal
-        animationType="fade"
-        transparent
+      </ScrollView>
+
+      <NicknameModal
         visible={isNicknameModalVisible}
-        onRequestClose={closeNicknameModal}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className="flex-1 justify-end bg-black/30">
-          <View
-            className="rounded-t-[24px] bg-surface px-lg pb-xl pt-lg"
-            style={{
-              paddingBottom: Math.max(insets.bottom + 24, 32),
-              shadowColor: colors.text,
-              shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.12,
-              shadowRadius: 12,
-              elevation: 8,
-            }}>
-            <ScrollView keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
-              <Text className="text-lg font-extrabold text-textPrimary">닉네임 수정</Text>
-
-              <TextInput
-                ref={nicknameInputRef}
-                value={nicknameInput}
-                onChangeText={setNicknameInput}
-                maxLength={NICKNAME_MAX_LENGTH}
-                placeholder="닉네임을 입력해주세요"
-                placeholderTextColor={colors.textMuted}
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isSavingNickname}
-                className="mt-md rounded-lg border bg-surface px-md py-sm text-md font-semibold text-textPrimary"
-                style={{ borderColor: colors.border }}
-              />
-
-              <View className="mt-xs flex-row justify-between">
-                <Text className="text-sm font-medium text-textSecondary">
-                  {nicknameError ?? ' '}
-                </Text>
-                <Text className="text-sm font-medium text-textSecondary">
-                  {nicknameInput.trim().length}/{NICKNAME_MAX_LENGTH}
-                </Text>
-              </View>
-            </ScrollView>
-
-            <View className="mt-md flex-row gap-sm">
-              <Pressable
-                accessibilityRole="button"
-                onPress={closeNicknameModal}
-                disabled={isSavingNickname}
-                className="flex-1 items-center rounded-lg bg-muted py-sm">
-                <Text className="text-md font-bold text-textSecondary">취소</Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                // 입력 영역과 버튼 영역을 분리한 뒤에도 모바일 키보드가 열려 있으면 먼저 키보드를 내리고 저장합니다.
-                onPressIn={handleNicknameSavePressIn}
-                disabled={isSavingNickname}
-                className="flex-1 items-center rounded-lg bg-primary py-sm">
-                <Text className="text-md font-bold text-textOnPrimary">
-                  {isSavingNickname ? '저장 중' : '저장'}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-    </ScrollView>
+        currentNickname={profile.nickname}
+        onClose={closeNicknameModal}
+        onSave={handleSaveNickname}
+      />
+    </>
   );
 }

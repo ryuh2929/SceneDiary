@@ -11,11 +11,10 @@ class Days(BaseModel):
     location_summary: Optional[str] = None  
     weather: Optional[str] = None           
     subtitle: Optional[str] = None          
-    emotion: Optional[str] = None           
-    content: Optional[str] = None           
-               
+    emotion: Optional[str] = None
+    content: Optional[str] = None
 
-    representative_lat: Optional[float] = None  
+    representative_lat: Optional[float] = None
     representative_lon: Optional[float] = None  
     represent_image: Optional[int] = None   
     # word_count: Optional[int] = None       

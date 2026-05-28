@@ -7,3 +7,5 @@ neo4j
 openai
 python-dotenv
 alembic
+Pillow
+python-multipart

@@ -13,8 +13,6 @@ class DetailList(BaseModel):
     subtitle:Optional[str] = None
     emotion:Optional[str] = None
     content:Optional[str] = None
-    
-    
     represent_image:Optional[int] = None
     class Config:
         from_attributes = True  # Pydantic v2 기준 (만약 에러나면 orm_mode = True 로 변경)

@@ -7,9 +7,15 @@
 .antigravity/
 .antigravity*
 
+# Runtime uploaded images
+backend/uploads/
+
 # env (전부 무시 — .env 류는 Slack으로 공유)
 .env
 .env.*
+
+# 사용자 업로드 사진 (테스트로 쌓이는 파일들. backend/uploads/trip-*/day-*/...)
+backend/uploads/
 
 ### Node ###
 # Logs
@@ -64,6 +70,7 @@ web_modules/
 
 # Optional npm cache directory
 .npm
+.npm-cache/
 
 # Optional eslint cache
 .eslintcache

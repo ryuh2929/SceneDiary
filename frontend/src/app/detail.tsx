@@ -128,22 +128,7 @@ export default function TravelDetailUI() {
                 </Text>
               </View>
               </View>
-              {/* 심볼 */}
-              {currentDayData?.symbol && (
-                <View className="w-10 h-10 items-center justify-center overflow-hidden">
-                  <View
-                    style={{
-                      transform: [
-                        { scale: 0.15 }, 
-                        { translateY: -30 } 
-                      ]
-                    }}
-                    
-                  >
-                    <Twemoji>{String.fromCodePoint(parseInt(currentDayData.symbol, 16))}</Twemoji>
-                  </View>
-                </View>
-                )}
+              {/* (구 day.symbol 심볼 표시 폐지: 여행 단위 trips.flag 로 통일 예정. 노출은 추후 작업) */}
             </View>
           </View>
         </LinearGradient>
