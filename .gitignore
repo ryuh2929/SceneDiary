@@ -11,6 +11,9 @@
 .env
 .env.*
 
+# 사용자 업로드 사진 (테스트로 쌓이는 파일들. backend/uploads/trip-*/day-*/...)
+backend/uploads/
+
 ### Node ###
 # Logs
 logs
