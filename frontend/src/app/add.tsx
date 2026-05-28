@@ -7,6 +7,8 @@ import React, { useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { uploadFirstDayPhotos } from '@/services/diary-api';
+
 type PendingPhoto = {
   id: string;
   fileUri: string;
@@ -39,6 +41,7 @@ const colors = {
 
 const MAX_IMAGE_SIZE = 1024;
 const THUMBNAIL_SIZE = 240;
+const MAX_PHOTO_COUNT = 10;
 
 // 원본 비율을 유지하면서 긴 변만 기준 크기 이하로 줄입니다.
 function resizeAction(width: number, height: number, maxSize: number) {
@@ -99,13 +102,21 @@ export default function AddScreen() {
   const { width } = useWindowDimensions();
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
   const [isPreparing, setIsPreparing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const contentWidth = Math.min(width, 760);
   const columnCount = contentWidth >= 700 ? 4 : 3;
   const tileSize = Math.max(88, Math.floor((contentWidth - 48 - (columnCount - 1) * 16) / columnCount));
   const bottomInset = Math.max(insets.bottom, 16);
+  const isPhotoLimitReached = pendingPhotos.length >= MAX_PHOTO_COUNT;
 
   const pickPhotos = async () => {
-    if (isPreparing) {
+    if (isPreparing || isUploading) {
+      return;
+    }
+
+    const remainingSlots = MAX_PHOTO_COUNT - pendingPhotos.length;
+    if (remainingSlots <= 0) {
+      Alert.alert('사진은 최대 10장까지 가능해요', '선택한 사진을 삭제한 뒤 다시 추가해 주세요.');
       return;
     }
 
@@ -118,6 +129,7 @@ export default function AddScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
+      selectionLimit: remainingSlots,
       quality: 1,
       exif: true,
     });
@@ -129,10 +141,14 @@ export default function AddScreen() {
     setIsPreparing(true);
     try {
       const startOrder = pendingPhotos.length;
+      const selectedAssets = result.assets.slice(0, remainingSlots);
       const processedPhotos = await Promise.all(
-        result.assets.map((asset, index) => buildPendingPhoto(asset, startOrder + index)),
+        selectedAssets.map((asset, index) => buildPendingPhoto(asset, startOrder + index)),
       );
       setPendingPhotos((current) => [...current, ...processedPhotos]);
+      if (result.assets.length > remainingSlots) {
+        Alert.alert('사진은 최대 10장까지 가능해요', `이번에는 ${remainingSlots}장만 추가했어요.`);
+      }
     } catch {
       Alert.alert('사진을 준비하지 못했어요', '다시 선택해 주세요.');
     } finally {
@@ -148,35 +164,40 @@ export default function AddScreen() {
     );
   };
 
-  const moveToAnalysis = () => {
-    if (pendingPhotos.length === 0 || isPreparing) {
+  const moveToAnalysis = async () => {
+    if (pendingPhotos.length === 0 || isPreparing || isUploading) {
       return;
     }
 
-    const photos: LoadingPhotoParam[] = pendingPhotos.map(
-      ({ fileUri, thumbnailUri, originalFilename, mimeType, fileSizeBytes, width, height, displayOrder }) => ({
-        fileUri,
-        thumbnailUri,
-        originalFilename,
-        mimeType,
-        fileSizeBytes,
-        width,
-        height,
-        displayOrder,
-      }),
-    );
+    setIsUploading(true);
+    try {
+      const uploadResponse = await uploadFirstDayPhotos(pendingPhotos);
+      const photos: LoadingPhotoParam[] = uploadResponse.photos.map((photo) => ({
+        fileUri: photo.fileUrl,
+        thumbnailUri: photo.thumbnailUrl,
+        originalFilename: photo.originalFilename ?? `photo-${photo.displayOrder + 1}.jpg`,
+        mimeType: photo.mimeType ?? 'image/jpeg',
+        fileSizeBytes: photo.fileSizeBytes ?? undefined,
+        width: photo.width ?? 0,
+        height: photo.height ?? 0,
+        displayOrder: photo.displayOrder,
+      }));
 
-    router.push({
-      pathname: '/loading',
-      // 이후 작성 화면에서 어떤 여행/일차 흐름인지 이어받을 수 있도록 로딩 화면에 함께 전달합니다.
-      params: {
-        photos: encodeURIComponent(JSON.stringify(photos)),
-        // 실제 업로드 API가 연결되면 새로 생성된 tripId로 교체할 예정입니다.
-        tripId: '1',
-        day: '1',
-        mode: 'initial',
-      },
-    });
+      router.push({
+        pathname: '/loading',
+        params: {
+          photos: encodeURIComponent(JSON.stringify(photos)),
+          tripId: String(uploadResponse.tripId),
+          tripDayId: String(uploadResponse.tripDayId),
+          day: String(uploadResponse.day),
+          mode: 'initial',
+        },
+      });
+    } catch {
+      Alert.alert('사진 업로드에 실패했어요', '서버 연결 상태를 확인한 뒤 다시 시도해 주세요.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -209,7 +230,7 @@ export default function AddScreen() {
               1일차 사진을 골라주세요
             </Text>
             <Text className="mt-sm text-md leading-6 text-textSecondary">
-              선택한 사진은 1024px 기준으로 줄이고, 글 작성 화면용 썸네일을 따로 준비해요.
+              최대 10장까지 선택할 수 있고, 글 작성 화면용 썸네일을 따로 준비해요.
             </Text>
           </View>
 
@@ -218,18 +239,18 @@ export default function AddScreen() {
               accessibilityRole="button"
               accessibilityLabel="사진 추가"
               onPress={pickPhotos}
-              disabled={isPreparing}
+              disabled={isPreparing || isUploading || isPhotoLimitReached}
               className={`items-center justify-center rounded-lg border-2 border-dashed ${
-                isPreparing ? 'border-muted bg-muted' : 'border-border bg-surface'
+                isPreparing || isUploading || isPhotoLimitReached ? 'border-muted bg-muted' : 'border-border bg-surface'
               }`}
               style={{ width: tileSize, height: tileSize }}>
               {isPreparing ? (
                 <Loader2 size={24} color={colors.border} />
               ) : (
-                <Camera size={24} color={colors.primaryLight} />
+                <Camera size={24} color={isPhotoLimitReached ? colors.border : colors.primaryLight} />
               )}
               <Text className="mt-xs text-sm font-bold text-textSecondary">
-                {isPreparing ? '준비 중' : '사진 추가'}
+                {isPreparing ? '준비 중' : isPhotoLimitReached ? '최대 10장' : '사진 추가'}
               </Text>
             </Pressable>
 
@@ -260,23 +281,27 @@ export default function AddScreen() {
                 사진을 여러 장 선택하면 여기에서 순서대로 확인할 수 있어요.
               </Text>
             </View>
-          ) : null}
+          ) : (
+            <Text className="mt-lg text-center text-sm font-bold text-textSecondary">
+              {pendingPhotos.length}/{MAX_PHOTO_COUNT}장 선택됨
+            </Text>
+          )}
         </ScrollView>
 
         <View className="items-center bg-surface px-lg pb-md pt-md">
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="AI로 일기 작성하기"
-            disabled={pendingPhotos.length === 0 || isPreparing}
+            disabled={pendingPhotos.length === 0 || isPreparing || isUploading}
             onPress={moveToAnalysis}
             className="w-full max-w-[360px] overflow-hidden rounded-lg"
             style={{
-              opacity: pendingPhotos.length === 0 || isPreparing ? 0.55 : 1,
+              opacity: pendingPhotos.length === 0 || isPreparing || isUploading ? 0.55 : 1,
               shadowColor: colors.primary,
               shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: pendingPhotos.length === 0 || isPreparing ? 0 : 0.16,
+              shadowOpacity: pendingPhotos.length === 0 || isPreparing || isUploading ? 0 : 0.16,
               shadowRadius: 16,
-              elevation: pendingPhotos.length === 0 || isPreparing ? 0 : 4,
+              elevation: pendingPhotos.length === 0 || isPreparing || isUploading ? 0 : 4,
             }}>
             <LinearGradient
               colors={[colors.primary, colors.primaryLight, colors.accent]}
@@ -284,7 +309,11 @@ export default function AddScreen() {
               end={{ x: 1, y: 0 }}
               className="h-14 items-center justify-center">
               <Text className="text-md font-extrabold text-textOnPrimary">
-                {pendingPhotos.length > 0 ? `${pendingPhotos.length}장으로 일기 작성하기` : 'AI로 일기 작성하기'}
+                {isUploading
+                  ? '사진 업로드 중'
+                  : pendingPhotos.length > 0
+                    ? `${pendingPhotos.length}장으로 일기 작성하기`
+                    : 'AI로 일기 작성하기'}
               </Text>
             </LinearGradient>
           </Pressable>

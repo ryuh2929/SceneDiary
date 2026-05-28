@@ -13,6 +13,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import {
+  fetchTripDayGenerationStatus,
+  startTripDayGeneration,
+  type LoadingStep,
+} from '@/services/diary-api';
+
 type PreparedPhoto = {
   fileUri: string;
   thumbnailUri: string;
@@ -37,11 +43,23 @@ const colors = {
 };
 
 const analysisSteps = [
+  '사진을 업로드할 준비를 하고 있어요',
   '사진을 정리하고 있어요',
+  '일차별 사진을 묶고 있어요',
   '장면을 살펴보고 있어요',
-  '하루의 흐름을 맞추고 있어요',
   '일기 초안을 준비하고 있어요',
 ];
+
+const loadingStepLabels: Record<LoadingStep, string> = {
+  uploading: '사진을 업로드하고 있어요',
+  resizing_images: '사진을 정리하고 있어요',
+  creating_thumbnails: '썸네일을 준비하고 있어요',
+  analyzing_metadata: '사진 정보를 살펴보고 있어요',
+  analyzing_photos: '장면을 살펴보고 있어요',
+  generating_diary: '일기 초안을 준비하고 있어요',
+  completed: '작업 준비가 끝났어요',
+  failed: '일기 준비에 실패했어요',
+};
 
 // 작성 화면에서 다음 일차 생성 중에 다시 호출할 때 사용할 안내 문구입니다.
 const nextDaySteps = [
@@ -50,6 +68,8 @@ const nextDaySteps = [
   '하루의 흐름을 맞추고 있어요',
   '새 기록 초안을 준비하고 있어요',
 ];
+
+const COMPLETE_DELAY_MS = 650;
 
 function getFirstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -75,6 +95,7 @@ export default function LoadingScreen() {
   const params = useLocalSearchParams<{
     photos?: string;
     tripId?: string;
+    tripDayId?: string;
     day?: string;
     mode?: string;
   }>();
@@ -82,6 +103,7 @@ export default function LoadingScreen() {
   const previewPhotos = useMemo(() => photos.slice(0, 5), [photos]);
   // tripId/day/mode는 다른 담당 화면이 로딩 화면을 재사용할 때 이어받는 최소 연결 정보입니다.
   const tripId = getFirstParam(params.tripId) ?? '1';
+  const tripDayId = getFirstParam(params.tripDayId);
   const day = getFirstParam(params.day) ?? '1';
   const mode = getFirstParam(params.mode) ?? 'initial';
   // initial은 사진 선택 직후 첫 생성 로딩, next-day는 작성 화면에서 다음 일차 생성 중 재진입하는 로딩입니다.
@@ -93,6 +115,12 @@ export default function LoadingScreen() {
   const drift = useSharedValue(0);
   const [progress, setProgress] = useState(18);
   const [stepIndex, setStepIndex] = useState(0);
+  const [loadingStep, setLoadingStep] = useState<LoadingStep | null>(
+    tripDayId ? 'analyzing_photos' : null,
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [generationAttempt, setGenerationAttempt] = useState(0);
+  const hasApiLoading = Boolean(tripDayId) && !isNextDayMode;
 
   // 같은 로딩 화면을 상황별로 재사용하기 위해 모드에 따라 문구 묶음만 바꿉니다.
   const steps = isNextDayMode ? nextDaySteps : analysisSteps;
@@ -103,7 +131,21 @@ export default function LoadingScreen() {
     ? `${day}일차 기록을 준비 중이에요`
     : `${photoCountLabel}으로 하루 기록을 준비 중이에요`;
   // 버튼 문구도 현재 대기 중인 일차를 드러내서 다음 화면 이동 맥락을 맞춥니다.
-  const buttonLabel = isNextDayMode ? `${day}일차 편집 화면으로 이동` : '작성 화면으로 이동';
+  const buttonLabel =
+    loadingStep === 'failed'
+      ? '다시 시도하기'
+      : progress >= 100
+      ? isNextDayMode
+        ? `${day}일차 편집 화면으로 이동`
+        : '작성 화면으로 이동'
+      : '준비가 끝나면 자동으로 이동해요';
+  const displayStep = loadingStep ? loadingStepLabels[loadingStep] : steps[stepIndex];
+  const displayHelperText =
+    loadingStep === 'failed'
+      ? errorMessage ?? '잠시 후 다시 시도해 주세요'
+      : progress >= 100
+        ? '작업 준비가 끝났어요'
+        : helperText;
 
   useEffect(() => {
     rotation.value = withRepeat(
@@ -132,13 +174,17 @@ export default function LoadingScreen() {
   }, [drift, pulse, rotation]);
 
   useEffect(() => {
+    if (hasApiLoading) {
+      return;
+    }
+
     const progressTimer = setInterval(() => {
       setProgress((current) => {
-        if (current >= 96) {
+        if (current >= 100) {
           return current;
         }
 
-        return current + 5;
+        return Math.min(current + 4, 100);
       });
     }, 620);
 
@@ -150,7 +196,88 @@ export default function LoadingScreen() {
       clearInterval(progressTimer);
       clearInterval(stepTimer);
     };
-  }, [steps.length]);
+  }, [hasApiLoading, steps.length]);
+
+  useEffect(() => {
+    if (!hasApiLoading || !tripDayId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function startAndPoll() {
+      try {
+        const started = await startTripDayGeneration(Number(tripDayId));
+        if (!isMounted) {
+          return;
+        }
+        setLoadingStep(started.status);
+        setProgress(started.progress);
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+        setLoadingStep('failed');
+        setErrorMessage('분석 요청을 시작하지 못했어요.');
+      }
+    }
+
+    startAndPoll();
+
+    const pollTimer = setInterval(async () => {
+      try {
+        const status = await fetchTripDayGenerationStatus(Number(tripDayId));
+        if (!isMounted) {
+          return;
+        }
+        setLoadingStep(status.status);
+        setProgress(status.progress);
+        setErrorMessage(status.errorMessage ?? null);
+
+        if (status.status === 'completed' || status.status === 'failed') {
+          clearInterval(pollTimer);
+        }
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+        setLoadingStep('failed');
+        setErrorMessage('분석 상태를 확인하지 못했어요.');
+        clearInterval(pollTimer);
+      }
+    }, 1800);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollTimer);
+    };
+  }, [generationAttempt, hasApiLoading, tripDayId]);
+
+  useEffect(() => {
+    if (progress < 100 || loadingStep === 'failed') {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      router.replace({
+        pathname: '/diary_writing',
+        params: { tripId, day, mode },
+      });
+    }, COMPLETE_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [day, loadingStep, mode, progress, router, tripId]);
+
+  const retryGeneration = () => {
+    if (!tripDayId) {
+      return;
+    }
+
+    setLoadingStep('analyzing_photos');
+    setErrorMessage(null);
+    setProgress(42);
+    setGenerationAttempt((current) => current + 1);
+  };
 
   const spinnerStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
@@ -285,10 +412,10 @@ export default function LoadingScreen() {
           </View>
 
           <Text className="mt-md text-center text-2xl font-extrabold text-textPrimary">
-            {steps[stepIndex]}
+            {displayStep}
           </Text>
           <Text className="mt-xs text-center text-md font-semibold text-textSecondary">
-            {helperText}
+            {displayHelperText}
           </Text>
 
           {!isNextDayMode && photos.length > 3 ? (
@@ -314,14 +441,21 @@ export default function LoadingScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="일기 작성 화면으로 이동"
-          onPress={() =>
+          disabled={progress < 100 && loadingStep !== 'failed'}
+          onPress={() => {
+            if (loadingStep === 'failed') {
+              retryGeneration();
+              return;
+            }
+
             router.replace({
               pathname: '/diary_writing',
               // 작성 화면에서 같은 여행과 일차 정보를 이어받을 수 있도록 그대로 넘깁니다.
               params: { tripId, day, mode },
-            })
-          }
-          className="absolute bottom-md w-full max-w-[360px] overflow-hidden rounded-lg">
+            });
+          }}
+          className="absolute bottom-md w-full max-w-[360px] overflow-hidden rounded-lg"
+          style={{ opacity: progress >= 100 || loadingStep === 'failed' ? 1 : 0.58 }}>
           <LinearGradient
             colors={[colors.primary, colors.primaryLight, colors.accent]}
             start={{ x: 0, y: 0 }}
