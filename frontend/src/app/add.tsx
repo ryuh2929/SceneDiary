@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { uploadFirstDayPhotos } from '@/services/diary-api';
+import { uploadFirstDayPhotos } from '@/api/diary';
 
 type PendingPhoto = {
   id: string;

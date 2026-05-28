@@ -4,7 +4,7 @@
 //   - 순방향 일방통행: 뒤로가기·자유이동·작성중단 없음.
 //   - 대부분 읽기 전용. 유일한 편집 = 여행지(location_summary, 지도 피커 — 아직 stub).
 //   - "다음날로"로 진행, 마지막 날에서 "저장하기" → (3단계에서) Detail 이동.
-//   - 데이터는 백엔드 API(services/diary-api)에서 받아옴. genStatus는 폴링으로 갱신.
+//   - 데이터는 백엔드 API(api/diary)에서 받아옴. genStatus는 폴링으로 갱신.
 //   - 색/폰트는 다른 페이지와 동일한 팀 디자인 토큰(primary, textPrimary, font-sans).
 
 import {Image} from "expo-image";
@@ -35,7 +35,7 @@ import {
   saveDayLocation,
   regenerateDay,
   completeTrip,
-} from "@/services/diary-api";
+} from "@/api/diary";
 import LocationPicker from "@/components/ui/GoogleMap/LocationPicker";
 
 // 디자인 토큰(색상). 아이콘 색처럼 className으로 주기 번거로운 곳에 hex로 직접 씁니다.
