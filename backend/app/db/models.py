@@ -32,9 +32,11 @@ from sqlalchemy import (
     Text,
     func,
     text,
+    ForeignKey,
+    Column,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
 
@@ -104,7 +106,6 @@ class Trip(Base):
     # soft delete: NULL이면 살아있는 여행, 값 있으면 삭제 처리됨
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-
 # ─────────────────────────────────────────────────────────────
 # trip_days 테이블 - 여행의 날짜별 정보
 # ─────────────────────────────────────────────────────────────
@@ -159,6 +160,8 @@ class TripDay(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp()
     )
+    
+    photos = relationship("Photo", back_populates="trip_day")
 
 
 # (구 diaries 테이블은 trip_days 로 합쳐짐 — content/symbol/word_count/generated_at 참고)
@@ -223,6 +226,8 @@ class Photo(Base):
     # soft delete: NULL이면 살아있는 사진
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    trip_day_id = Column(Integer, ForeignKey("trip_days.id"))
+    trip_day = relationship("TripDay", back_populates="photos")
 
 # ─────────────────────────────────────────────────────────────
 # diary_generations 테이블 - 일기 AI 생성 이력
