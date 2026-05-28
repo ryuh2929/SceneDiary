@@ -165,6 +165,7 @@ class TripDay(Base):
     photos = relationship("Photo", back_populates="trip_day")
 
 
+
 # (구 diaries 테이블은 trip_days 로 합쳐짐 — content/symbol/word_count/generated_at 참고)
 
 

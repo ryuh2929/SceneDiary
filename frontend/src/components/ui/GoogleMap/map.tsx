@@ -4,6 +4,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import SimpleView from "./simpleView";
 import { getTripDays } from "@/api/map";
 import { Days } from "@/types/api";
+import { useFocusEffect } from "expo-router"; // 또는 @react-navigation/native
 
 type PhotoMarkerProps = {
   item: Days;
@@ -120,20 +121,26 @@ export default function MapScreen() {
   const [dayMarkers, setDayMarkers] = useState<Days[]>([]);
   const [selectedItem, setSelectedItem] = useState<Days | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setDayMarkers([]);
-        const data = await getTripDays();
-        console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
-        setDayMarkers(data);
-      } catch (error) {
-        console.error("데이터 불러오기 에러:", error);
-      }
-    };
+  // 1. 데이터 가져오는 로직을 별도 함수로 분리
+  const fetchData = async () => {
+    try {
+      const data = await getTripDays();
+      // console.log("API 응답: ",JSON.stringify(data,null,2))
+      setDayMarkers(data);
+    } catch (error) {
+      console.error("데이터 불러오기 에러:", error);
+    }
+  };
 
-    fetchData();
-  }, []);
+  // 2. 화면에 들어올 때마다(Focus) 데이터 갱신
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchData(); // 데이터 새로고침
+      return () => {
+        /* 필요 시 정리 작업 */
+      };
+    }, []),
+  );
 
   const handleMarkerPress = (item: Days) => {
     const latitude = item.representative_lat || 0;
