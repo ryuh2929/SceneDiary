@@ -7,6 +7,9 @@
 .antigravity/
 .antigravity*
 
+# Runtime uploaded images
+backend/uploads/
+
 # env (전부 무시 — .env 류는 Slack으로 공유)
 .env
 .env.*

@@ -17,7 +17,7 @@ import {
   fetchTripDayGenerationStatus,
   startTripDayGeneration,
   type LoadingStep,
-} from '@/services/diary-api';
+} from '@/api/diary';
 
 type PreparedPhoto = {
   fileUri: string;
