@@ -6,7 +6,7 @@ import { Home, Map, Settings, LucideIcon } from 'lucide-react-native';
 type NavItem = {
   // path: '/(tabs)' | '/(tabs)/map' | '/(tabs)/settings';
   path: string;
-  href: Href;
+  href: any;
   icon: LucideIcon;
   label: string;
 };
