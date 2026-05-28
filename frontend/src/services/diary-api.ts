@@ -17,7 +17,7 @@ import type {
 //   1) 환경변수 EXPO_PUBLIC_API_BASE_URL 이 있으면 그걸 사용
 //   2) 실기기/Expo 실행 중이면 개발 PC의 IP:8000
 //   3) 그 외(웹)는 localhost:8000
-function getApiBaseUrl() {
+export function getApiBaseUrl() {
   const configuredBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
 
   if (configuredBaseUrl) {
@@ -31,6 +31,45 @@ function getApiBaseUrl() {
 
   return 'http://localhost:8000';
 }
+
+export type UploadedPhoto = {
+  id: number;
+  thumbnailUrl: string;
+  fileUrl: string;
+  originalFilename: string | null;
+  fileSizeBytes: number | null;
+  mimeType: string | null;
+  width: number | null;
+  height: number | null;
+  displayOrder: number;
+};
+
+export type LoadingStep =
+  | 'uploading'
+  | 'resizing_images'
+  | 'creating_thumbnails'
+  | 'analyzing_metadata'
+  | 'analyzing_photos'
+  | 'generating_diary'
+  | 'completed'
+  | 'failed';
+
+export type FirstDayUploadResponse = {
+  tripId: number;
+  tripDayId: number;
+  day: number;
+  status: LoadingStep;
+  photos: UploadedPhoto[];
+};
+
+export type GenerationResponse = {
+  tripId: number;
+  tripDayId: number;
+  day: number;
+  status: LoadingStep;
+  progress: number;
+  errorMessage?: string | null;
+};
 
 // 공통 요청 헬퍼. 주소로 fetch → 실패하면 에러를 던지고 → 성공하면 JSON을 타입 T로 돌려줍니다.
 // (6개 함수가 매번 같은 ok 검사·json 변환을 반복하지 않도록 한 곳에 모음)
@@ -46,6 +85,45 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   return (await response.json()) as T;
+}
+
+export async function uploadFirstDayPhotos(photos: {
+  fileUri: string;
+  originalFilename: string;
+  mimeType: string;
+}[]) {
+  const formData = new FormData();
+  formData.append('day_number', '1');
+  formData.append('title', '새 여행');
+
+  photos.forEach((photo) => {
+    formData.append('files', {
+      uri: photo.fileUri,
+      name: photo.originalFilename,
+      type: photo.mimeType,
+    } as unknown as Blob);
+  });
+
+  const response = await fetch(`${getApiBaseUrl()}/trips/upload-first-day`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`사진 업로드 실패 (${response.status})`);
+  }
+
+  return (await response.json()) as FirstDayUploadResponse;
+}
+
+export function startTripDayGeneration(tripDayId: number) {
+  return request<GenerationResponse>(`/trip-days/${tripDayId}/generate`, {
+    method: 'POST',
+  });
+}
+
+export function fetchTripDayGenerationStatus(tripDayId: number) {
+  return request<GenerationResponse>(`/trip-days/${tripDayId}/generation-status`);
 }
 
 // ── 6개 엔드포인트 호출 함수 (routers/diary.py 와 1:1) ──

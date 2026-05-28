@@ -26,3 +26,16 @@ class Days(BaseModel):
     # generated_at: Optional[datetime] = None                  
 
     model_config = ConfigDict(from_attributes=True)
+
+class PhotoSchema(BaseModel):
+    id: int
+    file_url: str
+    thumbnail_url: str  # <--- 이 필드를 스키마에 추가하세요!
+    image_url: Optional[str] = None      # 가공된 원본 URL
+    thumbnail_image_url: Optional[str] = None # 가공된 썸네일 URL
+
+    model_config = ConfigDict(from_attributes=True)
+
+class DaysWithPhotos(Days):
+    photos: list[PhotoSchema] = []
+    
