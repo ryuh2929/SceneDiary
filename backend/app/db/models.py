@@ -33,7 +33,6 @@ from sqlalchemy import (
     func,
     text,
     ForeignKey,
-    Column,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -63,6 +62,9 @@ class User(Base):
     nickname: Mapped[str | None] = mapped_column(String(50), nullable=True)
     profile_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     writing_persona: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # AI 가 사용자의 여행 패턴(사진·일기·일정)을 분석해 자연어 한 줄로 요약한 "여행 스타일".
+    # 예: "도시 야경 위주의 감성형 탐험가". 미생성 시 NULL.
+    travel_style_analysis: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # 사용자 설정 (DB가 기본값 자동 입력)
     dark_mode: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
@@ -95,6 +97,15 @@ class Trip(Base):
 
     # → photos.id (대표 사진. 선택값)
     cover_photo_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    # 여행 전체를 대표하는 국기 이모지 (Twemoji 코드포인트).
+    # trip_days.symbol(일차별 상징)과 달리 trip 1개당 1개. 국기 이모지는 두 코드포인트를
+    # '-' 로 결합한 형태 (예: 1f1f0-1f1f7 = 🇰🇷). 미설정 시 NULL.
+    flag: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Twemoji codepoint for the trip's representative flag emoji. Multi-codepoint joined by '-', e.g. 1f1f0-1f1f7",
+    )
 
     # 상태: 'draft'(생성 직후, DB 기본값) → 'completed'(최종 저장 시). 'published'는 미사용.
     status: Mapped[str] = mapped_column(String(20), server_default=text("'draft'"))
@@ -179,8 +190,8 @@ class Photo(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
-    # → trip_days.id
-    trip_day_id: Mapped[int] = mapped_column(BigInteger)
+    # → trip_days.id (FK 제약 + ORM 관계는 클래스 아래쪽 trip_day 와 짝)
+    trip_day_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("trip_days.id"))
     # → users.id (업로더)
     user_id: Mapped[int] = mapped_column(BigInteger)
 
@@ -228,7 +239,7 @@ class Photo(Base):
     # soft delete: NULL이면 살아있는 사진
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    trip_day_id = Column(Integer, ForeignKey("trip_days.id"))
+    # ORM 관계: photo.trip_day → 부모 TripDay 객체 (FK 컬럼은 위 trip_day_id)
     trip_day = relationship("TripDay", back_populates="photos")
 
 
