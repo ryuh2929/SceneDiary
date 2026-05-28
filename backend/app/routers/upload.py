@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 from typing import Literal
@@ -12,9 +13,12 @@ from sqlalchemy.orm import Session
 from app.db.models import DiaryGeneration, Photo, Trip, TripDay
 from app.db.session import get_db
 from app.routers.diary import _abs_url, _base_url, _gen_status, _run_generation
-from app.services.image_processor import process_upload_image
+from app.services.image_processor import extract_image_taken_date, process_upload_image
 
 
+# add.tsx -> loading.tsx 흐름에서 사용하는 업로드/생성 API입니다.
+# DB 스키마는 변경하지 않고 기존 trips, trip_days, photos, diary_generations를 사용합니다.
+# 실제 앱 노출을 위해서는 main.py에서 이 router 등록과 /uploads 정적 서빙 연결이 필요합니다.
 router = APIRouter(tags=["upload"])
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
@@ -47,12 +51,20 @@ class UploadedPhoto(BaseModel):
     displayOrder: int
 
 
+class UploadedDay(BaseModel):
+    tripDayId: int
+    day: int
+    date: str
+    photos: list[UploadedPhoto]
+
+
 class FirstDayUploadResponse(BaseModel):
     tripId: int
     tripDayId: int
     day: int
     status: LoadingStep
     photos: list[UploadedPhoto]
+    days: list[UploadedDay]
 
 
 class GenerationStartResponse(BaseModel):
@@ -70,6 +82,14 @@ class GenerationStatusResponse(BaseModel):
     status: LoadingStep
     progress: int
     errorMessage: str | None = None
+
+
+@dataclass(frozen=True)
+class UploadDraft:
+    raw_bytes: bytes
+    original_filename: str | None
+    content_type: str | None
+    photo_date: date
 
 
 def _get_or_create_trip(
@@ -103,20 +123,40 @@ def _get_or_create_trip(
     return trip
 
 
-def _get_or_create_trip_day(
+def _next_day_number(db: Session, trip_id: int) -> int:
+    max_day = (
+        db.query(TripDay)
+        .filter(TripDay.trip_id == trip_id)
+        .order_by(TripDay.day_number.desc())
+        .first()
+    )
+    return (max_day.day_number if max_day else 0) + 1
+
+
+def _get_or_create_trip_day_for_date(
     db: Session,
     *,
     trip: Trip,
-    day_number: int,
     trip_date: date,
+    preferred_day_number: int | None = None,
 ) -> TripDay:
+    # 같은 촬영일의 사진은 같은 trip_day로 묶습니다. 이미 해당 날짜가 있으면 재사용합니다.
     trip_day = (
         db.query(TripDay)
-        .filter(TripDay.trip_id == trip.id, TripDay.day_number == day_number)
+        .filter(TripDay.trip_id == trip.id, TripDay.date == trip_date)
         .first()
     )
     if trip_day is not None:
         return trip_day
+
+    day_number = preferred_day_number or _next_day_number(db, trip.id)
+    day_number_exists = (
+        db.query(TripDay)
+        .filter(TripDay.trip_id == trip.id, TripDay.day_number == day_number)
+        .first()
+    )
+    if day_number_exists is not None:
+        day_number = _next_day_number(db, trip.id)
 
     now = datetime.now()
     trip_day = TripDay(
@@ -151,6 +191,8 @@ async def upload_first_day_photos(
     destination: str | None = Form(None),
     db: Session = Depends(get_db),
 ) -> FirstDayUploadResponse:
+    # 사진 업로드 API.
+    # EXIF 촬영일이 있으면 날짜별로 trip_day를 나누고, 없으면 요청 날짜를 fallback으로 씁니다.
     if not files:
         raise HTTPException(status_code=400, detail="At least one photo is required")
     if len(files) > MAX_UPLOAD_PHOTOS:
@@ -158,74 +200,108 @@ async def upload_first_day_photos(
     if day_number < 1:
         raise HTTPException(status_code=400, detail="day_number must be greater than 0")
 
-    effective_date = trip_date or date.today()
+    fallback_date = trip_date or date.today()
+    drafts: list[UploadDraft] = []
+    for upload_file in files:
+        if upload_file.content_type and not upload_file.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail=f"{upload_file.filename} is not an image")
+
+        raw_bytes = await upload_file.read()
+        drafts.append(
+            UploadDraft(
+                raw_bytes=raw_bytes,
+                original_filename=upload_file.filename,
+                content_type=upload_file.content_type,
+                photo_date=extract_image_taken_date(raw_bytes) or fallback_date,
+            )
+        )
+
+    sorted_dates = sorted({draft.photo_date for draft in drafts})
+    effective_start = sorted_dates[0]
+    effective_end = sorted_dates[-1]
     trip = _get_or_create_trip(
         db,
         trip_id=trip_id,
         user_id=user_id,
         title=title,
         destination=destination,
-        trip_date=effective_date,
+        trip_date=effective_start,
     )
-    trip_day = _get_or_create_trip_day(
-        db,
-        trip=trip,
-        day_number=day_number,
-        trip_date=effective_date,
-    )
+    if trip.start_date > effective_start:
+        trip.start_date = effective_start
+    if trip.end_date < effective_end:
+        trip.end_date = effective_end
 
-    existing_count = (
-        db.query(Photo)
-        .filter(Photo.trip_day_id == trip_day.id, Photo.deleted_at.is_(None))
-        .count()
-    )
-    if existing_count + len(files) > MAX_UPLOAD_PHOTOS:
-        raise HTTPException(status_code=400, detail=f"Photos are limited to {MAX_UPLOAD_PHOTOS} per day")
+    trip_days_by_date = {
+        grouped_date: _get_or_create_trip_day_for_date(
+            db,
+            trip=trip,
+            trip_date=grouped_date,
+            preferred_day_number=day_number + index if trip_id is None else None,
+        )
+        for index, grouped_date in enumerate(sorted_dates)
+    }
 
     base = _base_url(request)
     uploaded: list[UploadedPhoto] = []
-    for index, upload_file in enumerate(files):
-        if upload_file.content_type and not upload_file.content_type.startswith("image/"):
-            raise HTTPException(status_code=400, detail=f"{upload_file.filename} is not an image")
+    uploaded_by_day_id: dict[int, list[UploadedPhoto]] = {}
+    drafts_by_date = {
+        grouped_date: [draft for draft in drafts if draft.photo_date == grouped_date]
+        for grouped_date in sorted_dates
+    }
 
-        raw_bytes = await upload_file.read()
-        display_order = existing_count + index
-        try:
-            processed = process_upload_image(
-                raw_bytes=raw_bytes,
-                original_filename=upload_file.filename,
-                upload_root=_UPLOAD_ROOT,
-                public_root=_UPLOAD_PUBLIC_ROOT,
-                trip_id=trip.id,
-                day_number=trip_day.day_number,
-                display_order=display_order,
-            )
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"Image processing failed: {upload_file.filename}") from exc
-
-        photo = Photo(
-            trip_day_id=trip_day.id,
-            user_id=user_id,
-            file_url=processed.file_url,
-            thumbnail_url=processed.thumbnail_url,
-            original_filename=upload_file.filename,
-            file_size_bytes=processed.file_size_bytes,
-            mime_type=processed.mime_type,
-            width=processed.width,
-            height=processed.height,
-            display_order=display_order,
-            created_at=datetime.now(),
+    for grouped_date, grouped_drafts in drafts_by_date.items():
+        trip_day = trip_days_by_date[grouped_date]
+        existing_count = (
+            db.query(Photo)
+            .filter(Photo.trip_day_id == trip_day.id, Photo.deleted_at.is_(None))
+            .count()
         )
-        db.add(photo)
-        db.flush()
+        if existing_count + len(grouped_drafts) > MAX_UPLOAD_PHOTOS:
+            raise HTTPException(status_code=400, detail=f"Photos are limited to {MAX_UPLOAD_PHOTOS} per day")
 
-        if trip.cover_photo_id is None:
-            trip.cover_photo_id = photo.id
-        if trip_day.represent_image is None:
-            trip_day.represent_image = photo.id
+        uploaded_by_day_id[trip_day.id] = []
+        for index, draft in enumerate(grouped_drafts):
+            display_order = existing_count + index
+            try:
+                processed = process_upload_image(
+                    raw_bytes=draft.raw_bytes,
+                    original_filename=draft.original_filename,
+                    upload_root=_UPLOAD_ROOT,
+                    public_root=_UPLOAD_PUBLIC_ROOT,
+                    trip_id=trip.id,
+                    day_number=trip_day.day_number,
+                    trip_date=trip_day.date,
+                    display_order=display_order,
+                )
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Image processing failed: {draft.original_filename}",
+                ) from exc
 
-        uploaded.append(
-            UploadedPhoto(
+            photo = Photo(
+                trip_day_id=trip_day.id,
+                user_id=user_id,
+                file_url=processed.file_url,
+                thumbnail_url=processed.thumbnail_url,
+                original_filename=draft.original_filename,
+                file_size_bytes=processed.file_size_bytes,
+                mime_type=processed.mime_type,
+                width=processed.width,
+                height=processed.height,
+                display_order=display_order,
+                created_at=datetime.now(),
+            )
+            db.add(photo)
+            db.flush()
+
+            if trip.cover_photo_id is None:
+                trip.cover_photo_id = photo.id
+            if trip_day.represent_image is None:
+                trip_day.represent_image = photo.id
+
+            uploaded_photo = UploadedPhoto(
                 id=photo.id,
                 thumbnailUrl=_abs_url(base, photo.thumbnail_url),
                 fileUrl=_abs_url(base, photo.file_url),
@@ -236,15 +312,26 @@ async def upload_first_day_photos(
                 height=photo.height,
                 displayOrder=photo.display_order,
             )
-        )
+            uploaded.append(uploaded_photo)
+            uploaded_by_day_id[trip_day.id].append(uploaded_photo)
 
     db.commit()
+    first_trip_day = trip_days_by_date[sorted_dates[0]]
     return FirstDayUploadResponse(
         tripId=trip.id,
-        tripDayId=trip_day.id,
-        day=trip_day.day_number,
+        tripDayId=first_trip_day.id,
+        day=first_trip_day.day_number,
         status="creating_thumbnails",
         photos=uploaded,
+        days=[
+            UploadedDay(
+                tripDayId=trip_days_by_date[grouped_date].id,
+                day=trip_days_by_date[grouped_date].day_number,
+                date=grouped_date.isoformat(),
+                photos=uploaded_by_day_id[trip_days_by_date[grouped_date].id],
+            )
+            for grouped_date in sorted_dates
+        ],
     )
 
 
@@ -254,6 +341,8 @@ def start_trip_day_generation(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> GenerationStartResponse:
+    # 로딩 화면에서 호출하는 생성 시작 API.
+    # 실제 VLM/LLM 처리는 diary.py의 백그라운드 생성 로직을 재사용합니다.
     trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
     if trip_day is None:
         raise HTTPException(status_code=404, detail="TripDay not found")
@@ -297,6 +386,8 @@ def get_trip_day_generation_status(
     trip_day_id: int,
     db: Session = Depends(get_db),
 ) -> GenerationStatusResponse:
+    # 로딩 화면 폴링용 API.
+    # status/progress는 화면 표시용 응답값이며, 최종 성공/실패 판단은 diary_generations 상태를 사용합니다.
     trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
     if trip_day is None:
         raise HTTPException(status_code=404, detail="TripDay not found")

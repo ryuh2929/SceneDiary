@@ -12,6 +12,10 @@ import type {
   TripDiary,
   TripStatusUpdate,
 } from '@/types/diary_writing';
+import type {
+  FirstDayUploadResponse,
+  GenerationResponse,
+} from '@/types/api';
 
 // 백엔드 주소를 알아냅니다. (settings-api.ts 와 동일)
 //   1) 환경변수 EXPO_PUBLIC_API_BASE_URL 이 있으면 그걸 사용
@@ -31,45 +35,6 @@ export function getApiBaseUrl() {
 
   return 'http://localhost:8000';
 }
-
-export type UploadedPhoto = {
-  id: number;
-  thumbnailUrl: string;
-  fileUrl: string;
-  originalFilename: string | null;
-  fileSizeBytes: number | null;
-  mimeType: string | null;
-  width: number | null;
-  height: number | null;
-  displayOrder: number;
-};
-
-export type LoadingStep =
-  | 'uploading'
-  | 'resizing_images'
-  | 'creating_thumbnails'
-  | 'analyzing_metadata'
-  | 'analyzing_photos'
-  | 'generating_diary'
-  | 'completed'
-  | 'failed';
-
-export type FirstDayUploadResponse = {
-  tripId: number;
-  tripDayId: number;
-  day: number;
-  status: LoadingStep;
-  photos: UploadedPhoto[];
-};
-
-export type GenerationResponse = {
-  tripId: number;
-  tripDayId: number;
-  day: number;
-  status: LoadingStep;
-  progress: number;
-  errorMessage?: string | null;
-};
 
 // 공통 요청 헬퍼. 주소로 fetch → 실패하면 에러를 던지고 → 성공하면 JSON을 타입 T로 돌려줍니다.
 // (6개 함수가 매번 같은 ok 검사·json 변환을 반복하지 않도록 한 곳에 모음)
