@@ -9,6 +9,8 @@ from uuid import uuid4
 from PIL import Image, ImageOps
 
 
+# 업로드 이미지는 서버에서 다시 정리합니다.
+# 분석용 이미지는 모델 입력에 맞게 줄이고, 썸네일은 글 작성 화면 미리보기용으로 별도 저장합니다.
 MAX_ANALYSIS_SIZE = 1024
 THUMBNAIL_SIZE = 240
 JPEG_QUALITY = 82
@@ -52,6 +54,7 @@ def process_upload_image(
     day_number: int,
     display_order: int,
 ) -> ProcessedImage:
+    # EXIF 회전 정보를 반영한 뒤 JPEG로 통일해 모델 입력과 정적 서빙을 단순하게 맞춥니다.
     with Image.open(BytesIO(raw_bytes)) as opened:
         image = ImageOps.exif_transpose(opened).convert("RGB")
 

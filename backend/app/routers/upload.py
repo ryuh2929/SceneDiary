@@ -15,6 +15,9 @@ from app.routers.diary import _abs_url, _base_url, _gen_status, _run_generation
 from app.services.image_processor import process_upload_image
 
 
+# add.tsx -> loading.tsx 흐름에서 사용하는 업로드/생성 API입니다.
+# DB 스키마는 변경하지 않고 기존 trips, trip_days, photos, diary_generations를 사용합니다.
+# 실제 앱 노출을 위해서는 main.py에서 이 router 등록과 /uploads 정적 서빙 연결이 필요합니다.
 router = APIRouter(tags=["upload"])
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
@@ -151,6 +154,8 @@ async def upload_first_day_photos(
     destination: str | None = Form(None),
     db: Session = Depends(get_db),
 ) -> FirstDayUploadResponse:
+    # 1일차 사진 업로드 API.
+    # 사진 묶음을 하나의 trip_day 기준으로 저장하고, 서버에서 분석용 이미지와 썸네일을 생성합니다.
     if not files:
         raise HTTPException(status_code=400, detail="At least one photo is required")
     if len(files) > MAX_UPLOAD_PHOTOS:
@@ -254,6 +259,8 @@ def start_trip_day_generation(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> GenerationStartResponse:
+    # 로딩 화면에서 호출하는 생성 시작 API.
+    # 실제 VLM/LLM 처리는 diary.py의 백그라운드 생성 로직을 재사용합니다.
     trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
     if trip_day is None:
         raise HTTPException(status_code=404, detail="TripDay not found")
@@ -297,6 +304,8 @@ def get_trip_day_generation_status(
     trip_day_id: int,
     db: Session = Depends(get_db),
 ) -> GenerationStatusResponse:
+    # 로딩 화면 폴링용 API.
+    # status/progress는 화면 표시용 응답값이며, 최종 성공/실패 판단은 diary_generations 상태를 사용합니다.
     trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
     if trip_day is None:
         raise HTTPException(status_code=404, detail="TripDay not found")
