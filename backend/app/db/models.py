@@ -32,9 +32,11 @@ from sqlalchemy import (
     Text,
     func,
     text,
+    ForeignKey,
+    Column,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
 
@@ -160,6 +162,9 @@ class TripDay(Base):
         DateTime, server_default=func.current_timestamp()
     )
 
+    photos = relationship("Photo", back_populates="trip_day")
+
+
 
 # (구 diaries 테이블은 trip_days 로 합쳐짐 — content/symbol/word_count/generated_at 참고)
 
@@ -222,6 +227,9 @@ class Photo(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime)
     # soft delete: NULL이면 살아있는 사진
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    trip_day_id = Column(Integer, ForeignKey("trip_days.id"))
+    trip_day = relationship("TripDay", back_populates="photos")
 
 
 # ─────────────────────────────────────────────────────────────
