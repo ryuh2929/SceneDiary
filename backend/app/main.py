@@ -9,18 +9,9 @@ from app.routers.settings import router as settings_router
 from app.routers.map import router as map_router
 
 from fastapi.staticfiles import StaticFiles
-import os
-
 from app.routers.home import router as home_router
 from app.routers.detail import router as detail_router
 app = FastAPI()
-# main.py에서 한 단계 상위로 올라간 후 test_images로 진입
-# __file__은 현재 파일의 경로를 의미합니다.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-IMAGE_DIR = os.path.join(BASE_DIR, "test_images")
-
-# 정적 파일 마운트
-app.mount("/images", StaticFiles(directory=IMAGE_DIR), name="images")
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,6 +23,7 @@ app.add_middleware(
 
 app.include_router(settings_router)
 app.include_router(diary_router)
+app.include_router(map_router)
 app.include_router(home_router)
 app.include_router(detail_router)
 

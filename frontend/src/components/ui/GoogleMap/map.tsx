@@ -125,7 +125,7 @@ export default function MapScreen() {
   const fetchData = async () => {
     try {
       const data = await getTripDays();
-      // console.log("API 응답: ",JSON.stringify(data,null,2))
+      console.log("API 응답: ", JSON.stringify(data, null, 2));
       setDayMarkers(data);
     } catch (error) {
       console.error("데이터 불러오기 에러:", error);
