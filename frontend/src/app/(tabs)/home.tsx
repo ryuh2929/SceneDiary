@@ -119,11 +119,9 @@ export default function HomeScreen() {
 
                   {/* 심볼 */} 
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  <View
-                    style={{transform: [{ scale: 0.15 }, { translateY: 10 }]}}
-                  >
-                    {/* <EmojiIcon codepoint={symbol} size={28} /> */}
-                  </View>
+                  {/* {symbol && (
+                      <EmojiIcon codepoint={symbol} size={26}/>
+                    )} */}
                                  
                 </View>
 

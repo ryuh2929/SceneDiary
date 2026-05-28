@@ -98,15 +98,19 @@ export default function TravelDetailUI() {
           </View>
 
           {/* 타이틀 정보 */}
-          <View className="absolute bottom-lg left-md">
+          <View className="absolute bottom-lg left-md w-full pr-md">
             <Text className="text-xl font-sans font-bold text-textPrimary mb-sm">
               {title || '여행 정보'}
             </Text>
-            <View className="flex-row items-center gap-md">
+            <View className="flex-row items-center justify-between w-full">
+
+              {/* 위치 영역 */}
               <View className="flex-row items-center gap-xs">
                 <MapPin size={14} color="#39536B" />
                 <Text className="text-sm font-sans text-textSecondary">{destination  || '위치 미정'}</Text>
               </View>
+              <View className="flex-1 flex-row items-center gap-md flex-wrap">
+              {/* 날짜 영역 */}
               <View className="flex-row items-center gap-xs">
                 <Calendar size={14} color="#39536B" />
                 <Text className="text-sm font-sans text-textSecondary">
@@ -123,7 +127,7 @@ export default function TravelDetailUI() {
                   })()}
                 </Text>
               </View>
-              
+              </View>
               {/* 심볼 */}
               {currentDayData?.symbol && (
                 <View className="w-10 h-10 items-center justify-center overflow-hidden">
