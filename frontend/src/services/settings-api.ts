@@ -21,7 +21,7 @@ function getApiBaseUrl() {
 
 export async function fetchSettingsProfile() {
   const deviceId = await getOrCreateDeviceId();
-  const query = new URLSearchParams({ device_id: deviceId });
+  const query = new URLSearchParams({ user_uuid: deviceId });
   const response = await fetch(`${getApiBaseUrl()}/settings/profile?${query.toString()}`);
 
   if (!response.ok) {
@@ -35,9 +35,9 @@ export async function fetchSettingsProfile() {
 
 export async function updateWritingPersona(personaId: string) {
   const deviceId = await getOrCreateDeviceId();
-  const query = new URLSearchParams({ device_id: deviceId });
+  const query = new URLSearchParams({ user_uuid: deviceId });
 
-  // 선택한 페르소나 id만 서버로 보내고, 서버는 현재 device_id 유저의 writing_persona 컬럼을 갱신합니다.
+  // 선택한 페르소나 id만 서버로 보내고, 서버는 현재 user_uuid 유저의 writing_persona 컬럼을 갱신합니다.
   const response = await fetch(`${getApiBaseUrl()}/settings/persona?${query.toString()}`, {
     method: 'PATCH',
     headers: {
@@ -57,7 +57,7 @@ export async function updateWritingPersona(personaId: string) {
 
 export async function updateSettingsToggle(toggleId: SettingsToggle['id'], enabled: boolean) {
   const deviceId = await getOrCreateDeviceId();
-  const query = new URLSearchParams({ device_id: deviceId });
+  const query = new URLSearchParams({ user_uuid: deviceId });
 
   // 화면에서 쓰는 토글 id와 값을 보내면 백엔드가 실제 DB 컬럼으로 매핑해서 저장합니다.
   const response = await fetch(`${getApiBaseUrl()}/settings/toggle?${query.toString()}`, {
@@ -79,9 +79,9 @@ export async function updateSettingsToggle(toggleId: SettingsToggle['id'], enabl
 
 export async function updateNickname(nickname: string) {
   const deviceId = await getOrCreateDeviceId();
-  const query = new URLSearchParams({ device_id: deviceId });
+  const query = new URLSearchParams({ user_uuid: deviceId });
 
-  // 닉네임은 현재 device_id 유저의 users.nickname 컬럼에 저장됩니다.
+  // 닉네임은 현재 user_uuid 유저의 users.nickname 컬럼에 저장됩니다.
   const response = await fetch(`${getApiBaseUrl()}/settings/nickname?${query.toString()}`, {
     method: 'PATCH',
     headers: {

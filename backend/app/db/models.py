@@ -33,7 +33,6 @@ from sqlalchemy import (
     func,
     text,
     ForeignKey,
-    Column,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -45,24 +44,28 @@ from app.db.session import Base
 # users 테이블 - 사용자
 # ─────────────────────────────────────────────────────────────
 class User(Base):
-    """사용자. 가입 없이 device_id 로 식별."""
+    """사용자. 가입 없이 user_uuid (기기에서 생성한 UUID 문자열) 로 식별."""
 
     __tablename__ = "users"
 
-    # device_id 조회 속도를 위한 인덱스 (DB의 idx_users_device_id 와 이름 일치)
+    # user_uuid 조회 속도를 위한 인덱스 (DB의 idx_users_user_uuid 와 이름 일치)
     __table_args__ = (
-        Index("idx_users_device_id", "device_id"),
+        Index("idx_users_user_uuid", "user_uuid"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
-    # 디바이스 식별자
-    device_id: Mapped[str] = mapped_column(String(100))
+    # 디바이스에서 생성·보관하는 식별자. UUID v4 형식 문자열을 받지만 컬럼 타입은
+    # 호환성 유지를 위해 그대로 String(100) (옛 비-UUID 값도 살아있을 수 있음).
+    user_uuid: Mapped[str] = mapped_column(String(100))
 
     # 프로필 (모두 선택값)
     nickname: Mapped[str | None] = mapped_column(String(50), nullable=True)
     profile_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     writing_persona: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # AI 가 사용자의 여행 패턴(사진·일기·일정)을 분석해 자연어 한 줄로 요약한 "여행 스타일".
+    # 예: "도시 야경 위주의 감성형 탐험가". 미생성 시 NULL.
+    travel_style_analysis: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # 사용자 설정 (DB가 기본값 자동 입력)
     dark_mode: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
@@ -95,6 +98,15 @@ class Trip(Base):
 
     # → photos.id (대표 사진. 선택값)
     cover_photo_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    # 여행 전체를 대표하는 국기 이모지 (Twemoji 코드포인트). trip 1개당 1개.
+    # 국기 이모지는 두 코드포인트를 '-' 로 결합한 형태 (예: 1f1f0-1f1f7 = 🇰🇷).
+    # 미설정 시 NULL.
+    flag: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Twemoji codepoint for the trip's representative flag emoji. Multi-codepoint joined by '-', e.g. 1f1f0-1f1f7",
+    )
 
     # 상태: 'draft'(생성 직후, DB 기본값) → 'completed'(최종 저장 시). 'published'는 미사용.
     status: Mapped[str] = mapped_column(String(20), server_default=text("'draft'"))
@@ -143,12 +155,7 @@ class TripDay(Base):
     # ── 일기 내용 (구 diaries 테이블에서 합침) ──
     # 생성 전에는 비어 있을 수 있어 모두 nullable.
     content: Mapped[str | None] = mapped_column(Text, nullable=True)  # 일기 본문
-    # 일기의 상징 (Twemoji 코드포인트)
-    symbol: Mapped[str | None] = mapped_column(
-        String(50),
-        nullable=True,
-        comment="Twemoji codepoint (lowercase hex, multi-codepoint joined by -). e.g. 1f60a, 1f1f0-1f1f7",
-    )
+    # (symbol 컬럼 제거됨: trips.flag 로 여행 단위 대표 이모지를 쓰는 방향으로 통일)
     word_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # AI 생성 완료 시각 (미생성이면 NULL)
     generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -166,7 +173,7 @@ class TripDay(Base):
 
 
 
-# (구 diaries 테이블은 trip_days 로 합쳐짐 — content/symbol/word_count/generated_at 참고)
+# (구 diaries 테이블은 trip_days 로 합쳐짐 — content/word_count/generated_at 참고. symbol 은 폐기됨.)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -179,8 +186,8 @@ class Photo(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
-    # → trip_days.id
-    trip_day_id: Mapped[int] = mapped_column(BigInteger)
+    # → trip_days.id (FK 제약 + ORM 관계는 클래스 아래쪽 trip_day 와 짝)
+    trip_day_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("trip_days.id"))
     # → users.id (업로더)
     user_id: Mapped[int] = mapped_column(BigInteger)
 
@@ -228,7 +235,7 @@ class Photo(Base):
     # soft delete: NULL이면 살아있는 사진
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    trip_day_id = Column(Integer, ForeignKey("trip_days.id"))
+    # ORM 관계: photo.trip_day → 부모 TripDay 객체 (FK 컬럼은 위 trip_day_id)
     trip_day = relationship("TripDay", back_populates="photos")
 
 

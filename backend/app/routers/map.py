@@ -1,14 +1,21 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session, joinedload
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy.orm import Session, joinedload
 
 from app.db.models import TripDay
 from app.db.session import get_db
+from app.schemas.map import DaysWithPhotos
+import os
 from app.schemas.map import DaysWithPhotos
 import os
 
 router = APIRouter(tags=["map"], prefix="/map") # 만약 이렇게 되어 있다면?
 
 # ① 여행 전체 조회 
+@router.get("/trip_days", summary="지도에 모든 일별 이미지 마커 생성하기",response_model=list[DaysWithPhotos])
+def get_days(request: Request, db: Session = Depends(get_db)
+) -> list[DaysWithPhotos]:
 @router.get("/trip_days", summary="지도에 모든 일별 이미지 마커 생성하기",response_model=list[DaysWithPhotos])
 def get_days(request: Request, db: Session = Depends(get_db)
 ) -> list[DaysWithPhotos]:

@@ -4,7 +4,7 @@
 //   - 순방향 일방통행: 뒤로가기·자유이동·작성중단 없음.
 //   - 대부분 읽기 전용. 유일한 편집 = 여행지(location_summary, 지도 피커 — 아직 stub).
 //   - "다음날로"로 진행, 마지막 날에서 "저장하기" → (3단계에서) Detail 이동.
-//   - 데이터는 백엔드 API(services/diary-api)에서 받아옴. genStatus는 폴링으로 갱신.
+//   - 데이터는 백엔드 API(api/diary)에서 받아옴. genStatus는 폴링으로 갱신.
 //   - 색/폰트는 다른 페이지와 동일한 팀 디자인 토큰(primary, textPrimary, font-sans).
 
 import {Image} from "expo-image";
@@ -35,7 +35,7 @@ import {
   saveDayLocation,
   regenerateDay,
   completeTrip,
-} from "@/services/diary-api";
+} from "@/api/diary";
 import LocationPicker from "@/components/ui/GoogleMap/LocationPicker";
 
 // 디자인 토큰(색상). 아이콘 색처럼 className으로 주기 번거로운 곳에 hex로 직접 씁니다.
@@ -272,7 +272,8 @@ export default function DiaryWritingScreen() {
       {/* ===== 본문 (스크롤 영역) ===== */}
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="mx-auto w-full max-w-[420px] gap-6 px-5 pb-8 pt-2">
-          {/* --- 요약 카드: trip 대표사진 + 제목(매 페이지 동일) + 그날 상징 이모지 --- */}
+          {/* --- 요약 카드: trip 대표사진 + 제목(매 페이지 동일) --- */}
+          {/* (구 day.symbol 자리 폐지: 여행 단위 trips.flag 로 통일 예정. 노출은 추후 작업) */}
           <View className="flex-row items-center gap-3 rounded-3xl bg-background p-4">
             <View className="h-16 w-16 overflow-hidden rounded-2xl">
               <Image
@@ -284,8 +285,6 @@ export default function DiaryWritingScreen() {
             <Text className="flex-1 text-center font-sans text-lg font-bold text-textPrimary">
               {trip.title}
             </Text>
-            {/* diaries.symbol (Twemoji) — 비어있으면 아무것도 안 그림 */}
-            <EmojiIcon codepoint={day.symbol} size={40} />
           </View>
 
           {/* ====== 상태별 본문 ====== */}

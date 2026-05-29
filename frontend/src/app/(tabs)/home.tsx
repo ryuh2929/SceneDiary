@@ -98,14 +98,13 @@ export default function HomeScreen() {
 
                 {/* 메인 이미지 */}
                 <Pressable className="relative h-60 w-full" 
-                          onPress={() => router.push({ pathname: '/detail', 
+                          onPress={() => router.push({ pathname: '/detail',
                                   params: { id: item.id,
                                   title: item.title,
                                   location: item.destination,
                                   mainImage: item.cover_photo_id,
                                   startDate: item.start_date,
                                   endDate: item.end_date,
-                                  symbol: "",
                                   details: JSON.stringify(item.tripDays)
                                 } })
                                 }
@@ -164,14 +163,13 @@ export default function HomeScreen() {
                       <Pressable
                         key={detail.id}
                         className="flex-row items-center bg-surface p-sm rounded-md shadow-sm"
-                        onPress={() => router.push({ pathname: '/detail', 
+                        onPress={() => router.push({ pathname: '/detail',
                                   params: { id: item.id,
                                   title: detail.subtitle,
                                   location: detail.location_summary,
                                   mainImage: detail.represent_image,
                                   startDate: item.start_date,
                                   endDate: item.end_date,
-                                  symbol: detail.symbol,
                                   day: detail.day_number,
                                   details: JSON.stringify(item.tripDays)//상세 일기 배열 데이터를 문자열로 변환해서 보냄
                                  } })
