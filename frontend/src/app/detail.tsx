@@ -78,11 +78,11 @@ export default function TravelDetailUI() {
 
       {/* 상단 히어로 이미지 */}
       <View className="relative h-80 w-full">
-        {/* <Image
-          source={{uri: currentDayData?.represent_image || 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e'  }}
+        <Image
+          source={{uri: currentDayData.photos[currentDayData.represent_image ?? 0] }}
           className="absolute inset-0 w-full h-full"
           resizeMode="cover"
-        /> */}
+        />
 
         {/* 그라데이션 오버레이 */}
         <LinearGradient
@@ -128,22 +128,7 @@ export default function TravelDetailUI() {
                 </Text>
               </View>
               </View>
-              {/* 심볼 */}
-              {currentDayData?.symbol && (
-                <View className="w-10 h-10 items-center justify-center overflow-hidden">
-                  <View
-                    style={{
-                      transform: [
-                        { scale: 0.15 }, 
-                        { translateY: -30 } 
-                      ]
-                    }}
-                    
-                  >
-                    <Twemoji>{String.fromCodePoint(parseInt(currentDayData.symbol, 16))}</Twemoji>
-                  </View>
-                </View>
-                )}
+              {/* (구 day.symbol 심볼 표시 폐지: 여행 단위 trips.flag 로 통일 예정. 노출은 추후 작업) */}
             </View>
           </View>
         </LinearGradient>
@@ -248,11 +233,11 @@ export default function TravelDetailUI() {
 
          
           {/* 본문 사진 */}
-          {/* <Image
+          <Image
             source={{ uri: currentDayData?.represent_image || 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e' }}
             className="w-full h-60 rounded-lg mb-md mt-md"
             resizeMode="cover"
-          /> */}
+          />
 
           {/* 일기 텍스트 */}
           <View className="bg-muted p-md rounded-md border border-border">

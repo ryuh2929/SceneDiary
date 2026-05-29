@@ -52,8 +52,7 @@ _WRITE_PROMPT = """당신은 여행 사진 분석 결과를 보고 감성적인 
   "subtitle": "그 날을 한 줄로 표현한 감성적인 소제목",
   "content": "3~5문장의 따뜻하고 문학적인 한국어 일기 본문",
   "weather": "분석 결과의 날씨를 나타내는 날씨 이모지 1개(예: ☀️ ⛅ ☁️ 🌧️ ❄️). 날씨를 알 수 없으면 빈 문자열",
-  "emotion": "그 날의 감정을 나타내는 이모지 1개",
-  "symbol": "그 날을 상징하는 사물/풍경 이모지 1개"
+  "emotion": "그 날의 감정을 나타내는 이모지 1개"
 }"""
 
 
@@ -135,8 +134,8 @@ def write_diary(
 ) -> dict:
     """[2단계 · LLM] 사진 분석 텍스트들만 보고(사진 없이) 일기를 씁니다.
 
-    반환: {"subtitle", "content", "weather"(코드포인트), "emotion"(코드포인트), "symbol"(코드포인트)}
-    weather·emotion·symbol 은 이모지를 Twemoji 코드포인트(hex)로 변환해 돌려줍니다.
+    반환: {"subtitle", "content", "weather"(코드포인트), "emotion"(코드포인트)}
+    weather·emotion 은 이모지를 Twemoji 코드포인트(hex)로 변환해 돌려줍니다.
     """
     hint = ""
     if location or date:
@@ -165,7 +164,6 @@ def write_diary(
         "content": (parsed.get("content") or "").strip(),
         "weather": _emoji_to_codepoint(parsed.get("weather", "")),
         "emotion": _emoji_to_codepoint(parsed.get("emotion", "")),
-        "symbol": _emoji_to_codepoint(parsed.get("symbol", "")),
     }
 
 

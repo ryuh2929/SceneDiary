@@ -217,18 +217,20 @@ type DayPage = {
 - [x] **6-4** 재생성을 **백그라운드**(FastAPI BackgroundTasks)로 실행 → 결과를 `diaries`(content/symbol/word_count/generated_at)·`trip_days`(subtitle/emotion)에 저장 → 폴링이 generating→ready 반영. genStatus를 **최신 `diary_generations.status` 번역**으로 정교화(running→generating/failure→failed/success→ready). 콘솔 로그 `[diary-gen] start/done`. **실측 검증**(2·3·4일차 생성, 11~27초, 동시 작업 OK).
 - [x] **id 자동증가 마이그레이션** — 7개 테이블 PK가 자동증가 없는 BigInteger라 INSERT 시 NULL 위반. `f3a9c1d4b2e6`로 전 테이블에 IDENTITY 추가 + 시퀀스를 max(id) 다음으로. (`alembic.ini` 한글 주석→영문: cp949 디코드 에러 회피)
 - [x] `trip_days.represent_image` 컬럼 추가 — 마이그레이션 완료(`docs/plans/db-setup.md` 이력)
-- [ ] (후속) 2단계화(VLM 분석→`photo_generations` 로깅→LLM), `services/storage.py`(업로드 저장)+앞 업로드 화면의 생성 트리거(①), weather를 생성기가 코드포인트로 직접 출력
+- [x] (후속) **2단계화** (2026-05-24) — `diary_generator`를 `analyze_photo`(VLM, 사진별 객관 분석→`photo_generations` 저장·재사용 캐시) + `write_diary`(LLM, 분석글→일기)로 분리. 같은 모델(gemma4:e4b)로 구조만 2단계화. 라우터 백그라운드가 두 단계를 직접 호출
+- [x] (후속) **weather 코드포인트 통일** (2026-05-24) — 생성기가 사진에서 추론한 weather도 코드포인트로 출력·저장(emotion·symbol과 동일). 라우터 `_weather_codepoint`는 옛 데이터용 fallback으로 격하
+- [ ] (후속) `services/storage.py`(업로드 저장)+앞 업로드 화면의 생성 트리거(①) — **다른 담당**
 
 ---
 
 ## 6. 미해결 / 분리 작업 (이 화면 밖이지만 연관)
 
 - **[DB] trip 대표사진** — ✅ 결정: 새 컬럼 없이 기존 `trips.cover_photo_id` 사용(VLM이 고른 trip 대표). 추가 컬럼 불필요.
-- **[백엔드] `weather`를 Twemoji 코드포인트로 통일** — 현재 생성기/데이터는 한글 텍스트("맑음","실내","미상","흐림")를 넣음(게다가 "실내·미상"은 날씨도 아님). emotion·symbol처럼 코드포인트로 출력하도록 생성기 수정 + 기존 데이터 정리 필요.
+- **[백엔드] `weather`를 Twemoji 코드포인트로 통일** — ✅ 완료(2026-05-24). 생성기(`write_diary`)가 사진에서 추론한 weather를 코드포인트로 출력·저장(emotion·symbol과 동일). 라우터 `_weather_codepoint`는 옛 한글 데이터용 fallback으로 격하 — 기존 데이터는 읽을 때 변환되고 재생성 시 코드포인트로 교체되므로 일괄 정리(UPDATE) 불필요. weather 컬럼 String(50)이라 마이그레이션 없음.
 - **[백엔드/인프라] 사진 정적 서빙** — `photos.file_url`/`thumbnail_url`이 `test_images/...` 로컬 경로라 프론트에서 안 열림. 정적 서버나 스토리지 URL로 바꿔야 실제 이미지 표시 가능. (지금 mock은 picsum placeholder)
 - **[앞 화면] 사진 업로드 + 압축 + Trip/trip_days 생성 + 생성 로딩** — 별도 화면/라우트. 이 화면은 그 결과(`TripDiary`)를 받아 시작.
-- **[지도] 여행지 피커** — Google Maps + 현재 위치. 이 화면의 유일한 편집 기능.
-- **[정정] `models.py`의 `trips.status` 주석** — `'draft'/'published'`로 적혀 있으나 실제 테스트 데이터 값은 **`'completed'`**. 나중에 주석만 맞추면 됨.
+- **[지도] 여행지 피커** — ✅ 구현 완료(2026-05-24), **기기 검증 대기**. `frontend/src/components/ui/GoogleMap/LocationPicker.tsx`(native) + `.web.tsx`(웹 폴백·안내 모달). 지도 탭→핀 / "현재 위치"(`expo-location`) → `reverseGeocodeAsync`(키 불필요)로 지명 텍스트 → 그날 `location_summary`에 즉시 반영+저장(백엔드 무변경·텍스트만). 좌표(lat/lon) 저장은 후속. ⚠️ 지도는 앱(Expo Go) 전용이라 웹에선 검증 불가, `/diary_writing` 진입로가 아직 없어 앞 화면 담당 팀원 완료 후 검증 예정(임시 진입 버튼은 안 만들기로).
+- **[정정] `models.py`의 `trips.status` 주석** — ✅ 완료(2026-05-24). `'draft'(기본값) → 'completed'(최종저장), 'published' 미사용`으로 정정(주석만, `server_default`는 그대로).
 
 ---
 
@@ -270,3 +272,4 @@ type DayPage = {
 | 2026-05-24 | **6-4 완료 + 전체 동작** — 재생성을 FastAPI BackgroundTasks로 백그라운드 실행→`diaries`/`trip_days` 저장→폴링 반영(`routers/diary.py`). genStatus=최신 `diary_generations.status` 번역. 콘솔 로그 추가. **id 자동증가 마이그레이션**(`f3a9c1d4b2e6`, 전 테이블 IDENTITY+시퀀스 보정 — INSERT 시 NULL PK 위반 해결), `alembic.ini` 한글→영문(cp949 디코드 에러). 실측: 2·3·4일차 생성 11~27초, 동시 OK. → 사진→AI→DB→화면 MVP 완성 |
 | 2026-05-24 | **6단계 진행(6-1~6-3)** — 6-1 읽기 엔드포인트를 실제 DB 조회로(`routers/diary.py`, 더미 제거, weather 한글→코드포인트 방어). 6-2 사진 정적 서빙(`main.py` `/test_images` 마운트 + URL 절대화·한글 인코딩, 실제 사진 `backend/test_images/`). 6-3 생성기(`services/diary_generator.py`) Ollama `gemma4:e4b`(vision)로 사진→일기 JSON, 이모지→코드포인트, 실측 검증. 남은 6-4=백그라운드 생성+DB 저장+폴링 연동 |
 | 2026-05-23 | **5단계 완료** — 프론트↔백엔드 연동(5-1~5-5). 프론트: `services/diary-api.ts`(호출 6 + `request<T>`), 요청 TS 타입 3개, mock→fetch, `setInterval` 폴링 + ready 시 본문 fetch, 핸들러 실제 호출(save/regenerate/complete), 에러 처리(재시도·`actionError`·성공해야 진행). 백엔드: 더미를 "시간차"로(`_gen_status`/`_day_view`, `GET /trips` 진입 시 타이머 리셋)해 폴링 전환을 눈으로 확인 가능. 서버 on/off로 정상·에러 흐름 검증. `data/diary_writing.ts` mock은 미사용 전환 |
+| 2026-05-24 | **후속 고도화 1·2·3·5** — ①weather AI 생성·코드포인트 통일(생성기가 출력·저장, 라우터 변환은 옛 데이터 fallback). ②일기 생성 2단계화(`analyze_photo`+`write_diary`로 분리, 사진별 분석을 `photo_generations`에 저장·재사용→재생성 가속, 같은 모델). ③`models.py` `trips.status` 주석 정정(draft→completed). ⑤여행지 지도 피커(`LocationPicker` native/web, 지도탭+현재위치+`reverseGeocode`→지명 텍스트 저장, 백엔드 무변경). 1·2·3 검증 완료, 5는 `/diary_writing` 진입로 미구현으로 **기기 검증 대기**(앞 화면 담당 완료 후) |

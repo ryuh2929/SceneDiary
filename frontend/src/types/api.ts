@@ -16,7 +16,6 @@ export interface Days {
   subtitle: string | null;
   emotion: string | null;
   content: string | null;
-  symbol: string | null;
 
   representative_lat: number | null;
   representative_lon: number | null;

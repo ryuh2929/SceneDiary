@@ -42,7 +42,6 @@ class DayPage(BaseModel):
     weather: str  # trip_days.weather — Twemoji 코드포인트(hex)
     subtitle: str  # trip_days.subtitle — 소제목
     emotion: str  # trip_days.emotion — Twemoji 코드포인트(hex)
-    symbol: str  # trip_days.symbol — Twemoji 코드포인트(hex). 빈 문자열일 수 있음
     content: str  # trip_days.content — 본문
     photos: list[DayPhoto]  # 그날 다이어리용 사진들
     genStatus: GenStatus  # 위 GenStatus 참고 (출처 = 최신 diary_generations.status 번역)

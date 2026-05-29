@@ -21,10 +21,9 @@ export type DayPage = {
   dayNumber: number; // trip_days.day_number (1..N)
   date: string; // trip_days.date — "YYYY-MM-DD"
   locationSummary: string; // trip_days.location_summary — ✏️ 이 화면의 유일한 편집 대상(지도)
-  weather: string; // trip_days.weather — Twemoji 코드포인트(hex). emotion·symbol과 동일 방식
+  weather: string; // trip_days.weather — Twemoji 코드포인트(hex). emotion 과 동일 방식
   subtitle: string; // trip_days.subtitle — 소제목
   emotion: string; // trip_days.emotion — Twemoji 코드포인트(hex)
-  symbol: string; // trip_days.symbol — Twemoji 코드포인트(hex). 빈 문자열일 수 있음
   content: string; // trip_days.content — 본문
   photos: DayPhoto[]; // 그날 다이어리용 사진들
   genStatus: GenStatus; // 위 참고
