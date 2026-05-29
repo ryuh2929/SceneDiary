@@ -142,15 +142,6 @@ export default function MapScreen() {
       };
     }, []),
   );
-  // 2. 화면에 들어올 때마다(Focus) 데이터 갱신
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchData(); // 데이터 새로고침
-      return () => {
-        /* 필요 시 정리 작업 */
-      };
-    }, []),
-  );
 
   const handleMarkerPress = (item: Days) => {
     const latitude = item.representative_lat || 0;
