@@ -19,7 +19,7 @@ export interface Days {
 
   representative_lat: number | null;
   representative_lon: number | null;
-  represent_image: number | null;
+  represent_image: string | null;
 
   photos: Photo[];
 }
@@ -33,7 +33,12 @@ export interface Trip {
   end_date: string;          // date ('YYYY-MM-DD' 형태의 문자열)
   cover_photo_id: number | null; // int8 (커버 사진이 없을 수도 있으므로 null 허용)
   status: string;            // varchar(20) (예: 'PLANNING', 'TRAVELING', 'COMPLETED')
+  flag: string | null;       // 여행 대표 이모지 (Twemoji codepoint)
   tripDays:Days[];
+}
+
+export interface DetailPage extends Omit<Trip, 'tripDays'> {
+  tripDetail: Days[];
 }
 
 export type UploadedPhoto = {

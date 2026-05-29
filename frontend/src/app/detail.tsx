@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { X, MapPin, Calendar, Plus } from 'lucide-react-native';
 // import Twemoji from 'react-native-twemoji';
 import { getDetailPage } from '@/api/detail';
-import { Trip,Days } from '@/types/api';
+import { DetailPage, Days } from '@/types/api';
 
 const Twemoji = ({ children }: { children: string }) => <Text>{children}</Text>;
 
@@ -17,7 +17,7 @@ export default function TravelDetailUI() {
   const tripId = Number(id);
 
   // 1️⃣ API 데이터를 수납할 상태 선언
-  const [trip, setTrip] = useState<Trip | null>(null);
+  const [trip, setTrip] = useState<DetailPage | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,8 +39,8 @@ export default function TravelDetailUI() {
         setTrip(data);
         
         // 만약 홈에서 특정 day를 안 누르고 들어왔다면, 데이터의 첫 번째 일자로 자동 선택
-        if (!day && data.tripDays?.length > 0) {
-          const sortedDays = [...data.tripDays].sort((a, b) => a.day_number - b.day_number);
+        if (!day && data.tripDetail?.length > 0) {
+          const sortedDays = [...data.tripDetail].sort((a, b) => a.day_number - b.day_number);
           setActiveDay(sortedDays[0].day_number);
         }
       } catch (err) {
@@ -79,7 +79,7 @@ export default function TravelDetailUI() {
       {/* 상단 히어로 이미지 */}
       <View className="relative h-80 w-full">
         <Image
-          source={{uri: currentDayData.photos[currentDayData.represent_image ?? 0] }}
+          source={{uri: currentDayData?.photos?.find((p: any) => p.id === currentDayData.represent_image)?.image_url ?? currentDayData?.photos?.[0]?.image_url}}
           className="absolute inset-0 w-full h-full"
           resizeMode="cover"
         />
