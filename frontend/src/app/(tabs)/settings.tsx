@@ -1,6 +1,6 @@
 import {
   Bell,
-  Compass,
+  NotebookPen,
   Moon,
   Pencil,
   Sparkles,
@@ -47,7 +47,7 @@ const colors = {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const travelTypeIcons: Record<TravelTypeIconName, LucideIcon> = {
-  compass: Backpack,
+  compass: NotebookPen,
 };
 
 const toggleIcons: Record<SettingsToggle['id'], LucideIcon> = {
@@ -75,7 +75,7 @@ const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
 
 const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
   // lucide 아이콘은 SVG 기반이라 iOS, Android, Web에서 같은 형태로 렌더링됩니다.
-  const Icon = travelTypeIcons[icon] ?? Compass;
+  const Icon = travelTypeIcons[icon] ?? NotebookPen;
 
   return <Icon size={size} color={color} strokeWidth={2.2} />;
 });
