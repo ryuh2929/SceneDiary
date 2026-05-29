@@ -78,11 +78,11 @@ export default function TravelDetailUI() {
 
       {/* 상단 히어로 이미지 */}
       <View className="relative h-80 w-full">
-        {/* <Image
-          source={{uri: currentDayData?.represent_image || 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e'  }}
+        <Image
+          source={{uri: currentDayData.photos[currentDayData.represent_image ?? 0] }}
           className="absolute inset-0 w-full h-full"
           resizeMode="cover"
-        /> */}
+        />
 
         {/* 그라데이션 오버레이 */}
         <LinearGradient
@@ -233,11 +233,11 @@ export default function TravelDetailUI() {
 
          
           {/* 본문 사진 */}
-          {/* <Image
+          <Image
             source={{ uri: currentDayData?.represent_image || 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e' }}
             className="w-full h-60 rounded-lg mb-md mt-md"
             resizeMode="cover"
-          /> */}
+          />
 
           {/* 일기 텍스트 */}
           <View className="bg-muted p-md rounded-md border border-border">

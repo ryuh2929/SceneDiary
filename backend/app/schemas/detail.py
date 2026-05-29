@@ -17,17 +17,28 @@ class DayList(BaseModel):
     
     class Config:
         from_attributes = True  # Pydantic v2 기준 (만약 에러나면 orm_mode = True 로 변경)
-        
+
+class PhotoSchema(BaseModel):
+    id: int
+    file_url: str
+    thumbnail_url: str
+    image_url: Optional[str] = None      # 가공된 원본 URL
+    thumbnail_image_url: Optional[str] = None # 가공된 썸네일 URL
+    class Config:
+        from_attributes = True
+
+class DaysWithPhotos(DayList):
+    photos: list[PhotoSchema] = []        
 class DetailPage(BaseModel):
     id:int
     user_id:int
     title:str
-    destination:str
+    destination:Optional[str] = None
     start_date:date
     end_date:date
     cover_photo_id:Optional[int] = None
     status:str
-    tripDetail:List[DayList]
+    tripDetail:List[DaysWithPhotos]
     
     class Config:
         from_attributes = True  # Pydantic v2 기준 (만약 에러나면 orm_mode = True 로 변경)
