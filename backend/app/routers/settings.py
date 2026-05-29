@@ -37,7 +37,7 @@ PERSONA_OPTIONS = {
 }
 
 DEFAULT_TRAVEL_STYLE_ANALYSIS = {
-    "title": "분석 중",
+    "title": "이름 없는 여행자",
     "description": "아직 분석할 수 있는 여행 데이터가 없습니다",
     "icon": "NotebookPen",
 }
