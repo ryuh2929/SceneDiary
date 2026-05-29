@@ -38,3 +38,4 @@ class PhotoSchema(BaseModel):
 class DaysWithPhotos(Days):
     photos: list[PhotoSchema] = []
     
+    
