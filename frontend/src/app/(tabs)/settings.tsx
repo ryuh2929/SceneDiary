@@ -183,7 +183,7 @@ const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
 });
 
 const TravelAnalysisActionIcon = React.memo(function TravelAnalysisActionIcon() {
-  return <WandSparkles size={17} color={colors.primary} strokeWidth={2.3} />;
+  return <WandSparkles size={14} color={colors.primary} strokeWidth={2.3} />;
 });
 
 const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
@@ -579,29 +579,31 @@ export default function SettingsScreen() {
           </SettingsCard>
 
           <SettingsCard>
-            <View className="mb-md flex-row items-center justify-between gap-sm">
+            <View className="mb-md">
               <Text className="text-md font-bold text-textPrimary">여행 유형 분석</Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="여행 유형 분석 시작"
-                onPress={startTravelStyleAnalysis}
-                // 카드 안에서 분석 액션이 과하게 튀지 않도록 텍스트 없이 작은 아이콘 버튼으로 둡니다.
-                className="h-9 w-9 items-center justify-center rounded-lg bg-muted"
-                style={{
-                  borderColor: colors.border,
-                  borderWidth: 1,
-                }}>
-                <TravelAnalysisActionIcon />
-              </Pressable>
             </View>
             <View className="flex-row items-center gap-md">
               <View className="h-[52px] w-[52px] items-center justify-center rounded-lg bg-accent">
                 <AppIcon icon={profile.travelType.icon} size={24} color={colors.primary} />
               </View>
               <View className="flex-1">
-                <Text className="text-lg font-extrabold text-textPrimary">
-                  {profile.travelType.title}
-                </Text>
+                <View className="flex-row items-center gap-xs">
+                  <Text className="text-lg font-extrabold text-textPrimary">
+                    {profile.travelType.title}
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="여행 유형 분석 시작"
+                    onPress={startTravelStyleAnalysis}
+                    // 여행 유형 이름 옆에 붙는 보조 액션이라, 본문 흐름을 깨지 않도록 작게 유지합니다.
+                    className="h-6 w-6 items-center justify-center rounded-md bg-muted"
+                    style={{
+                      borderColor: colors.border,
+                      borderWidth: 1,
+                    }}>
+                    <TravelAnalysisActionIcon />
+                  </Pressable>
+                </View>
                 <Text className="mt-xs text-sm font-semibold text-textSecondary">
                   {profile.travelType.description}
                 </Text>
