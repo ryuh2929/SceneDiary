@@ -90,7 +90,9 @@ def extract_image_taken_date(raw_bytes: bytes) -> date | None:
         try:
             return datetime.strptime(str(value), "%Y:%m:%d %H:%M:%S").date()
         except ValueError:
-            continue
+            match = re.match(r"^(20\d{2})[:/-](\d{2})[:/-](\d{2})", str(value))
+            if match:
+                return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
 
     return None
 

@@ -68,17 +68,22 @@ function parseExifTakenDate(exif: Record<string, unknown> | null | undefined): s
     return undefined;
   }
 
-  const rawDate =
-    exif.DateTimeOriginal ??
-    exif.DateTimeDigitized ??
-    exif.DateTime ??
-    exif.CreateDate ??
-    exif.ModifyDate;
-  if (typeof rawDate !== 'string') {
-    return undefined;
-  }
+  const dateCandidates = [
+    exif.SubSecDateTimeOriginal,
+    exif.CompositeSubSecDateTimeOriginal,
+    exif['Composite:SubSecDateTimeOriginal'],
+    exif.TimeStamp,
+    exif.SamsungTimeStamp,
+    exif['Samsung:TimeStamp'],
+    exif.DateTimeOriginal,
+    exif.DateTimeDigitized,
+    exif.DateTime,
+    exif.CreateDate,
+    exif.ModifyDate,
+  ];
 
-  const match = rawDate.match(/^(\d{4})[:/-](\d{2})[:/-](\d{2})/);
+  const rawDate = dateCandidates.find((value) => typeof value === 'string');
+  const match = typeof rawDate === 'string' ? rawDate.match(/^(20\d{2})[:/-](\d{2})[:/-](\d{2})/) : null;
   if (!match) {
     return undefined;
   }
