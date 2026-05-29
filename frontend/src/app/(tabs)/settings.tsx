@@ -31,13 +31,13 @@ import {
   Landmark,
   Map,
   Martini,
+  Microscope,
   Mountain,
   NotebookPen,
   Moon,
   Origami,
   PartyPopper,
   Pencil,
-  RefreshCw,
   RollerCoaster,
   Rose,
   Sailboat,
@@ -188,7 +188,7 @@ const TravelAnalysisActionIcon = React.memo(function TravelAnalysisActionIcon() 
 });
 
 const TravelAnalysisButtonIcon = React.memo(function TravelAnalysisButtonIcon() {
-  return <RefreshCw size={13} color={colors.primary} strokeWidth={2.4} />;
+  return <Microscope size={13} color={colors.primary} strokeWidth={2.4} />;
 });
 
 const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
