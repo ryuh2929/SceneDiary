@@ -22,11 +22,9 @@ def get_days(request: Request, db: Session = Depends(get_db)
     # 2. 데이터를 순회하며 가공합니다.
     for diary in all_diaries:
         for photo in diary.photos:
-            relative_path = photo.file_url.replace("test_images/", "", 1)
-            photo.image_url = f"{BASE_URL}/images/{relative_path}"
+            photo.image_url = f"{BASE_URL}/{photo.file_url}"
             # 썸네일 URL 가공 (DB의 thumbnail_url을 사용)
             # 만약 썸네일 경로가 다르다면 replace를 해당 경로에 맞춰 수정하세요.
-            thumb_relative_path = photo.thumbnail_url.replace("test_images/", "", 1)
-            photo.thumbnail_image_url = f"{BASE_URL}/images/{thumb_relative_path}"
+            photo.thumbnail_image_url = f"{BASE_URL}/{photo.thumbnail_url}"
 
     return all_diaries
