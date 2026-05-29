@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, ChevronLeft, ImagePlus, Loader2, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
@@ -108,7 +108,11 @@ function formatDisplayDate(dateValue: string) {
   return `${year}.${month}.${day}`;
 }
 
-function getPhotoHeading(selectedDates: string[]) {
+function getPhotoHeading(selectedDates: string[], targetDayNumber?: number) {
+  if (targetDayNumber) {
+    return `${targetDayNumber}일차 여행 사진을 골라주세요`;
+  }
+
   if (selectedDates.length === 0) {
     return '여행 사진을 골라주세요';
   }
@@ -174,6 +178,7 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
 
 export default function AddScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ trip_id?: string; day_number?: string }>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
@@ -184,8 +189,11 @@ export default function AddScreen() {
   const tileSize = Math.max(88, Math.floor((contentWidth - 48 - (columnCount - 1) * 16) / columnCount));
   const bottomInset = Math.max(insets.bottom, 16);
   const isPhotoLimitReached = pendingPhotos.length >= MAX_PHOTO_COUNT;
+  const targetTripId = typeof params.trip_id === 'string' ? params.trip_id : undefined;
+  const targetDayNumber = Number(params.day_number);
+  const displayDayNumber = Number.isFinite(targetDayNumber) && targetDayNumber > 0 ? targetDayNumber : undefined;
   const selectedDates = getSelectedDates(pendingPhotos);
-  const photoHeading = getPhotoHeading(selectedDates);
+  const photoHeading = getPhotoHeading(selectedDates, displayDayNumber);
   const photoDescription = getPhotoDescription(selectedDates);
 
   const pickPhotos = async () => {
@@ -250,7 +258,10 @@ export default function AddScreen() {
 
     setIsUploading(true);
     try {
-      const uploadResponse = await uploadFirstDayPhotos(pendingPhotos);
+      const uploadResponse = await uploadFirstDayPhotos(pendingPhotos, {
+        tripId: targetTripId,
+        dayNumber: displayDayNumber,
+      });
       const photos: LoadingPhotoParam[] = uploadResponse.photos.map((photo) => ({
         fileUri: photo.fileUrl,
         thumbnailUri: photo.thumbnailUrl,
