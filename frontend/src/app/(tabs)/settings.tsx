@@ -183,7 +183,7 @@ const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
 });
 
 const TravelAnalysisActionIcon = React.memo(function TravelAnalysisActionIcon() {
-  return <WandSparkles size={16} color={colors.textOnPrimary} strokeWidth={2.3} />;
+  return <WandSparkles size={17} color={colors.primary} strokeWidth={2.3} />;
 });
 
 const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
@@ -585,16 +585,13 @@ export default function SettingsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="여행 유형 분석 시작"
                 onPress={startTravelStyleAnalysis}
-                className="flex-row items-center gap-xs rounded-lg bg-primary px-3 py-2"
+                // 카드 안에서 분석 액션이 과하게 튀지 않도록 텍스트 없이 작은 아이콘 버튼으로 둡니다.
+                className="h-9 w-9 items-center justify-center rounded-lg bg-muted"
                 style={{
-                  shadowColor: colors.text,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.08,
-                  shadowRadius: 4,
-                  elevation: 2,
+                  borderColor: colors.border,
+                  borderWidth: 1,
                 }}>
                 <TravelAnalysisActionIcon />
-                <Text className="text-sm font-bold text-textOnPrimary">분석</Text>
               </Pressable>
             </View>
             <View className="flex-row items-center gap-md">
