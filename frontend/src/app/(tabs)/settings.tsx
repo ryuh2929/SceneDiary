@@ -592,27 +592,27 @@ export default function SettingsScreen() {
               <View className="h-[52px] w-[52px] items-center justify-center rounded-lg bg-accent">
                 <AppIcon icon={profile.travelType.icon} size={24} color={colors.primary} />
               </View>
-              <View className="flex-1">
-                <View className="flex-row items-center gap-xs">
+              <View className="min-w-0 flex-1 flex-row items-start gap-sm">
+                <View className="min-w-0 flex-1">
                   <Text className="text-lg font-extrabold text-textPrimary">
                     {profile.travelType.title}
                   </Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="여행 유형 다시 분석"
-                    onPress={startTravelStyleAnalysis}
-                    // 여행 유형 이름 옆에서 재분석 액션만 조용히 제공하는 작은 아이콘 버튼입니다.
-                    className="h-6 w-6 items-center justify-center rounded-md bg-muted"
-                    style={{
-                      borderColor: colors.border,
-                      borderWidth: 1,
-                    }}>
-                    <TravelAnalysisButtonIcon />
-                  </Pressable>
+                  <Text className="mt-xs text-sm font-semibold text-textSecondary">
+                    {profile.travelType.description}
+                  </Text>
                 </View>
-                <Text className="mt-xs text-sm font-semibold text-textSecondary">
-                  {profile.travelType.description}
-                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="여행 유형 다시 분석"
+                  onPress={startTravelStyleAnalysis}
+                  // 설명이 여러 줄이어도 버튼은 여행 유형 이름 줄에 맞춰 오른쪽 끝에 고정합니다.
+                  className="h-6 w-6 items-center justify-center rounded-md bg-muted"
+                  style={{
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                  }}>
+                  <TravelAnalysisButtonIcon />
+                </Pressable>
               </View>
             </View>
           </SettingsCard>
