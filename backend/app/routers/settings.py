@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -35,6 +36,14 @@ PERSONA_OPTIONS = {
     },
 }
 
+DEFAULT_TRAVEL_STYLE_ANALYSIS = {
+    "id": "pending",
+    "title": "분석 중",
+    "description": "아직 여행 데이터가 없습니다",
+    "icon": "NotebookPen",
+}
+TRAVEL_STYLE_ICON_NAMES = {"NotebookPen"}
+
 
 def clean(value: object | None) -> str:
     if value is None:
@@ -58,6 +67,33 @@ def persona_tags(selected_persona: str) -> list[dict[str, object]]:
     ]
 
 
+def travel_style_analysis(user: User) -> dict[str, str]:
+    # travel_style_analysis는 DB에 JSON 문자열로 저장될 예정입니다.
+    # 아직 분석 결과가 없어서 NULL이거나, 파싱할 수 없는 값이면 화면 표시용 fallback을 내려줍니다.
+    raw_analysis = clean(user.travel_style_analysis)
+
+    if not raw_analysis:
+        return DEFAULT_TRAVEL_STYLE_ANALYSIS
+
+    try:
+        parsed_analysis = json.loads(raw_analysis)
+    except json.JSONDecodeError:
+        return DEFAULT_TRAVEL_STYLE_ANALYSIS
+
+    if not isinstance(parsed_analysis, dict):
+        return DEFAULT_TRAVEL_STYLE_ANALYSIS
+
+    icon = clean(parsed_analysis.get("icon"))
+
+    return {
+        "id": clean(parsed_analysis.get("id")) or DEFAULT_TRAVEL_STYLE_ANALYSIS["id"],
+        "title": clean(parsed_analysis.get("title")) or DEFAULT_TRAVEL_STYLE_ANALYSIS["title"],
+        "description": clean(parsed_analysis.get("description"))
+        or DEFAULT_TRAVEL_STYLE_ANALYSIS["description"],
+        "icon": icon if icon in TRAVEL_STYLE_ICON_NAMES else DEFAULT_TRAVEL_STYLE_ANALYSIS["icon"],
+    }
+
+
 def to_settings_profile(user: User) -> SettingsProfile:
     writing_persona = clean(user.writing_persona).lower()
     selected_persona = PERSONA_OPTIONS.get(writing_persona)
@@ -72,12 +108,7 @@ def to_settings_profile(user: User) -> SettingsProfile:
             else "선택된 글 작성 페르소나가 없습니다.",
             "tags": persona_tags(writing_persona),
         },
-        travelType={
-            "id": "pending",
-            "title": "분석 중",
-            "description": "여행 유형 분석 데이터는 나중에 연결될 예정입니다.",
-            "icon": "NotebookPen",
-        },
+        travelType=travel_style_analysis(user),
         toggles=[
             {
                 "id": "darkMode",
