@@ -5,7 +5,6 @@ import SimpleView from "./simpleView";
 import { getTripDays } from "@/api/map";
 import { Days } from "@/types/api";
 import { useFocusEffect } from "expo-router"; // 또는 @react-navigation/native
-import { useFocusEffect } from "expo-router"; // 또는 @react-navigation/native
 
 type PhotoMarkerProps = {
   item: Days;
@@ -20,7 +19,6 @@ function PhotoMarker({ item, photoUrl, onPress }: PhotoMarkerProps) {
   };
   const { width, height } = useWindowDimensions();
   const imageSize = Math.min(width * 0.2, 88);
-  const [isLoaded, setIsLoaded] = useState(false);
 
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -49,7 +47,6 @@ function PhotoMarker({ item, photoUrl, onPress }: PhotoMarkerProps) {
       <Marker
         coordinate={coordinate}
         anchor={{ x: 0.5, y: 1 }}
-        tracksViewChanges={!isLoaded}
         tracksViewChanges={!isLoaded}
         onPress={onPress}
       >
@@ -85,7 +82,6 @@ function PhotoMarker({ item, photoUrl, onPress }: PhotoMarkerProps) {
                   height: 52,
                   borderRadius: 26,
                 }}
-                onLoad={() => setIsLoaded(true)}
                 onLoad={() => setIsLoaded(true)}
                 resizeMode="cover"
               />
