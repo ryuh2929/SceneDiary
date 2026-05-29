@@ -35,15 +35,13 @@ def _get_detailList(db:Session, request:Request, trip_id:int) -> List[TripDay]:
     # 2. 데이터를 순회하며 가공합니다.
     for diary in detailList:
         for photo in diary.photos:
-            if photo.file_url:
-                relative_path = photo.file_url.replace("test_images/", "", 1)
-                photo.image_url = f"{BASE_URL}/images/{relative_path}"
+            if photo.file_url:                
+                photo.image_url = f"{BASE_URL}/{photo.file_url}"
             else:
                 photo.image_url = None
 
             if photo.thumbnail_url:
-                thumb_relative_path = photo.thumbnail_url.replace("test_images/", "", 1)
-                photo.thumbnail_image_url = f"{BASE_URL}/images/{thumb_relative_path}"
+                photo.thumbnail_image_url = f"{BASE_URL}/{photo.thumbnail_url}"
             else:
                 photo.thumbnail_image_url = None
 

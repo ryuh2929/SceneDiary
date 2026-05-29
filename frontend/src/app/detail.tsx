@@ -9,6 +9,27 @@ import { DetailPage, Days } from '@/types/api';
 
 const Twemoji = ({ children }: { children: string }) => <Text>{children}</Text>;
 
+export function getMainImage(item: DetailPage) {
+  // 1. 안전장치: cover_photo_id가 없거나 tripDays가 비어있으면 곧바로 기본 이미지(Fallback) 반환
+  
+  // 2. ⚡ 모든 일차(tripDays)에 흩어져 있는 photos들을 1차원 배열로 평평하게 폅니다.
+  const allPhotos = item.tripDetail.flatMap((day) => day.photos || []);
+
+  // 3. 🎯 그 사진들 중에서 id가 여행의 cover_photo_id와 똑같은 녀석을 딱 하나 찾습니다.
+  const coverPhoto = allPhotos.find((photo) => photo.id === item.cover_photo_id);
+
+  // 4. 매칭되는 사진을 찾았다면 해당 이미지의 가공된 URL(image_url)을 띄워줍니다.
+  if (coverPhoto && coverPhoto.image_url) {
+    return (
+      <Image
+        source={{ uri: coverPhoto.image_url }}
+        className="absolute inset-0 w-full h-full"
+          resizeMode="cover"
+      />
+    );
+  }
+}
+
 export default function TravelDetailUI() {
   const router = useRouter();
 
@@ -37,7 +58,7 @@ export default function TravelDetailUI() {
         const data = await getDetailPage(tripId);
         console.log("🔥 백엔드가 준 진짜 데이터 구조:", JSON.stringify(data, null, 2));
         setTrip(data);
-        
+
         // 만약 홈에서 특정 day를 안 누르고 들어왔다면, 데이터의 첫 번째 일자로 자동 선택
         if (!day && data.tripDetail?.length > 0) {
           const sortedDays = [...data.tripDetail].sort((a, b) => a.day_number - b.day_number);
@@ -65,6 +86,7 @@ export default function TravelDetailUI() {
 
   // 5️⃣ 실시간 데이터 가공 처리 영역
   const { title, destination, start_date, end_date, tripDetail} = trip as any;
+ 
 
   //3. [중요] 전체 상세 데이터 중 '현재 활성화된 Day 탭'에 해당하는 데이터만 찾아냅니다!
   // tripDays 배열에서 현재 선택된 activeDay 데이터 추출
@@ -73,16 +95,16 @@ export default function TravelDetailUI() {
   //4. 생성할 탭 목록 배열 자동 생성 (예: 데이터가 3개면 [1, 2, 3] 탭이 생김)
   const dayTabs = tripDetail ? tripDetail.map((d: Days) => Number(d.day_number)).sort((a: number, b: number) => a - b) : [];
 
-  return (
-    <ScrollView className="flex-1 bg-background" showsVerticalScrollIndicator={false} bounces={false}>
 
+  return (
+    <ScrollView
+    className="flex-1 bg-background"
+    showsVerticalScrollIndicator={false} bounces={false}
+    >
+      
       {/* 상단 히어로 이미지 */}
       <View className="relative h-80 w-full">
-        <Image
-          source={{uri: currentDayData?.photos?.find((p: any) => p.id === currentDayData.represent_image)?.image_url ?? currentDayData?.photos?.[0]?.image_url}}
-          className="absolute inset-0 w-full h-full"
-          resizeMode="cover"
-        />
+      {getMainImage(trip)}
 
         {/* 그라데이션 오버레이 */}
         <LinearGradient
@@ -234,7 +256,7 @@ export default function TravelDetailUI() {
          
           {/* 본문 사진 */}
           <Image
-            source={{ uri: currentDayData?.represent_image || 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e' }}
+          source={{uri: currentDayData?.photos?.find((p: any) => p.id === currentDayData.represent_image)?.image_url ?? currentDayData?.photos?.[0]?.image_url}}
             className="w-full h-60 rounded-lg mb-md mt-md"
             resizeMode="cover"
           />

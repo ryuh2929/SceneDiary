@@ -35,14 +35,12 @@ def _get_dayDetail(db:Session, request:Request, trip_id:int)->List[TripDay]:
     for diary in dayDetail:
         for photo in diary.photos:
             if photo.file_url:
-                relative_path = photo.file_url.replace("test_images/", "", 1)
-                photo.image_url = f"{BASE_URL}/images/{relative_path}"
+                photo.image_url = f"{BASE_URL}/{photo.file_url}"
             else:
                 photo.image_url = None
 
             if photo.thumbnail_url:
-                thumb_relative_path = photo.thumbnail_url.replace("test_images/", "", 1)
-                photo.thumbnail_image_url = f"{BASE_URL}/images/{thumb_relative_path}"
+                photo.thumbnail_image_url = f"{BASE_URL}/{photo.thumbnail_url}"
             else:
                 photo.thumbnail_image_url = None
     return dayDetail
