@@ -13,9 +13,11 @@ from PIL import Image, ImageOps
 # 업로드 이미지는 서버에서 다시 정리합니다.
 # 분석용 이미지는 모델 입력에 맞게 줄이고, 썸네일은 글 작성 화면 미리보기용으로 별도 저장합니다.
 MAX_ANALYSIS_SIZE = 1024
-THUMBNAIL_SIZE = 240
-JPEG_QUALITY = 82
+THUMBNAIL_SIZE = 256
+DIMENSION_MULTIPLE = 32
+JPEG_QUALITY = 85
 THUMBNAIL_QUALITY = 72
+MAX_ANALYSIS_BYTES = 200 * 1024
 
 
 @dataclass(frozen=True)
@@ -40,9 +42,37 @@ def _resize_to_fit(image: Image.Image, max_size: int) -> Image.Image:
     return resized
 
 
+def _floor_to_multiple(value: int, multiple: int) -> int:
+    return max(multiple, value - (value % multiple))
+
+
+def _resize_to_fit_multiple(image: Image.Image, max_size: int, multiple: int) -> Image.Image:
+    resized = _resize_to_fit(image, max_size)
+    width = _floor_to_multiple(resized.width, multiple)
+    height = _floor_to_multiple(resized.height, multiple)
+    if resized.width == width and resized.height == height:
+        return resized
+    return resized.resize((width, height), Image.Resampling.LANCZOS)
+
+
 def _save_jpeg(image: Image.Image, path: Path, quality: int) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path, format="JPEG", quality=quality, optimize=True)
+
+
+def _save_analysis_jpeg(image: Image.Image, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    current = image
+    while True:
+        for quality in (JPEG_QUALITY, 82, 78, 74, 70, 65):
+            current.save(path, format="JPEG", quality=quality, optimize=True)
+            if path.stat().st_size <= MAX_ANALYSIS_BYTES:
+                return
+
+        next_size = max(current.width, current.height) - DIMENSION_MULTIPLE
+        if next_size < DIMENSION_MULTIPLE:
+            return
+        current = _resize_to_fit_multiple(current, next_size, DIMENSION_MULTIPLE)
 
 
 def extract_image_taken_date(raw_bytes: bytes) -> date | None:
@@ -69,8 +99,10 @@ def process_upload_image(
     *,
     raw_bytes: bytes,
     original_filename: str | None,
-    upload_root: Path,
-    public_root: str,
+    analysis_root: Path,
+    thumbnail_root: Path,
+    analysis_public_root: str,
+    thumbnail_public_root: str,
     trip_id: int,
     day_number: int,
     trip_date: date,
@@ -80,19 +112,19 @@ def process_upload_image(
     with Image.open(BytesIO(raw_bytes)) as opened:
         image = ImageOps.exif_transpose(opened).convert("RGB")
 
-    analysis_image = _resize_to_fit(image, MAX_ANALYSIS_SIZE)
-    thumbnail_image = _resize_to_fit(image, THUMBNAIL_SIZE)
+    analysis_image = _resize_to_fit_multiple(image, MAX_ANALYSIS_SIZE, DIMENSION_MULTIPLE)
+    thumbnail_image = _resize_to_fit_multiple(image, THUMBNAIL_SIZE, DIMENSION_MULTIPLE)
 
     unique_name = f"{display_order + 1:02d}-{_safe_stem(original_filename)}-{uuid4().hex[:10]}.jpg"
     day_folder = f"day-{day_number}-{trip_date.isoformat()}"
-    relative_dir = Path(public_root) / f"trip-{trip_id}" / day_folder
-    file_url = str(relative_dir / unique_name).replace("\\", "/")
-    thumbnail_url = str(relative_dir / f"thumb-{unique_name}").replace("\\", "/")
+    relative_dir = Path(f"trip-{trip_id}") / day_folder
+    file_url = str(Path(analysis_public_root) / relative_dir / unique_name).replace("\\", "/")
+    thumbnail_url = str(Path(thumbnail_public_root) / relative_dir / f"thumb-{unique_name}").replace("\\", "/")
 
-    file_path = upload_root / f"trip-{trip_id}" / day_folder / unique_name
-    thumbnail_path = upload_root / f"trip-{trip_id}" / day_folder / f"thumb-{unique_name}"
+    file_path = analysis_root / relative_dir / unique_name
+    thumbnail_path = thumbnail_root / relative_dir / f"thumb-{unique_name}"
 
-    _save_jpeg(analysis_image, file_path, JPEG_QUALITY)
+    _save_analysis_jpeg(analysis_image, file_path)
     _save_jpeg(thumbnail_image, thumbnail_path, THUMBNAIL_QUALITY)
 
     return ProcessedImage(

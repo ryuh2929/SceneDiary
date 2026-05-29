@@ -19,14 +19,17 @@ from app.services.image_processor import extract_image_taken_date, process_uploa
 
 # add.tsx -> loading.tsx 흐름에서 사용하는 업로드/생성 API입니다.
 # DB 스키마는 변경하지 않고 기존 trips, trip_days, photos, diary_generations를 사용합니다.
-# 실제 앱 노출을 위해서는 main.py에서 이 router 등록과 /uploads 정적 서빙 연결이 필요합니다.
 router = APIRouter(tags=["upload"])
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
-_UPLOAD_PUBLIC_ROOT = "uploads"
-_UPLOAD_ROOT = _BACKEND_DIR / _UPLOAD_PUBLIC_ROOT
+_TEST_IMAGES_ROOT = _BACKEND_DIR / "test_images"
+_ANALYSIS_PUBLIC_ROOT = "test_images/test_images_korea"
+_THUMBNAIL_PUBLIC_ROOT = "test_images/test_images_korea_thumbs"
+_ANALYSIS_ROOT = _TEST_IMAGES_ROOT / "test_images_korea"
+_THUMBNAIL_ROOT = _TEST_IMAGES_ROOT / "test_images_korea_thumbs"
 _MODEL_NAME = os.getenv("DIARY_MODEL", "gemma4:e4b")
 MAX_UPLOAD_PHOTOS = 10
+MAX_UPLOAD_BYTES = 12 * 1024 * 1024
 
 LoadingStep = Literal[
     "uploading",
@@ -305,8 +308,10 @@ async def upload_first_day_photos(
                 processed = process_upload_image(
                     raw_bytes=draft.raw_bytes,
                     original_filename=draft.original_filename,
-                    upload_root=_UPLOAD_ROOT,
-                    public_root=_UPLOAD_PUBLIC_ROOT,
+                    analysis_root=_ANALYSIS_ROOT,
+                    thumbnail_root=_THUMBNAIL_ROOT,
+                    analysis_public_root=_ANALYSIS_PUBLIC_ROOT,
+                    thumbnail_public_root=_THUMBNAIL_PUBLIC_ROOT,
                     trip_id=trip.id,
                     day_number=trip_day.day_number,
                     trip_date=trip_day.date,

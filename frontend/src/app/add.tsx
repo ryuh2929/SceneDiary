@@ -41,7 +41,7 @@ const colors = {
 };
 
 const MAX_IMAGE_SIZE = 1024;
-const THUMBNAIL_SIZE = 240;
+const THUMBNAIL_SIZE = 256;
 const MAX_PHOTO_COUNT = 10;
 
 // 원본 비율을 유지하면서 긴 변만 기준 크기 이하로 줄입니다.
@@ -105,7 +105,7 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
     asset.uri,
     [resizeAction(asset.width, asset.height, MAX_IMAGE_SIZE)],
     {
-      compress: 0.82,
+      compress: 0.85,
       format: ImageManipulator.SaveFormat.JPEG,
     },
   );
