@@ -99,6 +99,44 @@ function parseFilenameDate(filename: string | null | undefined): string | undefi
   return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
+function getSelectedDates(photos: PendingPhoto[]) {
+  return Array.from(new Set(photos.map((photo) => photo.takenDate).filter(Boolean) as string[])).sort();
+}
+
+function formatDisplayDate(dateValue: string) {
+  const [year, month, day] = dateValue.split('-');
+  return `${year}.${month}.${day}`;
+}
+
+function getPhotoHeading(selectedDates: string[]) {
+  if (selectedDates.length === 0) {
+    return '여행 사진을 골라주세요';
+  }
+
+  if (selectedDates.length === 1) {
+    return `${formatDisplayDate(selectedDates[0])} 사진을 골라주세요`;
+  }
+
+  return `총 ${selectedDates.length}일치 사진을 골라주세요`;
+}
+
+function getPhotoDescription(selectedDates: string[]) {
+  if (selectedDates.length <= 1) {
+    return '최대 10장까지 선택할 수 있고, 글 작성 화면용 썸네일을 따로 준비해요.';
+  }
+
+  return '선택한 사진은 촬영일 기준으로 나뉘어 각 날짜의 일기로 준비돼요.';
+}
+
+function getPhotoDayLabel(photo: PendingPhoto, selectedDates: string[]) {
+  if (!photo.takenDate || selectedDates.length <= 1) {
+    return String(photo.displayOrder + 1);
+  }
+
+  const dayIndex = selectedDates.indexOf(photo.takenDate);
+  return dayIndex >= 0 ? `${dayIndex + 1}일차` : String(photo.displayOrder + 1);
+}
+
 async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrder: number): Promise<PendingPhoto> {
   // AI 분석용 이미지는 너무 커지지 않게 줄이고, 화면 미리보기용 썸네일은 별도로 생성합니다.
   const fileImage = await ImageManipulator.manipulateAsync(
@@ -146,6 +184,9 @@ export default function AddScreen() {
   const tileSize = Math.max(88, Math.floor((contentWidth - 48 - (columnCount - 1) * 16) / columnCount));
   const bottomInset = Math.max(insets.bottom, 16);
   const isPhotoLimitReached = pendingPhotos.length >= MAX_PHOTO_COUNT;
+  const selectedDates = getSelectedDates(pendingPhotos);
+  const photoHeading = getPhotoHeading(selectedDates);
+  const photoDescription = getPhotoDescription(selectedDates);
 
   const pickPhotos = async () => {
     if (isPreparing || isUploading) {
@@ -255,7 +296,7 @@ export default function AddScreen() {
             <ChevronLeft size={24} color={colors.textSecondary} />
           </Pressable>
 
-          <Text className="text-lg font-bold text-primary">새 기록</Text>
+          <Text className="text-lg font-bold text-primary">사진 추가</Text>
           <View className="h-10 w-10" />
         </View>
 
@@ -265,10 +306,10 @@ export default function AddScreen() {
           showsVerticalScrollIndicator={false}>
           <View className="mb-xl">
             <Text className="text-xl font-bold leading-8 text-textPrimary">
-              1일차 사진을 골라주세요
+              {photoHeading}
             </Text>
             <Text className="mt-sm text-md leading-6 text-textSecondary">
-              최대 10장까지 선택할 수 있고, 글 작성 화면용 썸네일을 따로 준비해요.
+              {photoDescription}
             </Text>
           </View>
 
@@ -299,7 +340,7 @@ export default function AddScreen() {
                 style={{ width: tileSize, height: tileSize }}>
                 <Image source={{ uri: photo.thumbnailUri }} className="h-full w-full" resizeMode="cover" />
                 <View className="absolute bottom-xs left-xs rounded-md bg-textPrimary/70 px-xs py-[2px]">
-                  <Text className="text-xs font-bold text-textOnPrimary">{photo.displayOrder + 1}</Text>
+                  <Text className="text-xs font-bold text-textOnPrimary">{getPhotoDayLabel(photo, selectedDates)}</Text>
                 </View>
                 <Pressable
                   accessibilityRole="button"
