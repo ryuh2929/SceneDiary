@@ -1,26 +1,9 @@
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
-
 import type { SettingsProfile, SettingsToggle, TravelTypeIconName } from '@/data/settings';
-import { getOrCreateUserUuid } from '@/services/user-uuid';
-
-function getApiBaseUrl() {
-  const configuredBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
-
-  if (configuredBaseUrl) {
-    return configuredBaseUrl;
-  }
-
-  if (Platform.OS !== 'web' && Constants.expoConfig?.hostUri) {
-    const host = Constants.expoConfig.hostUri.split(':')[0];
-    return `http://${host}:8000`;
-  }
-
-  return 'http://localhost:8000';
-}
+import { getApiBaseUrl } from '@/services/api-base-url';
+import { ensureCurrentUser } from '@/services/user-api';
 
 export async function fetchSettingsProfile() {
-  const userUuid = await getOrCreateUserUuid();
+  const userUuid = await ensureCurrentUser();
   const query = new URLSearchParams({ user_uuid: userUuid });
   const response = await fetch(`${getApiBaseUrl()}/settings/profile?${query.toString()}`);
 
@@ -34,7 +17,7 @@ export async function fetchSettingsProfile() {
 }
 
 export async function updateWritingPersona(personaId: string) {
-  const userUuid = await getOrCreateUserUuid();
+  const userUuid = await ensureCurrentUser();
   const query = new URLSearchParams({ user_uuid: userUuid });
 
   // 선택한 페르소나 id만 서버로 보내고, 서버는 현재 user_uuid 유저의 writing_persona 컬럼을 갱신합니다.
@@ -56,7 +39,7 @@ export async function updateWritingPersona(personaId: string) {
 }
 
 export async function updateSettingsToggle(toggleId: SettingsToggle['id'], enabled: boolean) {
-  const userUuid = await getOrCreateUserUuid();
+  const userUuid = await ensureCurrentUser();
   const query = new URLSearchParams({ user_uuid: userUuid });
 
   // 화면에서 쓰는 토글 id와 값을 보내면 백엔드가 실제 DB 컬럼으로 매핑해서 저장합니다.
@@ -78,7 +61,7 @@ export async function updateSettingsToggle(toggleId: SettingsToggle['id'], enabl
 }
 
 export async function updateNickname(nickname: string) {
-  const userUuid = await getOrCreateUserUuid();
+  const userUuid = await ensureCurrentUser();
   const query = new URLSearchParams({ user_uuid: userUuid });
 
   // 닉네임은 현재 user_uuid 유저의 users.nickname 컬럼에 저장됩니다.
