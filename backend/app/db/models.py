@@ -118,7 +118,6 @@ class Trip(Base):
     # soft delete: NULL이면 살아있는 여행, 값 있으면 삭제 처리됨
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-
 # ─────────────────────────────────────────────────────────────
 # trip_days 테이블 - 여행의 날짜별 정보
 # ─────────────────────────────────────────────────────────────

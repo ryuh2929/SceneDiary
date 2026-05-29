@@ -29,6 +29,27 @@ function EmojiIcon({codepoint, size}: {codepoint: string; size: number}) {
   return <Text style={{fontSize: size}}>{char}</Text>;
 }
 
+export function getMainImage(item: Trip) {
+  // 1. 안전장치: cover_photo_id가 없거나 tripDays가 비어있으면 곧바로 기본 이미지(Fallback) 반환
+  
+  // 2. ⚡ 모든 일차(tripDays)에 흩어져 있는 photos들을 1차원 배열로 평평하게 폅니다.
+  const allPhotos = item.tripDays.flatMap((day) => day.photos || []);
+
+  // 3. 🎯 그 사진들 중에서 id가 여행의 cover_photo_id와 똑같은 녀석을 딱 하나 찾습니다.
+  const coverPhoto = allPhotos.find((photo) => photo.id === item.cover_photo_id);
+
+  // 4. 매칭되는 사진을 찾았다면 해당 이미지의 가공된 URL(image_url)을 띄워줍니다.
+  if (coverPhoto && coverPhoto.image_url) {
+    return (
+      <Image
+        source={{ uri: coverPhoto.image_url }}
+        className="w-full h-full"
+        resizeMode="cover"
+      />
+    );
+  }
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const [currentYear, setCurrentYear] = useState<number>(2026);
@@ -50,8 +71,11 @@ export default function HomeScreen() {
         const data = await getTrips(currentYear);
         console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
         setTripData(data);    // 받아온 데이터를 useState 수납함에 쏙 저장
-      } catch (err) {
+      } catch (err: any) {
         setTripData([]);
+        console.log("API 에러 전체:", err);
+        console.log("API 에러 메시지:", err?.message);
+        console.log("API 에러 응답:", err?.response?.status, err?.response?.data);
         setError("여행 정보를 불러오는 중 오류가 발생했습니다.");
       } finally {
         setIsLoading(false);  // 성공하든 실패하든 로딩 스피너 끄기
@@ -109,7 +133,7 @@ export default function HomeScreen() {
                                 } })
                                 }
                   >
-                  {/* <Image source={{ uri: item.cover_photo_id }} className="w-full h-full" resizeMode="cover" /> */}
+                  {getMainImage(item)}
 
                   {/* 날짜 뱃지 */}
                   <View className="absolute top-md left-md bg-muted rounded-md px-sm py-xs items-center shadow-sm">
@@ -175,7 +199,13 @@ export default function HomeScreen() {
                                  } })
                                 }
                       >
-                        {/* <Image source={{ uri: detail.represent_image }} className="w-14 h-14 rounded-md mr-md" resizeMode="cover" /> */}
+                        {detail.photos && detail.photos.length > 0 && (
+                        <Image 
+                          source={{ uri: detail.photos[0].thumbnail_image_url }} 
+                          className="w-14 h-14 rounded-md mr-md" 
+                          resizeMode="cover" 
+                        />
+                      )}
                               <View className="flex-1">
                                 <View className="flex-row items-center justify-between mb-xs w-full pr-sm">
                                   {/* 왼쪽: Day 텍스트 */}
