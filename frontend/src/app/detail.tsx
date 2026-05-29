@@ -1,5 +1,5 @@
 import React, { useState,useEffect } from 'react';
-import { View, Text, Image, ScrollView, Pressable } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable,useWindowDimensions, FlatList} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X, MapPin, Calendar, Plus } from 'lucide-react-native';
@@ -31,8 +31,11 @@ export function getMainImage(item: DetailPage) {
 }
 
 export default function TravelDetailUI() {
+  // 기기 너비 계산
+  const { width: windowWidth } = useWindowDimensions();
+  // 메인 카드 좌우 패딩값(px-md가 보통 16px씩 총 32px)을 제외한 진짜 사진의 너비 자동 계산
+  const cardWidth = windowWidth - 64;
   const router = useRouter();
-
   //홈에서 id와 누른 day 정보 접수
   const {id,day} = useLocalSearchParams();
   const tripId = Number(id);
@@ -48,6 +51,7 @@ export default function TravelDetailUI() {
   // 홈에서 특정 Day를 누르고 들어왔으면 그 Day로 시작하고, 아니면 Day 1로 시작
   // 2️⃣ 현재 어떤 Day 탭이 활성화되어 있는지 관리
   const [activeDay, setActiveDay] = useState<number>(Number(day) || 1);
+  const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
 
   // 3️⃣ 화면이 켜지면 백엔드에서 부모+자식 데이터 통째로 긁어오기
   useEffect(() => {
@@ -75,6 +79,8 @@ export default function TravelDetailUI() {
     if (tripId) loadDetailData();
   }, [tripId, day]);
 
+ 
+
   if (isLoading || !trip) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
@@ -83,7 +89,6 @@ export default function TravelDetailUI() {
       </View>
     );
   }
-
   // 5️⃣ 실시간 데이터 가공 처리 영역
   const { title, destination, start_date, end_date, tripDetail} = trip as any;
  
@@ -162,7 +167,7 @@ export default function TravelDetailUI() {
           {(dayTabs?.length > 0 ? dayTabs : [1]).map((d: number) => (
             <Pressable
               key={d}
-              onPress={() => setActiveDay(d)}
+              onPress={() => { setActiveDay(d); setActivePhotoIndex(0); }}
               // activeDay일 때는 px-lg(크게), 아닐 때는 px-sm(정확히 숫자만 감싸게 고정)으로 크기를 이원화
               className={`py-xs rounded-t-lg mr-xs shadow-sm ${
                 activeDay === d 
@@ -255,11 +260,49 @@ export default function TravelDetailUI() {
 
          
           {/* 본문 사진 */}
-          <Image
-          source={{uri: currentDayData?.photos?.find((p: any) => p.id === currentDayData.represent_image)?.image_url ?? currentDayData?.photos?.[0]?.image_url}}
-            className="w-full h-60 rounded-lg mb-md mt-md"
-            resizeMode="cover"
-          />
+          {/* 사진이 1장 이상 있을 때만 가로 슬라이더를 렌더링 */}
+          {currentDayData?.photos && currentDayData.photos.length > 0 && (
+            // 카드 너비를 화면 너비 - 좌우 패딩(32px)으로 고정해 슬라이더가 카드 밖으로 삐져나오지 않게 함
+            <View style={{ width: cardWidth }} className="rounded-lg mb-md mt-md overflow-hidden">
+              {/* pagingEnabled: 손가락을 떼면 사진 경계에 딱 맞춰 멈추는 인스타 스타일 페이징 */}
+              <FlatList
+                data={currentDayData.photos}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item: any, index: number) => item.id?.toString() || index.toString()}
+                onViewableItemsChanged={({ viewableItems }) => {
+                  if (viewableItems.length > 0) setActivePhotoIndex(viewableItems[0].index ?? 0);
+                }}
+                viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
+                renderItem={({ item }) => (
+                  // 각 사진의 width를 cardWidth와 동일하게 줘야 정확히 한 장씩 넘어감
+                  <Image
+                    source={{ uri: item.image_url }}
+                    style={{ width: cardWidth, height: 240 }}
+                    className="rounded-lg"
+                    resizeMode="cover"
+                  />
+                )}
+              />
+              {/* 도트 인디케이터 */}
+              {currentDayData.photos.length > 1 && (
+                <View className="flex-row justify-center items-center gap-xs py-sm">
+                  {currentDayData.photos.map((_: any, i: number) => (
+                    <View
+                      key={i}
+                      style={{
+                        width: activePhotoIndex === i ? 8 : 6,
+                        height: activePhotoIndex === i ? 8 : 6,
+                        borderRadius: 4,
+                        backgroundColor: activePhotoIndex === i ? '#39536B' : '#C4CDD6',
+                      }}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
 
           {/* 일기 텍스트 */}
           <View className="bg-muted p-md rounded-md border border-border">
