@@ -1,23 +1,47 @@
 import React, { useState,useEffect } from 'react';
-import { View, Text, Image, ScrollView, Pressable } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable,useWindowDimensions, FlatList} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X, MapPin, Calendar, Plus } from 'lucide-react-native';
 // import Twemoji from 'react-native-twemoji';
 import { getDetailPage } from '@/api/detail';
-import { Trip,Days } from '@/types/api';
+import { DetailPage, Days } from '@/types/api';
 
 const Twemoji = ({ children }: { children: string }) => <Text>{children}</Text>;
 
-export default function TravelDetailUI() {
-  const router = useRouter();
+export function getMainImage(item: DetailPage) {
+  // 1. 안전장치: cover_photo_id가 없거나 tripDays가 비어있으면 곧바로 기본 이미지(Fallback) 반환
+  
+  // 2. ⚡ 모든 일차(tripDays)에 흩어져 있는 photos들을 1차원 배열로 평평하게 폅니다.
+  const allPhotos = item.tripDetail.flatMap((day) => day.photos || []);
 
+  // 3. 🎯 그 사진들 중에서 id가 여행의 cover_photo_id와 똑같은 녀석을 딱 하나 찾습니다.
+  const coverPhoto = allPhotos.find((photo) => photo.id === item.cover_photo_id);
+
+  // 4. 매칭되는 사진을 찾았다면 해당 이미지의 가공된 URL(image_url)을 띄워줍니다.
+  if (coverPhoto && coverPhoto.image_url) {
+    return (
+      <Image
+        source={{ uri: coverPhoto.image_url }}
+        className="absolute inset-0 w-full h-full"
+          resizeMode="cover"
+      />
+    );
+  }
+}
+
+export default function TravelDetailUI() {
+  // 기기 너비 계산
+  const { width: windowWidth } = useWindowDimensions();
+  // 메인 카드 좌우 패딩값(px-md가 보통 16px씩 총 32px)을 제외한 진짜 사진의 너비 자동 계산
+  const cardWidth = windowWidth - 64;
+  const router = useRouter();
   //홈에서 id와 누른 day 정보 접수
   const {id,day} = useLocalSearchParams();
   const tripId = Number(id);
 
   // 1️⃣ API 데이터를 수납할 상태 선언
-  const [trip, setTrip] = useState<Trip | null>(null);
+  const [trip, setTrip] = useState<DetailPage | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,6 +51,7 @@ export default function TravelDetailUI() {
   // 홈에서 특정 Day를 누르고 들어왔으면 그 Day로 시작하고, 아니면 Day 1로 시작
   // 2️⃣ 현재 어떤 Day 탭이 활성화되어 있는지 관리
   const [activeDay, setActiveDay] = useState<number>(Number(day) || 1);
+  const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
 
   // 3️⃣ 화면이 켜지면 백엔드에서 부모+자식 데이터 통째로 긁어오기
   useEffect(() => {
@@ -37,10 +62,10 @@ export default function TravelDetailUI() {
         const data = await getDetailPage(tripId);
         console.log("🔥 백엔드가 준 진짜 데이터 구조:", JSON.stringify(data, null, 2));
         setTrip(data);
-        
+
         // 만약 홈에서 특정 day를 안 누르고 들어왔다면, 데이터의 첫 번째 일자로 자동 선택
-        if (!day && data.tripDays?.length > 0) {
-          const sortedDays = [...data.tripDays].sort((a, b) => a.day_number - b.day_number);
+        if (!day && data.tripDetail?.length > 0) {
+          const sortedDays = [...data.tripDetail].sort((a, b) => a.day_number - b.day_number);
           setActiveDay(sortedDays[0].day_number);
         }
       } catch (err) {
@@ -54,6 +79,8 @@ export default function TravelDetailUI() {
     if (tripId) loadDetailData();
   }, [tripId, day]);
 
+ 
+
   if (isLoading || !trip) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
@@ -62,9 +89,9 @@ export default function TravelDetailUI() {
       </View>
     );
   }
-
   // 5️⃣ 실시간 데이터 가공 처리 영역
   const { title, destination, start_date, end_date, tripDetail} = trip as any;
+ 
 
   //3. [중요] 전체 상세 데이터 중 '현재 활성화된 Day 탭'에 해당하는 데이터만 찾아냅니다!
   // tripDays 배열에서 현재 선택된 activeDay 데이터 추출
@@ -73,16 +100,16 @@ export default function TravelDetailUI() {
   //4. 생성할 탭 목록 배열 자동 생성 (예: 데이터가 3개면 [1, 2, 3] 탭이 생김)
   const dayTabs = tripDetail ? tripDetail.map((d: Days) => Number(d.day_number)).sort((a: number, b: number) => a - b) : [];
 
-  return (
-    <ScrollView className="flex-1 bg-background" showsVerticalScrollIndicator={false} bounces={false}>
 
+  return (
+    <ScrollView
+    className="flex-1 bg-background"
+    showsVerticalScrollIndicator={false} bounces={false}
+    >
+      
       {/* 상단 히어로 이미지 */}
       <View className="relative h-80 w-full">
-        <Image
-          source={{uri: currentDayData.photos[currentDayData.represent_image ?? 0] }}
-          className="absolute inset-0 w-full h-full"
-          resizeMode="cover"
-        />
+      {getMainImage(trip)}
 
         {/* 그라데이션 오버레이 */}
         <LinearGradient
@@ -140,7 +167,7 @@ export default function TravelDetailUI() {
           {(dayTabs?.length > 0 ? dayTabs : [1]).map((d: number) => (
             <Pressable
               key={d}
-              onPress={() => setActiveDay(d)}
+              onPress={() => { setActiveDay(d); setActivePhotoIndex(0); }}
               // activeDay일 때는 px-lg(크게), 아닐 때는 px-sm(정확히 숫자만 감싸게 고정)으로 크기를 이원화
               className={`py-xs rounded-t-lg mr-xs shadow-sm ${
                 activeDay === d 
@@ -233,11 +260,49 @@ export default function TravelDetailUI() {
 
          
           {/* 본문 사진 */}
-          <Image
-            source={{ uri: currentDayData?.represent_image || 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e' }}
-            className="w-full h-60 rounded-lg mb-md mt-md"
-            resizeMode="cover"
-          />
+          {/* 사진이 1장 이상 있을 때만 가로 슬라이더를 렌더링 */}
+          {currentDayData?.photos && currentDayData.photos.length > 0 && (
+            // 카드 너비를 화면 너비 - 좌우 패딩(32px)으로 고정해 슬라이더가 카드 밖으로 삐져나오지 않게 함
+            <View style={{ width: cardWidth }} className="rounded-lg mb-md mt-md overflow-hidden">
+              {/* pagingEnabled: 손가락을 떼면 사진 경계에 딱 맞춰 멈추는 인스타 스타일 페이징 */}
+              <FlatList
+                data={currentDayData.photos}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item: any, index: number) => item.id?.toString() || index.toString()}
+                onViewableItemsChanged={({ viewableItems }) => {
+                  if (viewableItems.length > 0) setActivePhotoIndex(viewableItems[0].index ?? 0);
+                }}
+                viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
+                renderItem={({ item }) => (
+                  // 각 사진의 width를 cardWidth와 동일하게 줘야 정확히 한 장씩 넘어감
+                  <Image
+                    source={{ uri: item.image_url }}
+                    style={{ width: cardWidth, height: 240 }}
+                    className="rounded-lg"
+                    resizeMode="cover"
+                  />
+                )}
+              />
+              {/* 도트 인디케이터 */}
+              {currentDayData.photos.length > 1 && (
+                <View className="flex-row justify-center items-center gap-xs py-sm">
+                  {currentDayData.photos.map((_: any, i: number) => (
+                    <View
+                      key={i}
+                      style={{
+                        width: activePhotoIndex === i ? 8 : 6,
+                        height: activePhotoIndex === i ? 8 : 6,
+                        borderRadius: 4,
+                        backgroundColor: activePhotoIndex === i ? '#39536B' : '#C4CDD6',
+                      }}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
 
           {/* 일기 텍스트 */}
           <View className="bg-muted p-md rounded-md border border-border">

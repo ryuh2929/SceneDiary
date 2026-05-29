@@ -19,21 +19,26 @@ export interface Days {
 
   representative_lat: number | null;
   representative_lon: number | null;
-  represent_image: number | null;
+  represent_image: number | 0;
 
   photos: Photo[];
 }
 
 export interface Trip {
-  id: number;                // int8 (기본키 PK)
-  user_id: number;           // int8 (외래키 FK)
-  title: string;             // varchar(200)
-  destination: string;       // varchar(200)
-  start_date: string;        // date ('YYYY-MM-DD' 형태의 문자열)
-  end_date: string;          // date ('YYYY-MM-DD' 형태의 문자열)
+  id: number; // int8 (기본키 PK)
+  user_id: number; // int8 (외래키 FK)
+  title: string; // varchar(200)
+  destination: string; // varchar(200)
+  start_date: string; // date ('YYYY-MM-DD' 형태의 문자열)
+  end_date: string; // date ('YYYY-MM-DD' 형태의 문자열)
   cover_photo_id: number | null; // int8 (커버 사진이 없을 수도 있으므로 null 허용)
-  status: string;            // varchar(20) (예: 'PLANNING', 'TRAVELING', 'COMPLETED')
-  tripDays:Days[];
+  status: string; // varchar(20) (예: 'PLANNING', 'TRAVELING', 'COMPLETED')
+  flag: string | null; // 여행 대표 이모지 (Twemoji codepoint)
+  tripDays: Days[];
+}
+
+export interface DetailPage extends Omit<Trip, "tripDays"> {
+  tripDetail: Days[];
 }
 
 export type UploadedPhoto = {
@@ -49,14 +54,14 @@ export type UploadedPhoto = {
 };
 
 export type LoadingStep =
-  | 'uploading'
-  | 'resizing_images'
-  | 'creating_thumbnails'
-  | 'analyzing_metadata'
-  | 'analyzing_photos'
-  | 'generating_diary'
-  | 'completed'
-  | 'failed';
+  | "uploading"
+  | "resizing_images"
+  | "creating_thumbnails"
+  | "analyzing_metadata"
+  | "analyzing_photos"
+  | "generating_diary"
+  | "completed"
+  | "failed";
 
 export type UploadedDay = {
   tripDayId: number;
