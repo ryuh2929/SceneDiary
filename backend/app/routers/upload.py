@@ -278,7 +278,7 @@ async def upload_first_day_photos(
             db,
             trip=trip,
             trip_date=grouped_date,
-            preferred_day_number=day_number + index if trip_id is None else None,
+            preferred_day_number=day_number + index,
         )
         for index, grouped_date in enumerate(sorted_dates)
     }
