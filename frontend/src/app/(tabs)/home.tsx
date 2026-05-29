@@ -31,7 +31,7 @@ function EmojiIcon({codepoint, size}: {codepoint: string; size: number}) {
 
 export function getMainImage(item: Trip) {
   // 1. 안전장치: cover_photo_id가 없거나 tripDays가 비어있으면 곧바로 기본 이미지(Fallback) 반환
-
+  
   // 2. ⚡ 모든 일차(tripDays)에 흩어져 있는 photos들을 1차원 배열로 평평하게 폅니다.
   const allPhotos = item.tripDays.flatMap((day) => day.photos || []);
 
@@ -71,8 +71,11 @@ export default function HomeScreen() {
         const data = await getTrips(currentYear);
         console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
         setTripData(data);    // 받아온 데이터를 useState 수납함에 쏙 저장
-      } catch (err) {
+      } catch (err: any) {
         setTripData([]);
+        console.log("API 에러 전체:", err);
+        console.log("API 에러 메시지:", err?.message);
+        console.log("API 에러 응답:", err?.response?.status, err?.response?.data);
         setError("여행 정보를 불러오는 중 오류가 발생했습니다.");
       } finally {
         setIsLoading(false);  // 성공하든 실패하든 로딩 스피너 끄기
