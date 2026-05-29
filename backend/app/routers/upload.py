@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -97,6 +98,24 @@ def _parse_upload_date(value: str | None) -> date | None:
         return None
     try:
         return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _parse_filename_date(filename: str | None) -> date | None:
+    if not filename:
+        return None
+
+    match = re.search(r"(20\d{2})[-_. ]?(\d{2})[-_. ]?(\d{2})", filename)
+    if not match:
+        return None
+
+    try:
+        return date(
+            int(match.group(1)),
+            int(match.group(2)),
+            int(match.group(3)),
+        )
     except ValueError:
         return None
 
@@ -218,13 +237,20 @@ async def upload_first_day_photos(
             raise HTTPException(status_code=400, detail=f"{upload_file.filename} is not an image")
 
         raw_bytes = await upload_file.read()
+        if len(raw_bytes) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=400, detail=f"{upload_file.filename} is larger than 12MB")
         form_photo_date = _parse_upload_date(photo_dates[index] if photo_dates and index < len(photo_dates) else None)
         drafts.append(
             UploadDraft(
                 raw_bytes=raw_bytes,
                 original_filename=upload_file.filename,
                 content_type=upload_file.content_type,
-                photo_date=form_photo_date or extract_image_taken_date(raw_bytes) or fallback_date,
+                photo_date=(
+                    form_photo_date
+                    or extract_image_taken_date(raw_bytes)
+                    or _parse_filename_date(upload_file.filename)
+                    or fallback_date
+                ),
             )
         )
 

@@ -86,6 +86,19 @@ function parseExifTakenDate(exif: Record<string, unknown> | null | undefined): s
   return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
+function parseFilenameDate(filename: string | null | undefined): string | undefined {
+  if (!filename) {
+    return undefined;
+  }
+
+  const match = filename.match(/(20\d{2})[-_. ]?(\d{2})[-_. ]?(\d{2})/);
+  if (!match) {
+    return undefined;
+  }
+
+  return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
 async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrder: number): Promise<PendingPhoto> {
   // AI 분석용 이미지는 너무 커지지 않게 줄이고, 화면 미리보기용 썸네일은 별도로 생성합니다.
   const fileImage = await ImageManipulator.manipulateAsync(
@@ -113,7 +126,7 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
     thumbnailUri: thumbnail.uri,
     originalFilename: asset.fileName ?? `photo-${displayOrder + 1}.jpg`,
     mimeType: 'image/jpeg',
-    takenDate: parseExifTakenDate(asset.exif),
+    takenDate: parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName),
     fileSizeBytes,
     width: fileImage.width,
     height: fileImage.height,
