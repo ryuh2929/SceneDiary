@@ -57,10 +57,16 @@ export async function uploadFirstDayPhotos(photos: {
   originalFilename: string;
   mimeType: string;
   takenDate?: string;
-}[]) {
+}[], options?: {
+  tripId?: string;
+  dayNumber?: number;
+}) {
   const formData = new FormData();
-  formData.append('day_number', '1');
+  formData.append('day_number', String(options?.dayNumber ?? 1));
   formData.append('title', '새 여행');
+  if (options?.tripId) {
+    formData.append('trip_id', options.tripId);
+  }
 
   for (const photo of photos) {
     formData.append('photo_dates', photo.takenDate ?? '');
