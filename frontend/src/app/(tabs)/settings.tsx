@@ -47,7 +47,7 @@ const colors = {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const travelTypeIcons: Record<TravelTypeIconName, LucideIcon> = {
-  compass: NotebookPen,
+  NotebookPen,
 };
 
 const toggleIcons: Record<SettingsToggle['id'], LucideIcon> = {

@@ -109,12 +109,14 @@ function normalizeTravelTypeIcon(icon: unknown): TravelTypeIconName {
         : '';
 
   switch (iconKey) {
+    case 'NotebookPen':
+    case 'notebookPen':
     case 'compass':
     case 'explore':
     case 'safari':
-      return 'compass';
+      return 'NotebookPen';
     default:
-      return 'compass';
+      return 'NotebookPen';
   }
 }
 

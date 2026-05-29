@@ -76,7 +76,7 @@ def to_settings_profile(user: User) -> SettingsProfile:
             "id": "pending",
             "title": "분석 중",
             "description": "여행 유형 분석 데이터는 나중에 연결될 예정입니다.",
-            "icon": "compass",
+            "icon": "NotebookPen",
         },
         toggles=[
             {

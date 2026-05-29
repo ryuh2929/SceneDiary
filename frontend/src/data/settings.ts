@@ -5,7 +5,7 @@ export type PersonaTag = {
   selected: boolean;
 };
 
-export type TravelTypeIconName = 'compass';
+export type TravelTypeIconName = 'NotebookPen';
 
 export type TravelType = {
   id: string;
@@ -68,7 +68,7 @@ export const dummySettingsProfile: SettingsProfile = {
     id: 'explorer',
     title: '탐험가',
     description: '새로운 곳을 끊임없이 찾아다니는 타입',
-    icon: 'compass',
+    icon: 'NotebookPen',
   },
   toggles: [
     {

@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-TravelTypeIconName = Literal["compass"]
+TravelTypeIconName = Literal["NotebookPen"]
 
 
 class PersonaTag(BaseModel):
