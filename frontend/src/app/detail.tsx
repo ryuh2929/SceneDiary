@@ -1,23 +1,90 @@
-import React, { useState,useEffect } from 'react';
-import { View, Text, Image, ScrollView, Pressable } from 'react-native';
+import React, { useState,useEffect,useRef } from 'react';
+import { View, Text, Image, ScrollView, Pressable,useWindowDimensions, FlatList} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X, MapPin, Calendar, Plus } from 'lucide-react-native';
-// import Twemoji from 'react-native-twemoji';
+import Twemoji from 'react-native-twemoji';
 import { getDetailPage } from '@/api/detail';
-import { Trip,Days } from '@/types/api';
+import { DetailPage, Days } from '@/types/api';
 
-const Twemoji = ({ children }: { children: string }) => <Text>{children}</Text>;
+// Twemoji 코드포인트(hex) → 실제 이모지 문자. 예: "1f5fc"→🗼, "1f1f0-1f1f7"→🇰🇷
+function codepointToEmoji(codepoint: string): string {
+  return codepoint
+    .split("-")
+    .filter((cp) => cp.length > 0)
+    .map((cp) => {
+      const code = parseInt(cp, 16);
+      return isNaN(code) ? "" : String.fromCodePoint(code);
+    })
+    .join("");
+}
+
+// 감정·상징·날씨 이모지를 Twemoji(그림) 로 그립니다.
+// react-native-twemoji 는 size prop이 없어서 style 로 크기를 줘야 합니다.
+// 이 라이브러리에 없는(최신) 이모지는 시스템 이모지로 자동 대체합니다.
+// 빈 문자열(예: symbol 미설정)이면 아무것도 그리지 않습니다.
+function EmojiIcon({codepoint, size}: {codepoint: string; size: number}) {
+  if (!codepoint) return null;
+  const char = codepointToEmoji(codepoint);
+  if (Twemoji.supportedEmojis.includes(char)) {
+    return <Twemoji style={{width: size, height: size}}>{char}</Twemoji>;
+  }
+  return <Text style={{fontSize: size}}>{char}</Text>;
+}
+
+// DB에 날씨가 한글("맑음")로 저장된 레코드와 codepoint("2600")로 저장된 레코드가 섞여 있어서
+// 두 형식 모두 키로 등록해 어떤 형식이 와도 이모지 + 한글 텍스트를 꺼낼 수 있게 했습니다.
+// "2600-fe0f"처럼 변형 선택자(fe0f)가 붙은 codepoint도 별도 키로 등록해 대응합니다.
+const WEATHER_MAP: Record<string, { codepoint: string; label: string }> = {
+  // 한글 텍스트 키 (AI가 한글로 저장한 구버전 데이터)
+  "맑음":      { codepoint: "2600",  label: "맑음" },
+  "흐림":      { codepoint: "2601",  label: "흐림" },
+  "비":        { codepoint: "1f327", label: "비" },
+  "눈":        { codepoint: "2744",  label: "눈" },
+  // codepoint 키 (현재 저장 방식)
+  "2600":      { codepoint: "2600",  label: "맑음" },
+  "2600-fe0f": { codepoint: "2600",  label: "맑음" }, // 변형 선택자(fe0f) 포함 버전
+  "2601":      { codepoint: "2601",  label: "흐림" },
+  "1f327":     { codepoint: "1f327", label: "비" },
+  "2744":      { codepoint: "2744",  label: "눈" },
+};
+
+export function getMainImage(item: DetailPage) {
+  // 1. 안전장치: cover_photo_id가 없거나 tripDays가 비어있으면 곧바로 기본 이미지(Fallback) 반환
+  
+  // 2. ⚡ 모든 일차(tripDays)에 흩어져 있는 photos들을 1차원 배열로 평평하게 폅니다.
+  const allPhotos = item.tripDetail.flatMap((day) => day.photos || []);
+
+  // 3. 🎯 그 사진들 중에서 id가 여행의 cover_photo_id와 똑같은 녀석을 딱 하나 찾습니다.
+  const coverPhoto = allPhotos.find((photo) => photo.id === item.cover_photo_id);
+
+  // 4. 매칭되는 사진을 찾았다면 해당 이미지의 가공된 URL(image_url)을 띄워줍니다.
+  if (coverPhoto && coverPhoto.image_url) {
+    return (
+      <Image
+        source={{ uri: coverPhoto.image_url }}
+        className="absolute inset-0 w-full h-full"
+          resizeMode="cover"
+      />
+    );
+  }
+}
 
 export default function TravelDetailUI() {
-  const router = useRouter();
+  // 기기 너비 계산
+  const { width: windowWidth } = useWindowDimensions();
+  // 메인 카드 좌우 패딩값(px-md가 보통 16px씩 총 32px)을 제외한 진짜 사진의 너비 자동 계산
+  const cardWidth = windowWidth - 64;
+  //사진 슬라이더(FlatList)를 원격 조종하기 위한 리프(Ref) 생성
+  const flatListRef = useRef<FlatList>(null);
 
+  const router = useRouter();
   //홈에서 id와 누른 day 정보 접수
   const {id,day} = useLocalSearchParams();
   const tripId = Number(id);
 
   // 1️⃣ API 데이터를 수납할 상태 선언
-  const [trip, setTrip] = useState<Trip | null>(null);
+  const [trip, setTrip] = useState<DetailPage | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,6 +94,7 @@ export default function TravelDetailUI() {
   // 홈에서 특정 Day를 누르고 들어왔으면 그 Day로 시작하고, 아니면 Day 1로 시작
   // 2️⃣ 현재 어떤 Day 탭이 활성화되어 있는지 관리
   const [activeDay, setActiveDay] = useState<number>(Number(day) || 1);
+  const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
 
   // 3️⃣ 화면이 켜지면 백엔드에서 부모+자식 데이터 통째로 긁어오기
   useEffect(() => {
@@ -37,10 +105,10 @@ export default function TravelDetailUI() {
         const data = await getDetailPage(tripId);
         console.log("🔥 백엔드가 준 진짜 데이터 구조:", JSON.stringify(data, null, 2));
         setTrip(data);
-        
+
         // 만약 홈에서 특정 day를 안 누르고 들어왔다면, 데이터의 첫 번째 일자로 자동 선택
-        if (!day && data.tripDays?.length > 0) {
-          const sortedDays = [...data.tripDays].sort((a, b) => a.day_number - b.day_number);
+        if (!day && data.tripDetail?.length > 0) {
+          const sortedDays = [...data.tripDetail].sort((a, b) => a.day_number - b.day_number);
           setActiveDay(sortedDays[0].day_number);
         }
       } catch (err) {
@@ -54,6 +122,12 @@ export default function TravelDetailUI() {
     if (tripId) loadDetailData();
   }, [tripId, day]);
 
+  // Day 탭이 바뀔 때마다 사진 슬라이더를 강제로 맨 앞으로 돌리는 안전장치
+  useEffect(() => {
+    setActivePhotoIndex(0);
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [activeDay]);
+
   if (isLoading || !trip) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
@@ -62,27 +136,30 @@ export default function TravelDetailUI() {
       </View>
     );
   }
-
   // 5️⃣ 실시간 데이터 가공 처리 영역
   const { title, destination, start_date, end_date, tripDetail} = trip as any;
+ 
 
   //3. [중요] 전체 상세 데이터 중 '현재 활성화된 Day 탭'에 해당하는 데이터만 찾아냅니다!
   // tripDays 배열에서 현재 선택된 activeDay 데이터 추출
   const currentDayData = tripDetail?.find((d: Days) => Number(d.day_number) === activeDay);
+  // weather 값(한글 또는 codepoint)을 WEATHER_MAP에서 조회해 이모지·텍스트 정보를 가져옵니다.
+  // 매핑에 없는 값("미상", "실내" 등)은 null이 되어 날씨 UI 자체를 숨깁니다.
+  const weatherInfo = currentDayData?.weather ? WEATHER_MAP[currentDayData.weather] : null;
 
   //4. 생성할 탭 목록 배열 자동 생성 (예: 데이터가 3개면 [1, 2, 3] 탭이 생김)
   const dayTabs = tripDetail ? tripDetail.map((d: Days) => Number(d.day_number)).sort((a: number, b: number) => a - b) : [];
 
-  return (
-    <ScrollView className="flex-1 bg-background" showsVerticalScrollIndicator={false} bounces={false}>
 
+  return (
+    <ScrollView
+    className="flex-1 bg-background"
+    showsVerticalScrollIndicator={false} bounces={false}
+    >
+      
       {/* 상단 히어로 이미지 */}
       <View className="relative h-80 w-full">
-        <Image
-          source={{uri: currentDayData.photos[currentDayData.represent_image ?? 0] }}
-          className="absolute inset-0 w-full h-full"
-          resizeMode="cover"
-        />
+      {getMainImage(trip)}
 
         {/* 그라데이션 오버레이 */}
         <LinearGradient
@@ -140,9 +217,9 @@ export default function TravelDetailUI() {
           {(dayTabs?.length > 0 ? dayTabs : [1]).map((d: number) => (
             <Pressable
               key={d}
-              onPress={() => setActiveDay(d)}
+              onPress={() => { setActiveDay(d); setActivePhotoIndex(0); }}
               // activeDay일 때는 px-lg(크게), 아닐 때는 px-sm(정확히 숫자만 감싸게 고정)으로 크기를 이원화
-              className={`py-xs rounded-t-lg mr-xs shadow-sm ${
+              className={`py-xs rounded-t-lg mr-0 shadow-sm ${
                 activeDay === d 
                   ? 'px-lg bg-primary min-w-[70px] items-center' // 활성화 탭: 넓은 패딩 + 최소 너비 지정으로 듬직하게
                   : 'px-sm bg-muted min-w-[36px] items-center'   // 일반 숫자 탭: 좁은 패딩 + 정사각형에 가까운 콤팩트한 크기
@@ -180,8 +257,8 @@ export default function TravelDetailUI() {
                 {currentDayData?.subtitle || '상세 일정이 없습니다.'}
               </Text>
             </View>
-            {/* 오른쪽: 홈 화면 방식의 이모지 상자 스타일 그대로 적용 */}
-          <View 
+            {/* 오른쪽: 감정 이모지 */}
+          <View
             style={{
               width: 44,
               height: 44,
@@ -192,15 +269,7 @@ export default function TravelDetailUI() {
             }}
           >
             {currentDayData?.emotion && (
-              <View
-                style={{
-                  transform: [
-                    { scale:2 },
-                  ]
-                }}
-              >
-                <Twemoji>{String.fromCodePoint(parseInt(currentDayData.emotion, 16))}</Twemoji>
-              </View>
+              <EmojiIcon codepoint={currentDayData.emotion} size={28} />
             )}
           </View>
         </View>
@@ -225,19 +294,64 @@ export default function TravelDetailUI() {
               })()}
             </Text>
             <View className="flex-row items-center gap-xs px-sm py-xs rounded-full">
-             <Text className="text-sm text-textSecondary font-sans font-bold">
-               {currentDayData?.weather ? `☀️ ${currentDayData.weather}` : '☀️ 맑음'}
-            </Text>
+             {weatherInfo && (
+               <View className="flex-row items-center gap-xs">
+                 <EmojiIcon codepoint={weatherInfo.codepoint} size={16} />
+                 <Text className="text-sm text-textSecondary font-sans font-bold">
+                   {weatherInfo.label}
+                 </Text>
+               </View>
+             )}
             </View>
           </View>
 
          
           {/* 본문 사진 */}
-          <Image
-            source={{ uri: currentDayData?.represent_image || 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e' }}
-            className="w-full h-60 rounded-lg mb-md mt-md"
-            resizeMode="cover"
-          />
+          {/* 사진이 1장 이상 있을 때만 가로 슬라이더를 렌더링 */}
+          {currentDayData?.photos && currentDayData.photos.length > 0 && (
+            // 카드 너비를 화면 너비 - 좌우 패딩(32px)으로 고정해 슬라이더가 카드 밖으로 삐져나오지 않게 함
+            <View style={{ width: cardWidth }} className="rounded-lg mb-md mt-md overflow-hidden">
+              {/* pagingEnabled: 손가락을 떼면 사진 경계에 딱 맞춰 멈추는 인스타 스타일 페이징 */}
+              <FlatList
+                ref={flatListRef}
+                key={activeDay}
+                data={currentDayData.photos}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item: any, index: number) => item.id?.toString() || index.toString()}
+                onViewableItemsChanged={({ viewableItems }) => {
+                  if (viewableItems.length > 0) setActivePhotoIndex(viewableItems[0].index ?? 0);
+                }}
+                viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
+                renderItem={({ item }) => (
+                  // 각 사진의 width를 cardWidth와 동일하게 줘야 정확히 한 장씩 넘어감
+                  <Image
+                    source={{ uri: item.image_url }}
+                    style={{ width: cardWidth, height: 240 }}
+                    className="rounded-lg"
+                    resizeMode="cover"
+                  />
+                )}
+              />
+              {/* 도트 인디케이터 */}
+              {currentDayData.photos.length > 1 && (
+                <View className="flex-row justify-center items-center gap-xs py-xs">
+                  {currentDayData.photos.map((_: any, i: number) => (
+                    <View
+                      key={i}
+                      style={{
+                        width: activePhotoIndex === i ? 8 : 6,
+                        height: activePhotoIndex === i ? 8 : 6,
+                        borderRadius: 4,
+                        backgroundColor: activePhotoIndex === i ? '#39536B' : '#C4CDD6',
+                      }}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
 
           {/* 일기 텍스트 */}
           <View className="bg-muted p-md rounded-md border border-border">

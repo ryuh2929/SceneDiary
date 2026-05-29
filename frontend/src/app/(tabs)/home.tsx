@@ -140,12 +140,11 @@ export default function HomeScreen() {
                     <Text className="text-sm font-sans text-textPrimary">{item.start_date} ~ {item.end_date}</Text>
                   </View>
 
-                  {/* 심볼 */} 
+                  {/* 여행 대표 이모지 */}
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  {/* {symbol && (
-                      <EmojiIcon codepoint={symbol} size={26}/>
-                    )} */}
-                                 
+                  {item.flag && (
+                    <EmojiIcon codepoint={item.flag} size={26}/>
+                  )}
                 </View>
 
                 
@@ -212,7 +211,7 @@ export default function HomeScreen() {
                                   <Text className="text-sm font-bold text-primary font-sans">Day {detail.day_number}</Text>
                                   
                                   {/* 오른쪽: 이모지 상자 */}
-                                  <View 
+                                  <View
                                     style={{
                                       width: 28,
                                       height: 28,
@@ -221,17 +220,10 @@ export default function HomeScreen() {
                                       alignItems: "center",
                                     }}
                                   >
-                                <View
-                                  style={{
-                                    transform: [{ scale: 0.15 },
-                                                { translateX: 0 },
-                                                { translateY: 150 }
-                                              ]
-                                  }}
-                                >
-                                  <Twemoji>{detail.emotion}</Twemoji>
-                                </View>
-                              </View>
+                                    {detail.emotion && (
+                                      <EmojiIcon codepoint={detail.emotion} size={20} />
+                                    )}
+                                  </View>
 
                           </View>
                           {/* 타이틀 및 위치 정보 */}
