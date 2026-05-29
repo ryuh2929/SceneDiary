@@ -8,6 +8,7 @@ from app.routers.diary import router as diary_router
 from app.routers.settings import router as settings_router
 from app.routers.home import router as home_router
 from app.routers.detail import router as detail_router
+from app.routers.upload import router as upload_router
 app = FastAPI()
 
 app.add_middleware(
@@ -20,6 +21,7 @@ app.add_middleware(
 
 app.include_router(settings_router)
 app.include_router(diary_router)
+app.include_router(upload_router)
 app.include_router(home_router)
 app.include_router(detail_router)
 
@@ -31,6 +33,14 @@ app.mount(
     "/test_images",
     StaticFiles(directory=str(_TEST_IMAGES_DIR)),
     name="test_images",
+)
+
+_UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
+_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount(
+    "/uploads",
+    StaticFiles(directory=str(_UPLOADS_DIR)),
+    name="uploads",
 )
 
 @app.get("/")

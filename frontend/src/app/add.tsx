@@ -15,6 +15,7 @@ type PendingPhoto = {
   thumbnailUri: string;
   originalFilename: string;
   mimeType: string;
+  takenDate?: string;
   fileSizeBytes?: number;
   width: number;
   height: number;
@@ -62,6 +63,29 @@ async function getFileSizeBytes(uri: string) {
   }
 }
 
+function parseExifTakenDate(exif: Record<string, unknown> | null | undefined): string | undefined {
+  if (!exif) {
+    return undefined;
+  }
+
+  const rawDate =
+    exif.DateTimeOriginal ??
+    exif.DateTimeDigitized ??
+    exif.DateTime ??
+    exif.CreateDate ??
+    exif.ModifyDate;
+  if (typeof rawDate !== 'string') {
+    return undefined;
+  }
+
+  const match = rawDate.match(/^(\d{4})[:/-](\d{2})[:/-](\d{2})/);
+  if (!match) {
+    return undefined;
+  }
+
+  return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
 async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrder: number): Promise<PendingPhoto> {
   // AI 분석용 이미지는 너무 커지지 않게 줄이고, 화면 미리보기용 썸네일은 별도로 생성합니다.
   const fileImage = await ImageManipulator.manipulateAsync(
@@ -89,6 +113,7 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
     thumbnailUri: thumbnail.uri,
     originalFilename: asset.fileName ?? `photo-${displayOrder + 1}.jpg`,
     mimeType: 'image/jpeg',
+    takenDate: parseExifTakenDate(asset.exif),
     fileSizeBytes,
     width: fileImage.width,
     height: fileImage.height,

@@ -92,6 +92,15 @@ class UploadDraft:
     photo_date: date
 
 
+def _parse_upload_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
 def _get_or_create_trip(
     db: Session,
     *,
@@ -182,7 +191,9 @@ def _generation_progress(status: str) -> tuple[LoadingStep, int, str | None]:
 @router.post("/trips/upload-first-day", response_model=FirstDayUploadResponse)
 async def upload_first_day_photos(
     request: Request,
+    background_tasks: BackgroundTasks,
     files: list[UploadFile] = File(...),
+    photo_dates: list[str] | None = Form(None),
     user_id: int = Form(1),
     trip_id: int | None = Form(None),
     day_number: int = Form(1),
@@ -202,17 +213,18 @@ async def upload_first_day_photos(
 
     fallback_date = trip_date or date.today()
     drafts: list[UploadDraft] = []
-    for upload_file in files:
+    for index, upload_file in enumerate(files):
         if upload_file.content_type and not upload_file.content_type.startswith("image/"):
             raise HTTPException(status_code=400, detail=f"{upload_file.filename} is not an image")
 
         raw_bytes = await upload_file.read()
+        form_photo_date = _parse_upload_date(photo_dates[index] if photo_dates and index < len(photo_dates) else None)
         drafts.append(
             UploadDraft(
                 raw_bytes=raw_bytes,
                 original_filename=upload_file.filename,
                 content_type=upload_file.content_type,
-                photo_date=extract_image_taken_date(raw_bytes) or fallback_date,
+                photo_date=form_photo_date or extract_image_taken_date(raw_bytes) or fallback_date,
             )
         )
 
@@ -315,7 +327,31 @@ async def upload_first_day_photos(
             uploaded.append(uploaded_photo)
             uploaded_by_day_id[trip_day.id].append(uploaded_photo)
 
+    generation_jobs: list[tuple[int, int]] = []
+    for trip_day in trip_days_by_date.values():
+        running = (
+            db.query(DiaryGeneration)
+            .filter(DiaryGeneration.trip_day_id == trip_day.id, DiaryGeneration.status == "running")
+            .order_by(DiaryGeneration.id.desc())
+            .first()
+        )
+        if running is not None:
+            continue
+
+        gen = DiaryGeneration(
+            trip_day_id=trip_day.id,
+            model_used=_MODEL_NAME,
+            status="running",
+            created_at=datetime.now(),
+        )
+        db.add(gen)
+        db.flush()
+        generation_jobs.append((trip_day.id, gen.id))
+
     db.commit()
+    for trip_day_id, gen_id in generation_jobs:
+        background_tasks.add_task(_run_generation, trip_day_id, gen_id)
+
     first_trip_day = trip_days_by_date[sorted_dates[0]]
     return FirstDayUploadResponse(
         tripId=trip.id,
