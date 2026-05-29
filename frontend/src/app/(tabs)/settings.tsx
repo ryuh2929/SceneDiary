@@ -548,7 +548,9 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
-          <View className="mt-md flex-row items-center gap-xs">
+          <View className="mt-md flex-row items-center justify-center gap-xs">
+            {/* 오른쪽 수정 아이콘과 같은 폭의 빈 공간을 왼쪽에 둬서 닉네임 텍스트가 프로필 사진 중앙과 맞도록 합니다. */}
+            <View className="h-7 w-7" />
             <Text className="text-[20px] font-extrabold text-textPrimary">{profile.nickname}</Text>
             <Pressable
               accessibilityRole="button"
