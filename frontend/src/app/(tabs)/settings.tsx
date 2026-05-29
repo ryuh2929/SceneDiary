@@ -575,7 +575,7 @@ export default function SettingsScreen() {
           </SettingsCard>
 
           <SettingsCard>
-            <View className="mb-md flex-row items-center gap-xs">
+            <View className="mb-md flex-row items-center gap-sm">
               <TravelAnalysisActionIcon />
               <Text className="text-md font-bold text-textPrimary">여행 유형 분석</Text>
             </View>
