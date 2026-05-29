@@ -173,6 +173,10 @@ const EditIcon = React.memo(function EditIcon() {
   return <Pencil size={13} color={colors.textMuted} strokeWidth={2.2} />;
 });
 
+const ProfileImageEditIcon = React.memo(function ProfileImageEditIcon() {
+  return <Camera size={15} color={colors.textOnPrimary} strokeWidth={2.4} />;
+});
+
 const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
   return <Sparkles size={15} color={colors.primary} strokeWidth={2.2} />;
 });
@@ -477,6 +481,10 @@ export default function SettingsScreen() {
     setProfile(updatedProfile);
   };
 
+  const openProfileImagePicker = () => {
+    // TODO: 프로필 사진 업로드 API를 연결할 때 이미지 선택/업로드 로직을 이 함수에 붙입니다.
+  };
+
   // 하단 네브바는 별도 컴포넌트가 담당하므로, 이 화면은 안전 영역과 본문 여백만 책임집니다.
   const contentInset = Platform.select({
     ios: { paddingTop: 20, paddingBottom: insets.bottom + 24 },
@@ -506,8 +514,24 @@ export default function SettingsScreen() {
         ) : null}
 
         <View className="items-center">
-          <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-primaryLight">
-            <ProfileIcon />
+          <View className="relative h-[82px] w-[82px] items-center justify-center">
+            <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-primaryLight">
+              <ProfileIcon />
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="프로필 사진 수정"
+              onPress={openProfileImagePicker}
+              className="absolute bottom-0 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-surface bg-primary"
+              style={{
+                shadowColor: colors.text,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.14,
+                shadowRadius: 4,
+                elevation: 3,
+              }}>
+              <ProfileImageEditIcon />
+            </Pressable>
           </View>
 
           <View className="mt-md flex-row items-center gap-xs">
