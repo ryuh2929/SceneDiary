@@ -31,6 +31,7 @@ import {
   Landmark,
   Map,
   Martini,
+  Microscope,
   Mountain,
   NotebookPen,
   Moon,
@@ -56,6 +57,7 @@ import {
   Utensils,
   Wine,
   Backpack,
+  WandSparkles,
   type LucideIcon,
 } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -173,8 +175,20 @@ const EditIcon = React.memo(function EditIcon() {
   return <Pencil size={13} color={colors.textMuted} strokeWidth={2.2} />;
 });
 
+const ProfileImageEditIcon = React.memo(function ProfileImageEditIcon() {
+  return <Camera size={15} color={colors.textOnPrimary} strokeWidth={2.4} />;
+});
+
 const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
   return <Sparkles size={15} color={colors.primary} strokeWidth={2.2} />;
+});
+
+const TravelAnalysisActionIcon = React.memo(function TravelAnalysisActionIcon() {
+  return <WandSparkles size={15} color={colors.primary} strokeWidth={2.2} />;
+});
+
+const TravelAnalysisButtonIcon = React.memo(function TravelAnalysisButtonIcon() {
+  return <Microscope size={13} color={colors.primary} strokeWidth={2.4} />;
 });
 
 const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
@@ -477,6 +491,14 @@ export default function SettingsScreen() {
     setProfile(updatedProfile);
   };
 
+  const openProfileImagePicker = () => {
+    // TODO: 프로필 사진 업로드 API를 연결할 때 이미지 선택/업로드 로직을 이 함수에 붙입니다.
+  };
+
+  const startTravelStyleAnalysis = () => {
+    // TODO: 여행 데이터 기반 LLM 분석 API를 연결할 때 이 함수에서 분석 요청을 보냅니다.
+  };
+
   // 하단 네브바는 별도 컴포넌트가 담당하므로, 이 화면은 안전 영역과 본문 여백만 책임집니다.
   const contentInset = Platform.select({
     ios: { paddingTop: 20, paddingBottom: insets.bottom + 24 },
@@ -506,8 +528,24 @@ export default function SettingsScreen() {
         ) : null}
 
         <View className="items-center">
-          <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-primaryLight">
-            <ProfileIcon />
+          <View className="relative h-[82px] w-[82px] items-center justify-center">
+            <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-primaryLight">
+              <ProfileIcon />
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="프로필 사진 수정"
+              onPress={openProfileImagePicker}
+              className="absolute bottom-0 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-surface bg-primary"
+              style={{
+                shadowColor: colors.text,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.14,
+                shadowRadius: 4,
+                elevation: 3,
+              }}>
+              <ProfileImageEditIcon />
+            </Pressable>
           </View>
 
           <View className="mt-md flex-row items-center gap-xs">
@@ -546,18 +584,35 @@ export default function SettingsScreen() {
           </SettingsCard>
 
           <SettingsCard>
-            <Text className="mb-md text-md font-bold text-textPrimary">여행 유형 분석</Text>
+            <View className="mb-md flex-row items-center gap-sm">
+              <TravelAnalysisActionIcon />
+              <Text className="text-md font-bold text-textPrimary">여행 유형 분석</Text>
+            </View>
             <View className="flex-row items-center gap-md">
               <View className="h-[52px] w-[52px] items-center justify-center rounded-lg bg-accent">
                 <AppIcon icon={profile.travelType.icon} size={24} color={colors.primary} />
               </View>
-              <View className="flex-1">
-                <Text className="text-lg font-extrabold text-textPrimary">
-                  {profile.travelType.title}
-                </Text>
-                <Text className="mt-xs text-sm font-semibold text-textSecondary">
-                  {profile.travelType.description}
-                </Text>
+              <View className="min-w-0 flex-1 flex-row items-start gap-sm">
+                <View className="min-w-0 flex-1">
+                  <Text className="text-lg font-extrabold text-textPrimary">
+                    {profile.travelType.title}
+                  </Text>
+                  <Text className="mt-xs text-sm font-semibold text-textSecondary">
+                    {profile.travelType.description}
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="여행 유형 다시 분석"
+                  onPress={startTravelStyleAnalysis}
+                  // 설명이 여러 줄이어도 버튼은 여행 유형 이름 줄에 맞춰 오른쪽 끝에 고정합니다.
+                  className="h-6 w-6 items-center justify-center rounded-md bg-muted"
+                  style={{
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                  }}>
+                  <TravelAnalysisButtonIcon />
+                </Pressable>
               </View>
             </View>
           </SettingsCard>
