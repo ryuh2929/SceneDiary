@@ -56,18 +56,31 @@ export async function uploadFirstDayPhotos(photos: {
   fileUri: string;
   originalFilename: string;
   mimeType: string;
-}[]) {
+  takenDate?: string;
+}[], options?: {
+  tripId?: string;
+  dayNumber?: number;
+}) {
   const formData = new FormData();
-  formData.append('day_number', '1');
+  formData.append('day_number', String(options?.dayNumber ?? 1));
   formData.append('title', '새 여행');
+  if (options?.tripId) {
+    formData.append('trip_id', options.tripId);
+  }
 
-  photos.forEach((photo) => {
-    formData.append('files', {
-      uri: photo.fileUri,
-      name: photo.originalFilename,
-      type: photo.mimeType,
-    } as unknown as Blob);
-  });
+  for (const photo of photos) {
+    formData.append('photo_dates', photo.takenDate ?? '');
+    if (Platform.OS === 'web') {
+      const blob = await fetch(photo.fileUri).then((response) => response.blob());
+      formData.append('files', blob, photo.originalFilename);
+    } else {
+      formData.append('files', {
+        uri: photo.fileUri,
+        name: photo.originalFilename,
+        type: photo.mimeType,
+      } as unknown as Blob);
+    }
+  }
 
   const response = await fetch(`${getApiBaseUrl()}/trips/upload-first-day`, {
     method: 'POST',
