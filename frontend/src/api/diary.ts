@@ -121,9 +121,20 @@ export function fetchTripDay(tripDayId: number) {
   return request<DayPage>(`/trip-days/${tripDayId}`);
 }
 
-// ④ 일차 저장 — 여행지(locationSummary)만 수정
-export function saveDayLocation(tripDayId: number, locationSummary: string) {
+// ④ 일차 저장 — 여행지 이름(locationSummary) + 선택적으로 좌표(lat/lon)
+// 지도 피커에서 위치를 고른 경우 좌표까지 같이 넘어옵니다. 좌표 없이 이름만 저장도 가능.
+// lat/lon 둘 다 있을 때만 body 에 포함 (한쪽만 있는 어중간한 데이터는 안 보냄)
+export function saveDayLocation(
+  tripDayId: number,
+  locationSummary: string,
+  lat?: number,
+  lon?: number,
+) {
   const body: DayUpdate = { locationSummary };
+  if (lat !== undefined && lon !== undefined) {
+    body.lat = lat;
+    body.lon = lon;
+  }
   return request<DayPage>(`/trip-days/${tripDayId}`, {
     method: 'PATCH',
     body: JSON.stringify(body),

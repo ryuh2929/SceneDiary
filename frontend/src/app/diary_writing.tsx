@@ -8,8 +8,9 @@
 //   - 색/폰트는 다른 페이지와 동일한 팀 디자인 토큰(primary, textPrimary, font-sans).
 
 import {Image} from "expo-image";
-import {useRouter} from "expo-router";
+import {useLocalSearchParams, useRouter} from "expo-router";
 import {
+  AlertCircle,
   Calendar,
   ChevronRight,
   FileText,
@@ -81,8 +82,13 @@ export default function DiaryWritingScreen() {
   const insets = useSafeAreaInsets(); // 노치/홈바 영역만큼 헤더·하단바에 여백을 줍니다.
   const router = useRouter(); // 화면 이동(저장 후 Detail로)에 사용.
 
-  // [5단계] 어떤 여행을 불러올지. 지금은 1번 고정 — 나중에 앞(업로드) 화면에서 tripId를 넘겨받음.
-  const TRIP_ID = 1;
+  // 어떤 여행을 불러올지: 앞 화면(loading)이 router.replace 로 넘겨준 tripId 를 사용합니다.
+  // 직접 진입처럼 tripId 가 없거나 숫자로 못 바꾸면 NaN → loadTrip 가드에서 에러 화면으로.
+  const routeParams = useLocalSearchParams<{tripId?: string | string[]}>();
+  const tripIdRaw = Array.isArray(routeParams.tripId)
+    ? routeParams.tripId[0]
+    : routeParams.tripId;
+  const TRIP_ID = tripIdRaw ? Number(tripIdRaw) : NaN;
 
   // 백엔드에서 받아온 여행 전체. 받기 전(로딩 중)엔 null.
   const [trip, setTrip] = useState<TripDiary | null>(null);
@@ -100,10 +106,16 @@ export default function DiaryWritingScreen() {
 
   // 여행 전체를 불러옵니다. (화면 진입 시 + 에러 후 "다시 시도"에서 재호출)
   const loadTrip = useCallback(async () => {
+    // tripId 가 없거나 숫자로 못 바꾸면 잘못된 진입 → 에러 화면으로.
+    if (!Number.isFinite(TRIP_ID)) {
+      setError("여행 정보를 받지 못했어요. 처음부터 다시 시작해주세요.");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchTripDiary(TRIP_ID); // GET /trips/1
+      const data = await fetchTripDiary(TRIP_ID); // GET /trips/{tripId}
       setTrip(data);
       setDays(data.days);
     } catch (e) {
@@ -112,7 +124,7 @@ export default function DiaryWritingScreen() {
     } finally {
       setLoading(false); // 성공이든 실패든 로딩은 끝
     }
-  }, []);
+  }, [TRIP_ID]);
 
   // [5단계] 화면에 들어오면 한 번 불러옵니다.
   useEffect(() => {
@@ -150,7 +162,7 @@ export default function DiaryWritingScreen() {
     }, 3000); // 3초마다 확인
 
     return () => clearInterval(timer); // 다 ready거나 화면을 떠나면 폴링 정지
-  }, [hasGenerating]);
+  }, [hasGenerating, TRIP_ID]);
 
   // [5-3] 막 ready가 됐는데 본문이 아직 비어 있는 날은, 그 날 전체 내용을 한 번 가져옵니다.
   // (폴링은 genStatus만 갱신하므로, 본문·사진은 여기서 따로 채웁니다.)
@@ -213,18 +225,30 @@ export default function DiaryWritingScreen() {
   // 여행지 편집: 지도 피커를 엽니다. (앱 전용 — 웹은 안내 모달)
   const handleEditLocation = () => setPickerOpen(true);
 
-  // 피커에서 위치를 고르면: 현재 날 여행지를 화면에 즉시 반영하고 바로 저장합니다.
+  // 피커에서 위치를 고르면: 지명 + 좌표를 화면에 즉시 반영하고 바로 저장합니다.
   // (마지막 날처럼 "다음날로"를 안 거치는 경우에도 보존되도록 여기서 PATCH)
-  const handlePickLocation = async (placeName: string) => {
+  // 좌표를 함께 저장해야 trip_days.representative_lat/lon 이 채워져 지도 페이지·강조 카드 분기에 사용됨.
+  const handlePickLocation = async (
+    placeName: string,
+    lat: number,
+    lon: number,
+  ) => {
     setPickerOpen(false);
     setActionError(null);
     setDays((prev) =>
       prev.map((d, i) =>
-        i === dayIndex ? {...d, locationSummary: placeName} : d,
+        i === dayIndex
+          ? {
+              ...d,
+              locationSummary: placeName,
+              representativeLat: lat,
+              representativeLon: lon,
+            }
+          : d,
       ),
     );
     try {
-      await saveDayLocation(day.tripDayId, placeName); // PATCH /trip-days/{id}
+      await saveDayLocation(day.tripDayId, placeName, lat, lon); // PATCH /trip-days/{id}
     } catch (e) {
       console.error(e);
       setActionError("여행지를 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
@@ -290,38 +314,80 @@ export default function DiaryWritingScreen() {
           {/* ====== 상태별 본문 ====== */}
           {day.genStatus === "ready" && (
             <>
-              {/* --- 여행지(편집 O) / 날짜(읽기전용) --- */}
-              <View className="flex-row gap-4">
-                <View className="flex-1 gap-2">
-                  <Text className="ml-1 text-sm font-bold text-textSecondary">
-                    여행지
-                  </Text>
-                  {/* 이 화면의 유일한 편집 진입점. 탭하면 지도 피커(예정). */}
-                  <Pressable
-                    onPress={handleEditLocation}
-                    className="flex-row items-center justify-between rounded-xl bg-background p-4"
-                  >
-                    <Text
-                      className="flex-1 text-sm font-medium text-textPrimary"
-                      numberOfLines={1}
+              {/* --- 여행지(편집 O) / 날짜(읽기전용) ---
+                  좌표가 있으면: 기존 좌우 2칸 (여행지 | 날짜)
+                  좌표가 없으면: 강조 카드 + 날짜 한 줄 (사용자에게 "위치를 알려주세요" 적극 유도) */}
+              {day.representativeLat !== null && day.representativeLon !== null ? (
+                // 좌표 있음: 기존 가로 2칸 레이아웃
+                <View className="flex-row gap-4">
+                  <View className="flex-1 gap-2">
+                    <Text className="ml-1 text-sm font-bold text-textSecondary">
+                      여행지
+                    </Text>
+                    {/* 이 화면의 유일한 편집 진입점. 탭하면 지도 피커. */}
+                    <Pressable
+                      onPress={handleEditLocation}
+                      className="flex-row items-center justify-between rounded-xl bg-background p-4"
                     >
-                      {day.locationSummary || "여행지 선택"}
+                      <Text
+                        className="flex-1 text-sm font-medium text-textPrimary"
+                        numberOfLines={1}
+                      >
+                        {day.locationSummary || "여행지 선택"}
+                      </Text>
+                      <MapPin size={16} color={colors.primary} />
+                    </Pressable>
+                  </View>
+                  <View className="flex-1 gap-2">
+                    <Text className="ml-1 text-sm font-bold text-textSecondary">
+                      날짜
                     </Text>
-                    <MapPin size={16} color={colors.primary} />
-                  </Pressable>
-                </View>
-                <View className="flex-1 gap-2">
-                  <Text className="ml-1 text-sm font-bold text-textSecondary">
-                    날짜
-                  </Text>
-                  <View className="flex-row items-center justify-between rounded-xl bg-background p-4">
-                    <Text className="text-sm font-medium text-textPrimary">
-                      {formatDate(day.date)}
-                    </Text>
-                    <Calendar size={16} color={colors.textSecondary} />
+                    <View className="flex-row items-center justify-between rounded-xl bg-background p-4">
+                      <Text className="text-sm font-medium text-textPrimary">
+                        {formatDate(day.date)}
+                      </Text>
+                      <Calendar size={16} color={colors.textSecondary} />
+                    </View>
                   </View>
                 </View>
-              </View>
+              ) : (
+                // 좌표 없음: 강조 카드 (사진 EXIF에 GPS가 없는 경우 + 사용자가 아직 안 지정한 경우)
+                <View className="gap-3">
+                  <View className="gap-3 rounded-2xl border border-accent bg-accent/20 p-4">
+                    <View className="flex-row items-center gap-2">
+                      <AlertCircle size={18} color={colors.textSecondary} />
+                      <Text className="text-sm font-bold text-textPrimary">
+                        위치 정보가 없어요
+                      </Text>
+                    </View>
+                    <Text className="text-sm leading-5 text-textSecondary">
+                      이 날 사진엔 위치가 담겨있지 않아요. 직접 알려주실 수
+                      있어요.
+                    </Text>
+                    <Pressable
+                      onPress={handleEditLocation}
+                      className="flex-row items-center justify-center gap-2 rounded-xl bg-primary py-3"
+                    >
+                      <MapPin size={16} color="#FFFFFF" />
+                      <Text className="font-bold text-textOnPrimary">
+                        위치 알려주기
+                      </Text>
+                    </Pressable>
+                  </View>
+                  {/* 날짜는 따로 한 줄로 보존 */}
+                  <View className="gap-2">
+                    <Text className="ml-1 text-sm font-bold text-textSecondary">
+                      날짜
+                    </Text>
+                    <View className="flex-row items-center justify-between rounded-xl bg-background p-4">
+                      <Text className="text-sm font-medium text-textPrimary">
+                        {formatDate(day.date)}
+                      </Text>
+                      <Calendar size={16} color={colors.textSecondary} />
+                    </View>
+                  </View>
+                </View>
+              )}
 
               {/* --- 소제목(읽기전용) + 감정 이모지 --- */}
               <View className="gap-2">
