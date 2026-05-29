@@ -37,6 +37,7 @@ import {
   Origami,
   PartyPopper,
   Pencil,
+  RefreshCw,
   RollerCoaster,
   Rose,
   Sailboat,
@@ -184,6 +185,10 @@ const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
 
 const TravelAnalysisActionIcon = React.memo(function TravelAnalysisActionIcon() {
   return <WandSparkles size={15} color={colors.primary} strokeWidth={2.2} />;
+});
+
+const TravelAnalysisButtonIcon = React.memo(function TravelAnalysisButtonIcon() {
+  return <RefreshCw size={13} color={colors.primary} strokeWidth={2.4} />;
 });
 
 const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
@@ -490,6 +495,10 @@ export default function SettingsScreen() {
     // TODO: 프로필 사진 업로드 API를 연결할 때 이미지 선택/업로드 로직을 이 함수에 붙입니다.
   };
 
+  const startTravelStyleAnalysis = () => {
+    // TODO: 여행 데이터 기반 LLM 분석 API를 연결할 때 이 함수에서 분석 요청을 보냅니다.
+  };
+
   // 하단 네브바는 별도 컴포넌트가 담당하므로, 이 화면은 안전 영역과 본문 여백만 책임집니다.
   const contentInset = Platform.select({
     ios: { paddingTop: 20, paddingBottom: insets.bottom + 24 },
@@ -584,9 +593,23 @@ export default function SettingsScreen() {
                 <AppIcon icon={profile.travelType.icon} size={24} color={colors.primary} />
               </View>
               <View className="flex-1">
-                <Text className="text-lg font-extrabold text-textPrimary">
-                  {profile.travelType.title}
-                </Text>
+                <View className="flex-row items-center gap-xs">
+                  <Text className="text-lg font-extrabold text-textPrimary">
+                    {profile.travelType.title}
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="여행 유형 다시 분석"
+                    onPress={startTravelStyleAnalysis}
+                    // 여행 유형 이름 옆에서 재분석 액션만 조용히 제공하는 작은 아이콘 버튼입니다.
+                    className="h-6 w-6 items-center justify-center rounded-md bg-muted"
+                    style={{
+                      borderColor: colors.border,
+                      borderWidth: 1,
+                    }}>
+                    <TravelAnalysisButtonIcon />
+                  </Pressable>
+                </View>
                 <Text className="mt-xs text-sm font-semibold text-textSecondary">
                   {profile.travelType.description}
                 </Text>
