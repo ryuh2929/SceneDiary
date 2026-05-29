@@ -4,12 +4,12 @@ import { useFonts } from "expo-font";
 import { DancingScript_400Regular } from "@expo-google-fonts/dancing-script";
 import { GowunDodum_400Regular } from "@expo-google-fonts/gowun-dodum";
 import { View } from "react-native";
-import { useDeviceIdBootstrap } from "@/hooks/use-device-id";
+import { useUserUuidBootstrap } from "@/hooks/use-user-uuid";
 import "../../global.css";
 import "@/api/client";
 
 export default function RootLayout() {
-  useDeviceIdBootstrap();
+  useUserUuidBootstrap();
 
   const [fontsLoaded] = useFonts({
     DancingScript: DancingScript_400Regular,
