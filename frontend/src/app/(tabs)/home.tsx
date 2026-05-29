@@ -211,7 +211,7 @@ export default function HomeScreen() {
                                   <Text className="text-sm font-bold text-primary font-sans">Day {detail.day_number}</Text>
                                   
                                   {/* 오른쪽: 이모지 상자 */}
-                                  <View 
+                                  <View
                                     style={{
                                       width: 28,
                                       height: 28,
@@ -220,17 +220,10 @@ export default function HomeScreen() {
                                       alignItems: "center",
                                     }}
                                   >
-                                <View
-                                  style={{
-                                    transform: [{ scale: 0.15 },
-                                                { translateX: 0 },
-                                                { translateY: 150 }
-                                              ]
-                                  }}
-                                >
-                                  <Twemoji>{detail.emotion}</Twemoji>
-                                </View>
-                              </View>
+                                    {detail.emotion && (
+                                      <EmojiIcon codepoint={detail.emotion} size={20} />
+                                    )}
+                                  </View>
 
                           </View>
                           {/* 타이틀 및 위치 정보 */}
