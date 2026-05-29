@@ -1,10 +1,61 @@
 import {
+  Amphora,
+  Baby,
   Bell,
+  Beer,
+  Binoculars,
+  Bird,
+  BottleWine,
+  Bug,
+  Building,
+  Camera,
+  CarFront,
+  Castle,
+  CircleDollarSign,
+  Coffee,
   Compass,
+  Cookie,
+  CookingPot,
+  Dog,
+  FerrisWheel,
+  Fish,
+  FishingHook,
+  FlameKindling,
+  Flower2,
+  Footprints,
+  Hamburger,
+  Helicopter,
+  Hotel,
+  House,
+  IceCreamBowl,
+  Landmark,
+  Map,
+  Martini,
+  Mountain,
+  NotebookPen,
   Moon,
+  Origami,
+  PartyPopper,
   Pencil,
+  RollerCoaster,
+  Rose,
+  Sailboat,
+  Sandwich,
+  Ship,
+  Snail,
+  Snowflake,
+  Soup,
   Sparkles,
-  User,
+  Squirrel,
+  Sun,
+  TentTree,
+  TicketsPlane,
+  TreePalm,
+  Trees,
+  Turtle,
+  Utensils,
+  Wine,
+  Backpack,
   type LucideIcon,
 } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -46,8 +97,61 @@ const colors = {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+// DB/API는 아이콘을 문자열로 내려주므로, 프런트에서 실제 lucide 아이콘 컴포넌트로 매핑합니다.
+// 새 여행 유형 아이콘을 허용하려면 import와 이 매핑, TravelTypeIconName 타입을 함께 추가해야 합니다.
 const travelTypeIcons: Record<TravelTypeIconName, LucideIcon> = {
-  compass: Compass,
+  Flower2,
+  Camera,
+  Compass,
+  Trees,
+  TreePalm,
+  TentTree,
+  Binoculars,
+  FlameKindling,
+  PartyPopper,
+  Martini,
+  Beer,
+  BottleWine,
+  Wine,
+  Hamburger,
+  Sandwich,
+  Utensils,
+  TicketsPlane,
+  Map,
+  Helicopter,
+  Ship,
+  CarFront,
+  Amphora,
+  Landmark,
+  FerrisWheel,
+  RollerCoaster,
+  Mountain,
+  Coffee,
+  Building,
+  Castle,
+  Hotel,
+  House,
+  Sailboat,
+  FishingHook,
+  Fish,
+  IceCreamBowl,
+  Soup,
+  CookingPot,
+  Cookie,
+  Dog,
+  Snail,
+  Squirrel,
+  Turtle,
+  Bird,
+  Bug,
+  Origami,
+  Footprints,
+  Rose,
+  Baby,
+  CircleDollarSign,
+  Snowflake,
+  Sun,
+  NotebookPen,
 };
 
 const toggleIcons: Record<SettingsToggle['id'], LucideIcon> = {
@@ -62,7 +166,7 @@ type AppIconProps = {
 };
 
 const ProfileIcon = React.memo(function ProfileIcon() {
-  return <User size={32} color={colors.primary} strokeWidth={2.2} />;
+  return <Backpack size={32} color={colors.primary} strokeWidth={2.2} />;
 });
 
 const EditIcon = React.memo(function EditIcon() {
@@ -75,7 +179,7 @@ const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
 
 const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
   // lucide 아이콘은 SVG 기반이라 iOS, Android, Web에서 같은 형태로 렌더링됩니다.
-  const Icon = travelTypeIcons[icon] ?? Compass;
+  const Icon = travelTypeIcons[icon] ?? NotebookPen;
 
   return <Icon size={size} color={color} strokeWidth={2.2} />;
 });

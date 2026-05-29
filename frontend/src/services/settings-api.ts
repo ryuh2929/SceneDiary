@@ -108,14 +108,68 @@ function normalizeTravelTypeIcon(icon: unknown): TravelTypeIconName {
         ? String(icon.web)
         : '';
 
-  switch (iconKey) {
-    case 'compass':
-    case 'explore':
-    case 'safari':
-      return 'compass';
-    default:
-      return 'compass';
+  // 백엔드 재시작 전 응답이나 잘못된 DB 값이 와도 화면이 깨지지 않도록 허용 목록만 통과시킵니다.
+  const travelTypeIconNames = new Set<TravelTypeIconName>([
+    'Flower2',
+    'Camera',
+    'Compass',
+    'Trees',
+    'TreePalm',
+    'TentTree',
+    'Binoculars',
+    'FlameKindling',
+    'PartyPopper',
+    'Martini',
+    'Beer',
+    'BottleWine',
+    'Wine',
+    'Hamburger',
+    'Sandwich',
+    'Utensils',
+    'TicketsPlane',
+    'Map',
+    'Helicopter',
+    'Ship',
+    'CarFront',
+    'Amphora',
+    'Landmark',
+    'FerrisWheel',
+    'RollerCoaster',
+    'Mountain',
+    'Coffee',
+    'Building',
+    'Castle',
+    'Hotel',
+    'House',
+    'Sailboat',
+    'FishingHook',
+    'Fish',
+    'IceCreamBowl',
+    'Soup',
+    'CookingPot',
+    'Cookie',
+    'Dog',
+    'Snail',
+    'Squirrel',
+    'Turtle',
+    'Bird',
+    'Bug',
+    'Origami',
+    'Footprints',
+    'Rose',
+    'Baby',
+    'CircleDollarSign',
+    'Snowflake',
+    'Sun',
+    'NotebookPen',
+  ]);
+
+  if (travelTypeIconNames.has(iconKey as TravelTypeIconName)) {
+    return iconKey as TravelTypeIconName;
   }
+
+  // 예전 응답이나 웹사이트 kebab-case 이름이 들어와도 현재 기본 아이콘으로 안전하게 돌립니다.
+  return 'NotebookPen';
 }
 
 function normalizeSettingsProfile(profile: SettingsProfile): SettingsProfile {
