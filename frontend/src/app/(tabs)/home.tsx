@@ -140,12 +140,11 @@ export default function HomeScreen() {
                     <Text className="text-sm font-sans text-textPrimary">{item.start_date} ~ {item.end_date}</Text>
                   </View>
 
-                  {/* 심볼 */} 
+                  {/* 여행 대표 이모지 */}
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  {/* {symbol && (
-                      <EmojiIcon codepoint={symbol} size={26}/>
-                    )} */}
-                                 
+                  {item.flag && (
+                    <EmojiIcon codepoint={item.flag} size={26}/>
+                  )}
                 </View>
 
                 

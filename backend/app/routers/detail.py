@@ -34,13 +34,15 @@ def _get_dayDetail(db:Session, request:Request, trip_id:int)->List[TripDay]:
     # 2. 데이터를 순회하며 가공합니다.
     for diary in dayDetail:
         for photo in diary.photos:
-            relative_path = photo.file_url.replace("test_images/", "", 1)
-            photo.image_url = f"{BASE_URL}/images/{relative_path}"
-            
-            # 썸네일 URL 가공 (DB의 thumbnail_url을 사용)
-            # 만약 썸네일 경로가 다르다면 replace를 해당 경로에 맞춰 수정하세요.
-            thumb_relative_path = photo.thumbnail_url.replace("test_images/", "", 1)
-            photo.thumbnail_image_url = f"{BASE_URL}/images/{thumb_relative_path}"
+            if photo.file_url:
+                photo.image_url = f"{BASE_URL}/{photo.file_url}"
+            else:
+                photo.image_url = None
+
+            if photo.thumbnail_url:
+                photo.thumbnail_image_url = f"{BASE_URL}/{photo.thumbnail_url}"
+            else:
+                photo.thumbnail_image_url = None
     return dayDetail
 
 # 여행 상세 조회 API — 특정 여행 정보와 함께 Day 1부터 Day N까지의 일정을 한 번에 반환
