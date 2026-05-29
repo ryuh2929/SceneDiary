@@ -4,7 +4,7 @@ import {
   Moon,
   Pencil,
   Sparkles,
-  User,
+  Backpack,
   type LucideIcon,
 } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -47,7 +47,7 @@ const colors = {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const travelTypeIcons: Record<TravelTypeIconName, LucideIcon> = {
-  compass: Compass,
+  compass: Backpack,
 };
 
 const toggleIcons: Record<SettingsToggle['id'], LucideIcon> = {
@@ -62,7 +62,7 @@ type AppIconProps = {
 };
 
 const ProfileIcon = React.memo(function ProfileIcon() {
-  return <User size={32} color={colors.primary} strokeWidth={2.2} />;
+  return <Backpack size={32} color={colors.primary} strokeWidth={2.2} />;
 });
 
 const EditIcon = React.memo(function EditIcon() {
