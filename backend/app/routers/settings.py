@@ -39,7 +39,7 @@ PERSONA_OPTIONS = {
 DEFAULT_TRAVEL_STYLE_ANALYSIS = {
     "id": "pending",
     "title": "분석 중",
-    "description": "아직 여행 데이터가 없습니다",
+    "description": "아직 분석할 수 있는 여행 데이터가 없습니다",
     "icon": "NotebookPen",
 }
 TRAVEL_STYLE_ICON_NAMES = {"NotebookPen"}
