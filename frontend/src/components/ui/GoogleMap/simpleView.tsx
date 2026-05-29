@@ -4,6 +4,7 @@ import {
   Image,
   TouchableOpacity,
   useWindowDimensions,
+  Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Days } from "@/types/api";
@@ -61,12 +62,15 @@ export default function SimpleView({ item }: SimpleViewProps) {
     >
       <TouchableOpacity
         activeOpacity={0.85}
-        onPress={() => {
+        onPress={() =>
           router.push({
             pathname: "/detail",
-            params: { id: `${item.id}` },
-          });
-        }}
+            params: {
+              id: item.trip_id,
+              day: item.day_number,
+            },
+          })
+        }
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {photo && (
