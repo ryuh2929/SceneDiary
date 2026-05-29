@@ -37,7 +37,6 @@ PERSONA_OPTIONS = {
 }
 
 DEFAULT_TRAVEL_STYLE_ANALYSIS = {
-    "id": "pending",
     "title": "분석 중",
     "description": "아직 분석할 수 있는 여행 데이터가 없습니다",
     "icon": "NotebookPen",
@@ -86,7 +85,6 @@ def travel_style_analysis(user: User) -> dict[str, str]:
     icon = clean(parsed_analysis.get("icon"))
 
     return {
-        "id": clean(parsed_analysis.get("id")) or DEFAULT_TRAVEL_STYLE_ANALYSIS["id"],
         "title": clean(parsed_analysis.get("title")) or DEFAULT_TRAVEL_STYLE_ANALYSIS["title"],
         "description": clean(parsed_analysis.get("description"))
         or DEFAULT_TRAVEL_STYLE_ANALYSIS["description"],

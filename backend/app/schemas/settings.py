@@ -19,7 +19,6 @@ class Persona(BaseModel):
 
 
 class TravelType(BaseModel):
-    id: str
     title: str
     description: str
     icon: TravelTypeIconName
