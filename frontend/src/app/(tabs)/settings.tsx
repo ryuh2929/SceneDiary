@@ -342,6 +342,7 @@ export default function SettingsScreen() {
   const [savingToggleId, setSavingToggleId] = useState<SettingsToggle['id'] | null>(null);
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
   const [isRequestingTravelAnalysis, setIsRequestingTravelAnalysis] = useState(false);
+  const [profileNotice, setProfileNotice] = useState<string | null>(null);
 
   // 토글 값은 화면에서 즉시 확인할 수 있도록 로컬 상태로 관리하고, 이후 DB/API 값으로 대체하기 쉽게 id 기준 객체로 변환합니다.
   const initialToggles = useMemo(
@@ -383,6 +384,7 @@ export default function SettingsScreen() {
             settingsProfile.persona.tags[0]?.id,
         );
         setProfileError(null);
+        setProfileNotice(null);
       })
       .catch((error: Error) => {
         if (!ignore) {
@@ -421,6 +423,7 @@ export default function SettingsScreen() {
     }));
     setIsSavingPersona(true);
     setProfileError(null);
+    setProfileNotice(null);
 
     try {
       const updatedProfile = await updateWritingPersona(personaId);
@@ -459,6 +462,7 @@ export default function SettingsScreen() {
     setToggles((current) => ({ ...current, [toggleId]: enabled }));
     setSavingToggleId(toggleId);
     setProfileError(null);
+    setProfileNotice(null);
 
     try {
       const updatedProfile = await updateSettingsToggle(toggleId, enabled);
@@ -488,6 +492,7 @@ export default function SettingsScreen() {
 
   const handleSaveNickname = async (nickname: string) => {
     setProfileError(null);
+    setProfileNotice(null);
 
     const updatedProfile = await updateNickname(nickname);
     setProfile(updatedProfile);
@@ -504,10 +509,12 @@ export default function SettingsScreen() {
 
     setIsRequestingTravelAnalysis(true);
     setProfileError(null);
+    setProfileNotice(null);
 
     try {
       const updatedProfile = await requestTravelStyleAnalysis();
       setProfile(updatedProfile);
+      setProfileNotice('여행 유형 분석을 시작했어요. 결과가 곧 반영됩니다.');
     } catch (error) {
       setProfileError(
         error instanceof Error ? error.message : 'Failed to request travel style analysis.',
@@ -542,6 +549,12 @@ export default function SettingsScreen() {
         {profileError ? (
           <View className="mb-md rounded-lg border border-[#E8B4B4] bg-[#FFF4F4] px-md py-sm">
             <Text className="text-sm font-semibold text-[#8A2D2D]">{profileError}</Text>
+          </View>
+        ) : null}
+
+        {profileNotice ? (
+          <View className="mb-md rounded-lg border bg-surface px-md py-sm" style={{ borderColor: colors.border }}>
+            <Text className="text-sm font-semibold text-textSecondary">{profileNotice}</Text>
           </View>
         ) : null}
 
