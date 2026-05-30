@@ -284,6 +284,6 @@ def request_travel_style_analysis(
     user = find_user_or_404(db, user_uuid)
 
     # 설정 화면의 분석 버튼은 요청만 빠르게 완료하고, 실제 LLM 분석은 백그라운드 작업에서 처리합니다.
-    background_tasks.add_task(run_travel_style_analysis, user.id)
+    background_tasks.add_task(run_travel_style_analysis, user.id, force=True)
 
     return to_settings_profile(user)
