@@ -4,6 +4,7 @@ import os
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 
@@ -14,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.db.models import DiaryGeneration, Photo, Trip, TripDay
 from app.db.session import get_db
 from app.routers.diary import _abs_url, _base_url, _gen_status, _run_generation
-from app.services.image_processor import extract_image_taken_date, process_upload_image
+from app.services.image_processor import extract_image_gps_coordinates, extract_image_taken_date, process_upload_image
 
 
 # add.tsx -> loading.tsx 흐름에서 사용하는 업로드/생성 API입니다.
@@ -94,6 +95,8 @@ class UploadDraft:
     original_filename: str | None
     content_type: str | None
     photo_date: date
+    latitude: Decimal | None
+    longitude: Decimal | None
 
 
 def _parse_upload_date(value: str | None) -> date | None:
@@ -210,6 +213,35 @@ def _generation_progress(status: str) -> tuple[LoadingStep, int, str | None]:
     return "generating_diary", 72, None
 
 
+def _decimal_coordinate(value: float) -> Decimal:
+    return Decimal(str(round(value, 8)))
+
+
+def _refresh_trip_day_representative_coordinates(db: Session, trip_day: TripDay) -> None:
+    # 지도 마커가 쓸 수 있도록 해당 일차의 GPS 사진 좌표 평균을 대표 좌표로 저장합니다.
+    photos_with_gps = (
+        db.query(Photo)
+        .filter(
+            Photo.trip_day_id == trip_day.id,
+            Photo.deleted_at.is_(None),
+            Photo.latitude.isnot(None),
+            Photo.longitude.isnot(None),
+        )
+        .all()
+    )
+
+    if not photos_with_gps:
+        trip_day.representative_lat = None
+        trip_day.representative_lon = None
+        return
+
+    lat_sum = sum(Decimal(photo.latitude) for photo in photos_with_gps)
+    lon_sum = sum(Decimal(photo.longitude) for photo in photos_with_gps)
+    photo_count = Decimal(len(photos_with_gps))
+    trip_day.representative_lat = lat_sum / photo_count
+    trip_day.representative_lon = lon_sum / photo_count
+
+
 @router.post("/trips/upload-first-day", response_model=FirstDayUploadResponse)
 async def upload_first_day_photos(
     request: Request,
@@ -243,6 +275,7 @@ async def upload_first_day_photos(
         if len(raw_bytes) > MAX_UPLOAD_BYTES:
             raise HTTPException(status_code=400, detail=f"{upload_file.filename} is larger than 12MB")
         form_photo_date = _parse_upload_date(photo_dates[index] if photo_dates and index < len(photo_dates) else None)
+        gps = extract_image_gps_coordinates(raw_bytes)
         drafts.append(
             UploadDraft(
                 raw_bytes=raw_bytes,
@@ -254,6 +287,8 @@ async def upload_first_day_photos(
                     or _parse_filename_date(upload_file.filename)
                     or fallback_date
                 ),
+                latitude=_decimal_coordinate(gps.latitude) if gps else None,
+                longitude=_decimal_coordinate(gps.longitude) if gps else None,
             )
         )
 
@@ -333,6 +368,8 @@ async def upload_first_day_photos(
                 mime_type=processed.mime_type,
                 width=processed.width,
                 height=processed.height,
+                latitude=draft.latitude,
+                longitude=draft.longitude,
                 display_order=display_order,
                 created_at=datetime.now(),
             )
@@ -357,6 +394,8 @@ async def upload_first_day_photos(
             )
             uploaded.append(uploaded_photo)
             uploaded_by_day_id[trip_day.id].append(uploaded_photo)
+
+        _refresh_trip_day_representative_coordinates(db, trip_day)
 
     generation_jobs: list[tuple[int, int]] = []
     for trip_day in trip_days_by_date.values():

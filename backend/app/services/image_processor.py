@@ -30,6 +30,12 @@ class ProcessedImage:
     mime_type: str
 
 
+@dataclass(frozen=True)
+class GpsCoordinates:
+    latitude: float
+    longitude: float
+
+
 def _safe_stem(filename: str | None) -> str:
     stem = Path(filename or "photo").stem
     stem = re.sub(r"[^0-9A-Za-z가-힣._-]+", "-", stem).strip(".-")
@@ -95,6 +101,70 @@ def extract_image_taken_date(raw_bytes: bytes) -> date | None:
                 return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
 
     return None
+
+
+def _gps_rational_to_float(value: object) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError, ZeroDivisionError):
+        pass
+
+    try:
+        numerator, denominator = value  # type: ignore[misc]
+        return float(numerator) / float(denominator)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
+
+def _gps_degrees_to_float(value: object) -> float | None:
+    try:
+        degrees, minutes, seconds = value  # type: ignore[misc]
+    except (TypeError, ValueError):
+        return None
+
+    parsed_degrees = _gps_rational_to_float(degrees)
+    parsed_minutes = _gps_rational_to_float(minutes)
+    parsed_seconds = _gps_rational_to_float(seconds)
+    if parsed_degrees is None or parsed_minutes is None or parsed_seconds is None:
+        return None
+
+    return parsed_degrees + (parsed_minutes / 60) + (parsed_seconds / 3600)
+
+
+def _gps_ref(value: object) -> str:
+    if isinstance(value, bytes):
+        return value.decode(errors="ignore").upper()
+    return str(value).upper()
+
+
+def extract_image_gps_coordinates(raw_bytes: bytes) -> GpsCoordinates | None:
+    # EXIF GPS IFD의 도/분/초 좌표를 앱에서 쓰는 십진수 위경도로 바꿉니다.
+    try:
+        with Image.open(BytesIO(raw_bytes)) as opened:
+            exif = opened.getexif()
+            gps_ifd = exif.get_ifd(34853) if hasattr(exif, "get_ifd") else exif.get(34853)
+    except Exception:
+        return None
+
+    if not gps_ifd:
+        return None
+
+    latitude = _gps_degrees_to_float(gps_ifd.get(2))
+    longitude = _gps_degrees_to_float(gps_ifd.get(4))
+    if latitude is None or longitude is None:
+        return None
+
+    if _gps_ref(gps_ifd.get(1, "N")).startswith("S"):
+        latitude = -latitude
+    if _gps_ref(gps_ifd.get(3, "E")).startswith("W"):
+        longitude = -longitude
+
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        return None
+    if latitude == 0 and longitude == 0:
+        return None
+
+    return GpsCoordinates(latitude=latitude, longitude=longitude)
 
 
 def process_upload_image(
