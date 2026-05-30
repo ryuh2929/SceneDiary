@@ -21,6 +21,10 @@ export type DayPage = {
   dayNumber: number; // trip_days.day_number (1..N)
   date: string; // trip_days.date — "YYYY-MM-DD"
   locationSummary: string; // trip_days.location_summary — ✏️ 이 화면의 유일한 편집 대상(지도)
+  // 사진 GPS가 없거나 사용자가 아직 지정 안 했으면 null.
+  // 이 두 값이 null 이면 화면에서 "위치 정보 없음" 강조 카드를 띄웁니다.
+  representativeLat: number | null; // trip_days.representative_lat
+  representativeLon: number | null; // trip_days.representative_lon
   weather: string; // trip_days.weather — Twemoji 코드포인트(hex). emotion 과 동일 방식
   subtitle: string; // trip_days.subtitle — 소제목
   emotion: string; // trip_days.emotion — Twemoji 코드포인트(hex)
@@ -48,8 +52,11 @@ export type DayStatus = {
 };
 
 // 일차 저장(PATCH) 요청 body. 이 화면의 유일한 편집 대상 = 여행지.
+// 지도 피커에서 좌표까지 골랐으면 lat/lon 도 함께 전송.
 export type DayUpdate = {
   locationSummary: string; // trip_days.location_summary
+  lat?: number; // trip_days.representative_lat (옵셔널)
+  lon?: number; // trip_days.representative_lon (옵셔널)
 };
 
 // 최종 저장(PATCH /trips) 요청 body. 여행 상태를 'completed'로.

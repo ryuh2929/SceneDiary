@@ -39,6 +39,10 @@ class DayPage(BaseModel):
     dayNumber: int  # trip_days.day_number (1..N)
     date: str  # trip_days.date — "YYYY-MM-DD"
     locationSummary: str  # trip_days.location_summary — 이 화면의 유일한 편집 대상(지도)
+    # 그 날의 대표 좌표. 사진 GPS가 없거나 사용자가 아직 지정 안 했으면 None.
+    # 프론트는 이 두 값이 None 인지로 "위치 정보 없음" UI 분기를 합니다.
+    representativeLat: float | None = None  # trip_days.representative_lat
+    representativeLon: float | None = None  # trip_days.representative_lon
     weather: str  # trip_days.weather — Twemoji 코드포인트(hex)
     subtitle: str  # trip_days.subtitle — 소제목
     emotion: str  # trip_days.emotion — Twemoji 코드포인트(hex)
@@ -68,9 +72,12 @@ class DayStatus(BaseModel):
 
 
 # 일차 저장(PATCH) 요청 body. 이 화면의 유일한 편집 대상 = 여행지.
-# (지도 좌표 lat/lon은 지도 피커 실제 구현 시 추가 예정)
+# 사용자가 지도 피커에서 좌표까지 골랐으면 lat/lon 도 함께 넘어옵니다.
+# 직접 텍스트만 들어오는 케이스가 아직 없어도 옵셔널로 둡니다(과거 호출자 호환).
 class DayUpdate(BaseModel):
     locationSummary: str  # trip_days.location_summary
+    lat: float | None = None  # trip_days.representative_lat
+    lon: float | None = None  # trip_days.representative_lon
 
 
 # 최종 저장(PATCH /trips) 요청 body. 여행 상태를 'completed'로 변경.

@@ -10,6 +10,7 @@ from app.routers.map import router as map_router
 from app.routers.home import router as home_router
 from app.routers.detail import router as detail_router
 from app.routers.upload import router as upload_router
+from app.routers.users import router as users_router
 
 app = FastAPI()
 
@@ -27,6 +28,7 @@ app.include_router(map_router)
 app.include_router(home_router)
 app.include_router(detail_router)
 app.include_router(upload_router)
+app.include_router(users_router)
 
 _TEST_IMAGES_DIR = Path(__file__).resolve().parent.parent / "test_images"
 app.mount(
