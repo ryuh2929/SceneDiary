@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -12,6 +12,7 @@ from app.schemas.settings import (
     UpdateSettingsToggleRequest,
     UpdateWritingPersonaRequest,
 )
+from app.services.travel_style_analysis import run_travel_style_analysis
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -270,5 +271,19 @@ def update_nickname(
 
     db.commit()
     db.refresh(user)
+
+    return to_settings_profile(user)
+
+
+@router.post("/travel-style-analysis", response_model=SettingsProfile)
+def request_travel_style_analysis(
+    background_tasks: BackgroundTasks,
+    user_uuid: str = Query(...),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    user = find_user_or_404(db, user_uuid)
+
+    # 설정 화면의 분석 버튼은 요청만 빠르게 완료하고, 실제 LLM 분석은 백그라운드 작업에서 처리합니다.
+    background_tasks.add_task(run_travel_style_analysis, user.id)
 
     return to_settings_profile(user)

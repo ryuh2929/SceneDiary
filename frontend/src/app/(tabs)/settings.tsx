@@ -78,6 +78,7 @@ import {
 } from '@/data/settings';
 import {
   fetchSettingsProfile,
+  requestTravelStyleAnalysis,
   updateNickname,
   updateSettingsToggle,
   updateWritingPersona,
@@ -340,6 +341,7 @@ export default function SettingsScreen() {
   const [isSavingPersona, setIsSavingPersona] = useState(false);
   const [savingToggleId, setSavingToggleId] = useState<SettingsToggle['id'] | null>(null);
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
+  const [isRequestingTravelAnalysis, setIsRequestingTravelAnalysis] = useState(false);
 
   // 토글 값은 화면에서 즉시 확인할 수 있도록 로컬 상태로 관리하고, 이후 DB/API 값으로 대체하기 쉽게 id 기준 객체로 변환합니다.
   const initialToggles = useMemo(
@@ -495,8 +497,24 @@ export default function SettingsScreen() {
     // TODO: 프로필 사진 업로드 API를 연결할 때 이미지 선택/업로드 로직을 이 함수에 붙입니다.
   };
 
-  const startTravelStyleAnalysis = () => {
-    // TODO: 여행 데이터 기반 LLM 분석 API를 연결할 때 이 함수에서 분석 요청을 보냅니다.
+  const startTravelStyleAnalysis = async () => {
+    if (isRequestingTravelAnalysis) {
+      return;
+    }
+
+    setIsRequestingTravelAnalysis(true);
+    setProfileError(null);
+
+    try {
+      const updatedProfile = await requestTravelStyleAnalysis();
+      setProfile(updatedProfile);
+    } catch (error) {
+      setProfileError(
+        error instanceof Error ? error.message : 'Failed to request travel style analysis.',
+      );
+    } finally {
+      setIsRequestingTravelAnalysis(false);
+    }
   };
 
   // 하단 네브바는 별도 컴포넌트가 담당하므로, 이 화면은 안전 영역과 본문 여백만 책임집니다.
@@ -594,12 +612,15 @@ export default function SettingsScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="여행 유형 다시 분석"
+                accessibilityState={{ disabled: isRequestingTravelAnalysis }}
                 onPress={startTravelStyleAnalysis}
+                disabled={isRequestingTravelAnalysis}
                 // 여행 유형 카드의 제목 줄에서 재분석 액션을 오른쪽 끝에 고정합니다.
                 className="h-6 w-6 items-center justify-center rounded-md bg-muted"
                 style={{
                   borderColor: colors.border,
                   borderWidth: 1,
+                  opacity: isRequestingTravelAnalysis ? 0.55 : 1,
                 }}>
                 <TravelAnalysisButtonIcon />
               </Pressable>
