@@ -16,6 +16,8 @@ type PendingPhoto = {
   originalFilename: string;
   mimeType: string;
   takenDate?: string;
+  gpsLatitude?: number;
+  gpsLongitude?: number;
   fileSizeBytes?: number;
   width: number;
   height: number;
@@ -91,6 +93,51 @@ function parseExifTakenDate(exif: Record<string, unknown> | null | undefined): s
   return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
+function parseGpsCoordinateValue(value: unknown): number | undefined {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const rationalMatch = value.match(/^(-?\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/);
+    const parsed = rationalMatch
+      ? Number(rationalMatch[1]) / Number(rationalMatch[2])
+      : Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  if (value && typeof value === 'object' && 'numerator' in value && 'denominator' in value) {
+    const rational = value as { numerator: unknown; denominator: unknown };
+    const numerator = parseGpsCoordinateValue(rational.numerator);
+    const denominator = parseGpsCoordinateValue(rational.denominator);
+    if (numerator == null || !denominator) return undefined;
+    return numerator / denominator;
+  }
+  if (Array.isArray(value) && value.length === 3) {
+    const [degrees, minutes, seconds] = value.map(parseGpsCoordinateValue);
+    if (degrees == null || minutes == null || seconds == null) return undefined;
+    return degrees + minutes / 60 + seconds / 3600;
+  }
+  return undefined;
+}
+
+function parseExifGps(exif: Record<string, unknown> | null | undefined): { latitude: number; longitude: number } | undefined {
+  if (!exif) return undefined;
+
+  const lat = exif.GPSLatitude ?? exif['GPS:GPSLatitude'];
+  const lon = exif.GPSLongitude ?? exif['GPS:GPSLongitude'];
+  const latRef = String(exif.GPSLatitudeRef ?? exif['GPS:GPSLatitudeRef'] ?? 'N').toUpperCase();
+  const lonRef = String(exif.GPSLongitudeRef ?? exif['GPS:GPSLongitudeRef'] ?? 'E').toUpperCase();
+
+  const latitude = parseGpsCoordinateValue(lat);
+  const longitude = parseGpsCoordinateValue(lon);
+  if (latitude === undefined || longitude === undefined) return undefined;
+
+  const signedLat = latRef.startsWith('S') ? -Math.abs(latitude) : Math.abs(latitude);
+  const signedLon = lonRef.startsWith('W') ? -Math.abs(longitude) : Math.abs(longitude);
+
+  if (signedLat === 0 && signedLon === 0) return undefined;
+  if (Math.abs(signedLat) > 90 || Math.abs(signedLon) > 180) return undefined;
+
+  return { latitude: signedLat, longitude: signedLon };
+}
+
 function parseFilenameDate(filename: string | null | undefined): string | undefined {
   if (!filename) {
     return undefined;
@@ -147,6 +194,7 @@ function getPhotoDayLabel(photo: PendingPhoto, selectedDates: string[]) {
 }
 
 async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrder: number): Promise<PendingPhoto> {
+  const gps = parseExifGps(asset.exif);
   // AI 분석용 이미지는 너무 커지지 않게 줄이고, 화면 미리보기용 썸네일은 별도로 생성합니다.
   const fileImage = await ImageManipulator.manipulateAsync(
     asset.uri,
@@ -174,6 +222,8 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
     originalFilename: asset.fileName ?? `photo-${displayOrder + 1}.jpg`,
     mimeType: 'image/jpeg',
     takenDate: parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName),
+    gpsLatitude: gps?.latitude,
+    gpsLongitude: gps?.longitude,
     fileSizeBytes,
     width: fileImage.width,
     height: fileImage.height,

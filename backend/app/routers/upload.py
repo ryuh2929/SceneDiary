@@ -242,12 +242,36 @@ def _refresh_trip_day_representative_coordinates(db: Session, trip_day: TripDay)
     trip_day.representative_lon = lon_sum / photo_count
 
 
+def _parse_form_coordinate(values: list[str] | None, index: int) -> Decimal | None:
+    # 프론트가 리사이즈 전에 추출해서 보낸 GPS 좌표를 파싱합니다. 빈 문자열이면 None으로 처리합니다.
+    if not values or index >= len(values):
+        return None
+    raw = values[index].strip()
+    if not raw:
+        return None
+    try:
+        value = float(raw)
+    except ValueError:
+        return None
+    return _decimal_coordinate(value)
+
+
+def _valid_coordinates(latitude: Decimal, longitude: Decimal) -> bool:
+    return (
+        Decimal("-90") <= latitude <= Decimal("90")
+        and Decimal("-180") <= longitude <= Decimal("180")
+        and not (latitude == 0 and longitude == 0)
+    )
+
+
 @router.post("/trips/upload-first-day", response_model=FirstDayUploadResponse)
 async def upload_first_day_photos(
     request: Request,
     background_tasks: BackgroundTasks,
     files: list[UploadFile] = File(...),
     photo_dates: list[str] | None = Form(None),
+    photo_gps_latitudes: list[str] | None = Form(None),
+    photo_gps_longitudes: list[str] | None = Form(None),
     user_id: int = Form(1),
     trip_id: int | None = Form(None),
     day_number: int = Form(1),
@@ -258,6 +282,7 @@ async def upload_first_day_photos(
 ) -> FirstDayUploadResponse:
     # 사진 업로드 API.
     # EXIF 촬영일이 있으면 날짜별로 trip_day를 나누고, 없으면 요청 날짜를 fallback으로 씁니다.
+    # GPS는 프론트가 리사이즈 전에 추출해서 form으로 보낸 값을 우선 사용하고, 없으면 raw_bytes에서 fallback합니다.
     if not files:
         raise HTTPException(status_code=400, detail="At least one photo is required")
     if len(files) > MAX_UPLOAD_PHOTOS:
@@ -275,7 +300,16 @@ async def upload_first_day_photos(
         if len(raw_bytes) > MAX_UPLOAD_BYTES:
             raise HTTPException(status_code=400, detail=f"{upload_file.filename} is larger than 12MB")
         form_photo_date = _parse_upload_date(photo_dates[index] if photo_dates and index < len(photo_dates) else None)
-        gps = extract_image_gps_coordinates(raw_bytes)
+
+        form_lat = _parse_form_coordinate(photo_gps_latitudes, index)
+        form_lon = _parse_form_coordinate(photo_gps_longitudes, index)
+        if form_lat is not None and form_lon is not None and _valid_coordinates(form_lat, form_lon):
+            latitude, longitude = form_lat, form_lon
+        else:
+            gps = extract_image_gps_coordinates(raw_bytes)
+            latitude = _decimal_coordinate(gps.latitude) if gps else None
+            longitude = _decimal_coordinate(gps.longitude) if gps else None
+
         drafts.append(
             UploadDraft(
                 raw_bytes=raw_bytes,
@@ -287,8 +321,8 @@ async def upload_first_day_photos(
                     or _parse_filename_date(upload_file.filename)
                     or fallback_date
                 ),
-                latitude=_decimal_coordinate(gps.latitude) if gps else None,
-                longitude=_decimal_coordinate(gps.longitude) if gps else None,
+                latitude=latitude,
+                longitude=longitude,
             )
         )
 

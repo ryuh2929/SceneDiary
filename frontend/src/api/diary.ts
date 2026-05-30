@@ -57,6 +57,8 @@ export async function uploadFirstDayPhotos(photos: {
   originalFilename: string;
   mimeType: string;
   takenDate?: string;
+  gpsLatitude?: number;
+  gpsLongitude?: number;
 }[], options?: {
   tripId?: string;
   dayNumber?: number;
@@ -70,6 +72,9 @@ export async function uploadFirstDayPhotos(photos: {
 
   for (const photo of photos) {
     formData.append('photo_dates', photo.takenDate ?? '');
+    // 리사이즈 후 EXIF가 사라지므로 리사이즈 전에 추출한 GPS를 별도 form 필드로 전송합니다.
+    formData.append('photo_gps_latitudes', photo.gpsLatitude != null ? String(photo.gpsLatitude) : '');
+    formData.append('photo_gps_longitudes', photo.gpsLongitude != null ? String(photo.gpsLongitude) : '');
     if (Platform.OS === 'web') {
       const blob = await fetch(photo.fileUri).then((response) => response.blob());
       formData.append('files', blob, photo.originalFilename);
