@@ -689,8 +689,8 @@ export default function SettingsScreen() {
             {
               top: (contentInset?.paddingTop ?? 24) + 44,
               alignSelf: 'center',
-              backgroundColor: '#EEF5FF',
-              borderColor: colors.primaryLight,
+              backgroundColor: '#ECFDF3',
+              borderColor: '#86D39B',
               shadowColor: colors.text,
               shadowOffset: { width: 0, height: 3 },
               shadowOpacity: 0.12,
@@ -699,7 +699,7 @@ export default function SettingsScreen() {
             },
             noticeStyle,
           ]}>
-          <Text className="text-center text-sm font-bold text-primary">{profileNotice}</Text>
+          <Text className="text-center text-sm font-bold text-[#257A3E]">{profileNotice}</Text>
         </AnimatedView>
       ) : null}
 
