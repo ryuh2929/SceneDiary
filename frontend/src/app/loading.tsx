@@ -90,6 +90,23 @@ function parsePhotosParam(value: string | string[] | undefined): PreparedPhoto[]
   }
 }
 
+type UploadedDayParam = {
+  tripDayId: number;
+  day: number;
+  date: string;
+};
+
+function parseDaysParam(value: string | string[] | undefined): UploadedDayParam[] {
+  const rawValue = getFirstParam(value);
+  if (!rawValue) return [];
+  try {
+    const parsed = JSON.parse(decodeURIComponent(rawValue));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function LoadingScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -98,6 +115,7 @@ export default function LoadingScreen() {
     tripDayId?: string;
     day?: string;
     mode?: string;
+    days?: string;
   }>();
   const photos = useMemo(() => parsePhotosParam(params.photos), [params.photos]);
   const previewPhotos = useMemo(() => photos.slice(0, 5), [photos]);
@@ -106,6 +124,7 @@ export default function LoadingScreen() {
   const tripDayId = getFirstParam(params.tripDayId);
   const day = getFirstParam(params.day) ?? '1';
   const mode = getFirstParam(params.mode) ?? 'initial';
+  const allDays = useMemo(() => parseDaysParam(params.days), [params.days]);
   // initial은 사진 선택 직후 첫 생성 로딩, next-day는 작성 화면에서 다음 일차 생성 중 재진입하는 로딩입니다.
   const isNextDayMode = mode === 'next-day';
   const insets = useSafeAreaInsets();
@@ -121,15 +140,20 @@ export default function LoadingScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [generationAttempt, setGenerationAttempt] = useState(0);
   const hasApiLoading = Boolean(tripDayId) && !isNextDayMode;
+  // 다중 일차 추적: 각 일차의 완료 여부를 id → boolean 맵으로 관리합니다.
+  const [completedDayIds, setCompletedDayIds] = useState<Set<number>>(new Set());
+  const totalDayCount = allDays.length > 1 ? allDays.length : 0;
+  const completedDayCount = completedDayIds.size;
 
   // 같은 로딩 화면을 상황별로 재사용하기 위해 모드에 따라 문구 묶음만 바꿉니다.
   const steps = isNextDayMode ? nextDaySteps : analysisSteps;
   const progressWidth = useMemo(() => `${progress}%` as `${number}%`, [progress]);
   const photoCountLabel = photos.length > 0 ? `${photos.length}장의 사진` : '선택한 사진';
   // 사진 기반 첫 생성과 다음 일차 생성은 사용자가 기다리는 이유가 달라서 보조 문구를 분리합니다.
+  const multiDayLabel = totalDayCount > 1 ? ` (${completedDayCount}/${totalDayCount}일차 완료)` : '';
   const helperText = isNextDayMode
     ? `${day}일차 기록을 준비 중이에요`
-    : `${photoCountLabel}으로 하루 기록을 준비 중이에요`;
+    : `${photoCountLabel}으로 하루 기록을 준비 중이에요${multiDayLabel}`;
   // 버튼 문구도 현재 대기 중인 일차를 드러내서 다음 화면 이동 맥락을 맞춥니다.
   const buttonLabel =
     loadingStep === 'failed'
@@ -204,19 +228,20 @@ export default function LoadingScreen() {
     }
 
     let isMounted = true;
+    const firstDayId = Number(tripDayId);
+    // 다중 일차가 있으면 모든 일차를, 없으면 첫 날만 폴링합니다.
+    const dayIdsToTrack = allDays.length > 1
+      ? allDays.map((d) => d.tripDayId)
+      : [firstDayId];
 
     async function startAndPoll() {
       try {
-        const started = await startTripDayGeneration(Number(tripDayId));
-        if (!isMounted) {
-          return;
-        }
+        const started = await startTripDayGeneration(firstDayId);
+        if (!isMounted) return;
         setLoadingStep(started.status);
         setProgress(started.progress);
       } catch {
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
         setLoadingStep('failed');
         setErrorMessage('분석 요청을 시작하지 못했어요.');
       }
@@ -224,23 +249,44 @@ export default function LoadingScreen() {
 
     startAndPoll();
 
+    const doneIds = new Set<number>();
+
     const pollTimer = setInterval(async () => {
       try {
-        const status = await fetchTripDayGenerationStatus(Number(tripDayId));
-        if (!isMounted) {
-          return;
-        }
-        setLoadingStep(status.status);
-        setProgress(status.progress);
-        setErrorMessage(status.errorMessage ?? null);
+        // 첫 번째 일차 상태는 메인 UI(progress/loadingStep)에 반영합니다.
+        const firstStatus = await fetchTripDayGenerationStatus(firstDayId);
+        if (!isMounted) return;
+        setLoadingStep(firstStatus.status);
+        setProgress(firstStatus.progress);
+        setErrorMessage(firstStatus.errorMessage ?? null);
 
-        if (status.status === 'completed' || status.status === 'failed') {
+        if (firstStatus.status === 'completed' || firstStatus.status === 'failed') {
+          doneIds.add(firstDayId);
+          setCompletedDayIds(new Set(doneIds));
+        }
+
+        // 나머지 일차들은 완료 여부만 추적합니다 (병렬 요청).
+        if (dayIdsToTrack.length > 1) {
+          const otherIds = dayIdsToTrack.filter((id) => id !== firstDayId && !doneIds.has(id));
+          await Promise.allSettled(
+            otherIds.map(async (id) => {
+              const s = await fetchTripDayGenerationStatus(id);
+              if (s.status === 'completed' || s.status === 'failed') {
+                doneIds.add(id);
+                if (isMounted) {
+                  setCompletedDayIds(new Set(doneIds));
+                }
+              }
+            }),
+          );
+        }
+
+        // 첫 날 완료되면 폴링 중단 (나머지는 백그라운드에서 계속 진행됨).
+        if (firstStatus.status === 'completed' || firstStatus.status === 'failed') {
           clearInterval(pollTimer);
         }
       } catch {
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
         setLoadingStep('failed');
         setErrorMessage('분석 상태를 확인하지 못했어요.');
         clearInterval(pollTimer);
@@ -251,7 +297,7 @@ export default function LoadingScreen() {
       isMounted = false;
       clearInterval(pollTimer);
     };
-  }, [generationAttempt, hasApiLoading, tripDayId]);
+  }, [allDays, generationAttempt, hasApiLoading, tripDayId]);
 
   useEffect(() => {
     if (progress < 100 || loadingStep === 'failed') {
@@ -275,6 +321,7 @@ export default function LoadingScreen() {
 
     setLoadingStep('analyzing_photos');
     setErrorMessage(null);
+    setCompletedDayIds(new Set());
     setProgress(42);
     setGenerationAttempt((current) => current + 1);
   };
