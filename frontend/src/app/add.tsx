@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, ChevronLeft, ImagePlus, Loader2, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { uploadFirstDayPhotos } from '@/api/diary';
@@ -194,6 +194,7 @@ function getPhotoDayLabel(photo: PendingPhoto, selectedDates: string[]) {
 }
 
 async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrder: number): Promise<PendingPhoto> {
+  // 리사이즈하면 EXIF가 사라지므로, 원본 asset에서 GPS를 먼저 읽습니다.
   const gps = parseExifGps(asset.exif);
   // AI 분석용 이미지는 너무 커지지 않게 줄이고, 화면 미리보기용 썸네일은 별도로 생성합니다.
   const fileImage = await ImageManipulator.manipulateAsync(
@@ -274,6 +275,8 @@ export default function AddScreen() {
       selectionLimit: remainingSlots,
       quality: 1,
       exif: true,
+      // Android 기본 Photo Picker는 GPS EXIF를 0으로 마스킹하는 경우가 있어 legacy picker를 사용합니다.
+      legacy: Platform.OS === 'android',
     });
 
     if (result.canceled) {
