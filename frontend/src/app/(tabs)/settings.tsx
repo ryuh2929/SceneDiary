@@ -99,6 +99,7 @@ const colors = {
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 // DB/API는 아이콘을 문자열로 내려주므로, 프런트에서 실제 lucide 아이콘 컴포넌트로 매핑합니다.
 // 새 여행 유형 아이콘을 허용하려면 import와 이 매핑, TravelTypeIconName 타입을 함께 추가해야 합니다.
@@ -363,6 +364,14 @@ export default function SettingsScreen() {
     () => profile.persona.tags.find((tag) => tag.id === selectedPersonaId),
     [profile.persona.tags, selectedPersonaId],
   );
+  const noticeProgress = useDerivedValue(
+    () => withTiming(profileNotice ? 1 : 0, { duration: 180 }),
+    [profileNotice],
+  );
+  const noticeStyle = useAnimatedStyle(() => ({
+    opacity: noticeProgress.value,
+    transform: [{ translateY: (1 - noticeProgress.value) * -10 }],
+  }));
 
   useEffect(() => {
     let ignore = false;
@@ -401,6 +410,18 @@ export default function SettingsScreen() {
       ignore = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!profileNotice) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setProfileNotice(null);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [profileNotice]);
 
   const handleSelectPersona = async (personaId: string) => {
     if (personaId === selectedPersonaId || isSavingPersona) {
@@ -552,12 +573,6 @@ export default function SettingsScreen() {
           </View>
         ) : null}
 
-        {profileNotice ? (
-          <View className="mb-md rounded-lg border bg-surface px-md py-sm" style={{ borderColor: colors.border }}>
-            <Text className="text-sm font-semibold text-textSecondary">{profileNotice}</Text>
-          </View>
-        ) : null}
-
         <View className="items-center">
           <View className="relative h-[82px] w-[82px] items-center justify-center">
             <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-primaryLight">
@@ -665,6 +680,28 @@ export default function SettingsScreen() {
       </View>
 
       </ScrollView>
+
+      {profileNotice ? (
+        <AnimatedView
+          pointerEvents="none"
+          className="absolute left-md right-md z-10 mx-auto max-w-[420px] rounded-lg border px-md py-sm"
+          style={[
+            {
+              top: (contentInset?.paddingTop ?? 24) + 44,
+              alignSelf: 'center',
+              backgroundColor: '#EEF5FF',
+              borderColor: colors.primaryLight,
+              shadowColor: colors.text,
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: 0.12,
+              shadowRadius: 8,
+              elevation: 5,
+            },
+            noticeStyle,
+          ]}>
+          <Text className="text-center text-sm font-bold text-primary">{profileNotice}</Text>
+        </AnimatedView>
+      ) : null}
 
       <NicknameModal
         visible={isNicknameModalVisible}
