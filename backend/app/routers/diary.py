@@ -129,6 +129,9 @@ def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
         dayNumber=trip_day.day_number,
         date=trip_day.date.isoformat(),  # date → "YYYY-MM-DD"
         locationSummary=trip_day.location_summary or "",
+        # Decimal → float. NULL 이면 그대로 None (프론트가 "위치 없음" 분기에 사용).
+        representativeLat=float(trip_day.representative_lat) if trip_day.representative_lat is not None else None,
+        representativeLon=float(trip_day.representative_lon) if trip_day.representative_lon is not None else None,
         weather=_weather_codepoint(trip_day.weather),
         subtitle=trip_day.subtitle or "",
         emotion=trip_day.emotion or "",
@@ -215,7 +218,8 @@ def get_trip_day(
     return _build_day(db, trip_day, _base_url(request))
 
 
-# ④ 일차 저장 — 여행지(location_summary)만 수정
+# ④ 일차 저장 — 여행지(location_summary) + 선택적으로 대표 좌표(lat/lon)
+# lat/lon 둘 다 들어오면 함께 저장. 한쪽만 오는 케이스는 무시(현재 UI 가 항상 둘 다 보냄).
 @router.patch("/trip-days/{trip_day_id}", response_model=DayPage)
 def update_trip_day(
     trip_day_id: int,
@@ -225,6 +229,9 @@ def update_trip_day(
 ) -> DayPage:
     trip_day = _get_trip_day_or_404(db, trip_day_id)
     trip_day.location_summary = body.locationSummary
+    if body.lat is not None and body.lon is not None:
+        trip_day.representative_lat = body.lat
+        trip_day.representative_lon = body.lon
     db.commit()
     db.refresh(trip_day)
     return _build_day(db, trip_day, _base_url(request))
