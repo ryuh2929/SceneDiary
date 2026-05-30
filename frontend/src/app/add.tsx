@@ -286,6 +286,7 @@ export default function AddScreen() {
           tripDayId: String(uploadResponse.tripDayId),
           day: String(uploadResponse.day),
           mode: 'initial',
+          days: encodeURIComponent(JSON.stringify(uploadResponse.days)),
         },
       });
     } catch {
