@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 # 합치기 후: 일기 본문은 trip_days 에 들어가서 Diary 모델은 더 이상 없음.
 # PhotoGeneration = 사진별 VLM 분석 이력(2단계화에서 사용).
-from app.db.models import DiaryGeneration, Photo, PhotoGeneration, Trip, TripDay
+from app.db.models import DiaryGeneration, Photo, PhotoGeneration, Trip, TripDay, User
 from app.db.session import SessionLocal, get_db
 from app.schemas.diary import (
     DayPage,
@@ -335,6 +335,36 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
 
 
 # ⑤ 재생성 — 생성기를 백그라운드로 실행하고 즉시 generating 으로 응답.
+# 여행 상태가 처음 completed로 바뀐 뒤, 사용자 여행 유형 분석을 예약하기 위한 작업입니다.
+def _run_travel_style_analysis(user_id: int) -> None:
+    """여행글 최초 완료 이후 사용자 여행 유형 분석을 실행하는 백그라운드 작업입니다.
+
+    실제 LLM 분석 프롬프트와 결과 저장 로직은 여행 유형 분석 API를 확정한 뒤 이 함수 안에 연결합니다.
+    백그라운드 작업은 요청이 끝난 뒤 실행되므로, 요청에서 쓰던 DB 세션을 재사용하지 않고 새 세션을 엽니다.
+    """
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user is None:
+            return
+
+        # 이미 분석 결과가 있으면 중복 호출로 들어와도 아무 작업도 하지 않습니다.
+        if user.travel_style_analysis:
+            return
+
+        # TODO: 사용자의 완료된 여행글 데이터를 모아 LLM 여행 유형 분석 함수를 호출하고,
+        # user.travel_style_analysis에 JSON 문자열로 저장합니다.
+        print(f"[travel-style] pending: user_id={user_id}")
+    except Exception as exc:
+        print(f"[travel-style] FAILED: user_id={user_id}: {exc}")
+        import traceback
+
+        traceback.print_exc()
+    finally:
+        db.close()
+
+
+# 일기 재생성은 응답을 먼저 돌려주고, 실제 생성 작업은 백그라운드에서 실행합니다.
 @router.post("/trip-days/{trip_day_id}/regenerate", response_model=DayStatus)
 def regenerate_trip_day(
     trip_day_id: int,
@@ -362,9 +392,24 @@ def regenerate_trip_day(
 # ⑥ 최종 저장 — 여행 상태를 'completed'로
 @router.patch("/trips/{trip_id}", response_model=TripStatusUpdate)
 def update_trip_status(
-    trip_id: int, body: TripStatusUpdate, db: Session = Depends(get_db)
+    trip_id: int,
+    body: TripStatusUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
 ) -> TripStatusUpdate:
     trip = _get_trip_or_404(db, trip_id)
+    previous_status = trip.status
     trip.status = body.status
     db.commit()
+
+    user = db.query(User).filter(User.id == trip.user_id).first()
+    if (
+        previous_status != "completed"
+        and body.status == "completed"
+        and user is not None
+        and user.travel_style_analysis is None
+    ):
+        # 첫 완료 여행글 이후에만 여행 유형 분석을 예약합니다. 실제 분석은 응답 이후 백그라운드에서 실행됩니다.
+        background_tasks.add_task(_run_travel_style_analysis, user.id)
+
     return body
