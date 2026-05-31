@@ -7,7 +7,15 @@ import Twemoji from 'react-native-twemoji';
 import { getDetailPage } from '@/api/detail';
 import { DetailPage, Days } from '@/types/api';
 
-// Twemoji 코드포인트(hex) → 실제 이모지 문자. 예: "1f5fc"→🗼, "1f1f0-1f1f7"→🇰🇷
+// ─────────────────────────────────────────────
+// 🔧 유틸 함수 섹션
+// ─────────────────────────────────────────────
+
+/**
+ * 이모지 코드포인트(hex 문자열) → 실제 이모지 문자로 변환
+ * 예: "1f5fc" → 🗼 / "1f1f0-1f1f7" → 🇰🇷
+ * "-"로 연결된 복합 코드포인트도 처리
+ */
 function codepointToEmoji(codepoint: string): string {
   return codepoint
     .split("-")
@@ -19,10 +27,18 @@ function codepointToEmoji(codepoint: string): string {
     .join("");
 }
 
-// 감정·상징·날씨 이모지를 Twemoji(그림) 로 그립니다.
-// react-native-twemoji 는 size prop이 없어서 style 로 크기를 줘야 합니다.
-// 이 라이브러리에 없는(최신) 이모지는 시스템 이모지로 자동 대체합니다.
-// 빈 문자열(예: symbol 미설정)이면 아무것도 그리지 않습니다.
+// ─────────────────────────────────────────────
+// 🎨 이모지 렌더링 컴포넌트
+// ─────────────────────────────────────────────
+
+/**
+ * 감정·상징·날씨 이모지를 Twemoji(그림 이모지) 로 렌더링
+ * - Twemoji가 지원하는 이모지 → Twemoji 이미지로 표시
+ * - Twemoji가 지원하지 않는 이모지 → 시스템 기본 이모지로 표시
+ * - codepoint가 빈 문자열이면 아무것도 렌더링하지 않음
+ * @param codepoint - 이모지 코드포인트 (hex 문자열)
+ * @param size - 이모지 크기 (px)
+ */
 function EmojiIcon({codepoint, size}: {codepoint: string; size: number}) {
   if (!codepoint) return null;
   const char = codepointToEmoji(codepoint);
@@ -32,71 +48,110 @@ function EmojiIcon({codepoint, size}: {codepoint: string; size: number}) {
   return <Text style={{fontSize: size}}>{char}</Text>;
 }
 
-// DB에 날씨가 한글("맑음")로 저장된 레코드와 codepoint("2600")로 저장된 레코드가 섞여 있어서
-// 두 형식 모두 키로 등록해 어떤 형식이 와도 이모지 + 한글 텍스트를 꺼낼 수 있게 했습니다.
-// "2600-fe0f"처럼 변형 선택자(fe0f)가 붙은 codepoint도 별도 키로 등록해 대응합니다.
+// ─────────────────────────────────────────────
+// 🌤️ 날씨 매핑 테이블
+// ─────────────────────────────────────────────
+
+/**
+ * DB에 저장된 날씨 값(한글 또는 codepoint)을 이모지·텍스트로 변환하는 매핑 테이블
+ * - 한글 텍스트 키: AI가 한글로 저장한 구버전 데이터 대응
+ * - codepoint 키: 현재 저장 방식 대응
+ * - "fe0f" 변형 선택자가 붙은 codepoint도 별도 키로 등록
+ * - 매핑에 없는 값("미상", "실내" 등)은 날씨 UI 자체를 숨김
+ */
 const WEATHER_MAP: Record<string, { codepoint: string; label: string }> = {
-  // 한글 텍스트 키 (AI가 한글로 저장한 구버전 데이터)
+  // 한글 텍스트 키
   "맑음":      { codepoint: "2600",  label: "맑음" },
   "흐림":      { codepoint: "2601",  label: "흐림" },
   "비":        { codepoint: "1f327", label: "비" },
   "눈":        { codepoint: "2744",  label: "눈" },
-  // codepoint 키 (현재 저장 방식)
+  // codepoint 키
   "2600":      { codepoint: "2600",  label: "맑음" },
-  "2600-fe0f": { codepoint: "2600",  label: "맑음" }, // 변형 선택자(fe0f) 포함 버전
+  "2600-fe0f": { codepoint: "2600",  label: "맑음" },
   "2601":      { codepoint: "2601",  label: "흐림" },
   "1f327":     { codepoint: "1f327", label: "비" },
   "2744":      { codepoint: "2744",  label: "눈" },
 };
 
-export function getMainImage(item: DetailPage) {
-  // 1. 안전장치: cover_photo_id가 없거나 tripDays가 비어있으면 곧바로 기본 이미지(Fallback) 반환
-  
-  // 2. ⚡ 모든 일차(tripDays)에 흩어져 있는 photos들을 1차원 배열로 평평하게 폅니다.
-  const allPhotos = item.tripDetail.flatMap((day) => day.photos || []);
+// ─────────────────────────────────────────────
+// 🖼️ 메인 이미지 추출 함수
+// ─────────────────────────────────────────────
 
-  // 3. 🎯 그 사진들 중에서 id가 여행의 cover_photo_id와 똑같은 녀석을 딱 하나 찾습니다.
+/**
+ * 여행의 대표 이미지(커버 사진)를 찾아서 Image 컴포넌트로 반환
+ * 1. cover_photo_id가 없거나 tripDays가 비어있으면 null 반환
+ * 2. 모든 일차의 사진을 1차원 배열로 펼침
+ * 3. cover_photo_id와 일치하는 사진을 찾아 Image 컴포넌트로 렌더링
+ * @param item - 여행 상세 데이터 (DetailPage 타입)
+ */
+export function getMainImage(item: DetailPage) {
+  const allPhotos = item.tripDetail.flatMap((day) => day.photos || []);
   const coverPhoto = allPhotos.find((photo) => photo.id === item.cover_photo_id);
 
-  // 4. 매칭되는 사진을 찾았다면 해당 이미지의 가공된 URL(image_url)을 띄워줍니다.
   if (coverPhoto && coverPhoto.image_url) {
     return (
       <Image
         source={{ uri: coverPhoto.image_url }}
         className="absolute inset-0 w-full h-full"
-          resizeMode="cover"
+        resizeMode="cover"
       />
     );
   }
 }
 
+// ─────────────────────────────────────────────
+// 📱 메인 컴포넌트
+// ─────────────────────────────────────────────
+
+/**
+ * 여행 상세 페이지 UI 컴포넌트
+ * - 상단 히어로 이미지 + 여행 기본 정보 표시
+ * - Day 탭으로 일차별 상세 내용 전환
+ * - 사진 슬라이더, 날씨, 감정 이모지, 일기 텍스트 표시
+ */
 export default function TravelDetailUI() {
-  // 기기 너비 계산
+
+  // ─────────────────────────────────────────────
+  // 📐 레이아웃 & 라우터 설정
+  // ─────────────────────────────────────────────
+
+  // 기기 화면 너비 가져오기 (사진 슬라이더 너비 계산에 사용)
   const { width: windowWidth } = useWindowDimensions();
-  // 메인 카드 좌우 패딩값(px-md가 보통 16px씩 총 32px)을 제외한 진짜 사진의 너비 자동 계산
+  // 카드 좌우 패딩(32px) 제외한 실제 사진 너비 계산
   const cardWidth = windowWidth - 64;
-  //사진 슬라이더(FlatList)를 원격 조종하기 위한 리프(Ref) 생성
+  // 사진 슬라이더(FlatList)를 코드로 제어하기 위한 ref
   const flatListRef = useRef<FlatList>(null);
 
+  // 화면 이동 라우터
   const router = useRouter();
-  //홈에서 id와 누른 day 정보 접수
-  const {id,day} = useLocalSearchParams();
+  // 홈에서 전달받은 여행 id와 day 파라미터
+  const {id, day} = useLocalSearchParams();
   const tripId = Number(id);
 
-  // 1️⃣ API 데이터를 수납할 상태 선언
+  // ─────────────────────────────────────────────
+  // 🗃️ 상태(State) 관리
+  // ─────────────────────────────────────────────
+
+  // API에서 가져온 여행 상세 데이터
   const [trip, setTrip] = useState<DetailPage | null>(null);
+  // 데이터 로딩 중 여부
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  // 에러 메시지
   const [error, setError] = useState<string | null>(null);
-
-  //2. 문자열로 압축되어 온 details 데이터를 진짜 쓸 수 있게 배열로 해제합니다.
-  // const parsedDetails = details ? JSON.parse(details) : [];
-
-  // 홈에서 특정 Day를 누르고 들어왔으면 그 Day로 시작하고, 아니면 Day 1로 시작
-  // 2️⃣ 현재 어떤 Day 탭이 활성화되어 있는지 관리
+  // 현재 활성화된 Day 탭 번호 (홈에서 전달받은 day 또는 기본값 1)
   const [activeDay, setActiveDay] = useState<number>(Number(day) || 1);
+  // 현재 슬라이더에서 보이는 사진 인덱스 (도트 인디케이터용)
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
 
-  // 3️⃣ 화면이 켜지면 백엔드에서 부모+자식 데이터 통째로 긁어오기
+  // ─────────────────────────────────────────────
+  // 🌐 데이터 패칭 (API 호출)
+  // ─────────────────────────────────────────────
+
+  /**
+   * 화면 진입 시 백엔드에서 여행 상세 데이터 로드
+   * - tripId가 있을 때만 실행
+   * - 홈에서 day를 전달받지 않은 경우 첫 번째 일차로 자동 설정
+   */
   useEffect(() => {
     const loadDetailData = async () => {
       try {
@@ -106,7 +161,7 @@ export default function TravelDetailUI() {
         console.log("🔥 백엔드가 준 진짜 데이터 구조:", JSON.stringify(data, null, 2));
         setTrip(data);
 
-        // 만약 홈에서 특정 day를 안 누르고 들어왔다면, 데이터의 첫 번째 일자로 자동 선택
+        // 홈에서 특정 day를 선택하지 않고 진입한 경우 → 첫 번째 일차로 자동 선택
         if (!day && data.tripDetail?.length > 0) {
           const sortedDays = [...data.tripDetail].sort((a, b) => a.day_number - b.day_number);
           setActiveDay(sortedDays[0].day_number);
@@ -122,196 +177,225 @@ export default function TravelDetailUI() {
     if (tripId) loadDetailData();
   }, [tripId, day]);
 
-  // Day 탭이 바뀔 때마다 사진 슬라이더를 강제로 맨 앞으로 돌리는 안전장치
+  // ─────────────────────────────────────────────
+  // 🔄 Day 탭 변경 시 사진 슬라이더 초기화
+  // ─────────────────────────────────────────────
+
+  /**
+   * Day 탭이 바뀔 때마다 사진 슬라이더를 첫 번째 사진으로 초기화
+   * - 다른 Day로 이동했을 때 이전 Day의 사진 위치가 남아있지 않도록 방지
+   */
   useEffect(() => {
     setActivePhotoIndex(0);
     flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [activeDay]);
 
+  // ─────────────────────────────────────────────
+  // ⏳ 로딩 상태 처리
+  // ─────────────────────────────────────────────
+
+  // 데이터 로딩 중이거나 trip 데이터가 없으면 로딩 화면 표시
   if (isLoading || !trip) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
-        {/* <ActivityIndicator size="large" color="#39536B" /> */}
         <Text className="text-textSecondary font-sans mt-sm">기록을 불러오는 중...</Text>
       </View>
     );
   }
-  // 5️⃣ 실시간 데이터 가공 처리 영역
-  const { title, destination, start_date, end_date, tripDetail} = trip as any;
- 
 
-  //3. [중요] 전체 상세 데이터 중 '현재 활성화된 Day 탭'에 해당하는 데이터만 찾아냅니다!
-  // tripDays 배열에서 현재 선택된 activeDay 데이터 추출
+  // ─────────────────────────────────────────────
+  // 🔀 데이터 가공
+  // ─────────────────────────────────────────────
+
+  // 여행 기본 정보 구조분해
+  const { title, destination, start_date, end_date, tripDetail} = trip as any;
+
+  // 현재 선택된 Day 탭에 해당하는 상세 데이터만 추출
   const currentDayData = tripDetail?.find((d: Days) => Number(d.day_number) === activeDay);
-  // weather 값(한글 또는 codepoint)을 WEATHER_MAP에서 조회해 이모지·텍스트 정보를 가져옵니다.
-  // 매핑에 없는 값("미상", "실내" 등)은 null이 되어 날씨 UI 자체를 숨깁니다.
+
+  // 날씨 값(한글 또는 codepoint)을 WEATHER_MAP에서 조회 → 없으면 null (날씨 UI 숨김)
   const weatherInfo = currentDayData?.weather ? WEATHER_MAP[currentDayData.weather] : null;
 
-  //4. 생성할 탭 목록 배열 자동 생성 (예: 데이터가 3개면 [1, 2, 3] 탭이 생김)
-  const dayTabs = tripDetail ? tripDetail.map((d: Days) => Number(d.day_number)).sort((a: number, b: number) => a - b) : [];
+  // Day 탭 목록 자동 생성 (예: tripDetail이 3개면 [1, 2, 3])
+  const dayTabs = tripDetail
+    ? tripDetail.map((d: Days) => Number(d.day_number)).sort((a: number, b: number) => a - b)
+    : [];
 
+  // ─────────────────────────────────────────────
+  // 🖥️ UI 렌더링
+  // ─────────────────────────────────────────────
 
   return (
     <ScrollView
-    className="flex-1 bg-background"
-    showsVerticalScrollIndicator={false} bounces={false}
+      className="flex-1 bg-background"
+      showsVerticalScrollIndicator={false}
+      bounces={false}
     >
-      
-      {/* 상단 히어로 이미지 */}
-      <View className="relative h-80 w-full">
-      {getMainImage(trip)}
 
-        {/* 그라데이션 오버레이 */}
+      {/* ── 섹션 1. 상단 히어로 이미지 영역 ─────────────────
+          - 여행 대표 이미지 전체 너비로 표시
+          - 그라데이션 오버레이로 텍스트 가독성 확보
+          - 우측 상단 닫기(X) 버튼
+          - 하단에 여행 제목 / 위치 / 날짜 표시
+      ──────────────────────────────────────────────── */}
+      <View className="relative h-80 w-full">
+        {getMainImage(trip)}
+
+        {/* 그라데이션 오버레이: 상단 어둡게 → 중간 투명 → 하단 배경색으로 자연스럽게 이어짐 */}
         <LinearGradient
           colors={['rgba(0,0,0,0.2)', 'transparent', '#F4F6F9']}
           locations={[0, 0.5, 1]}
           className="absolute inset-0 p-md"
         >
-          {/* 닫기 버튼 */}
+          {/* 닫기 버튼: 이전 화면(홈)으로 돌아가기 */}
           <View className="flex-row justify-end pt-safe">
-            <Pressable onPress={() => router.back()} className="w-10 h-10 rounded-full bg-black/30 items-center justify-center">
+            <Pressable
+              onPress={() => router.back()}
+              className="w-10 h-10 rounded-full bg-black/30 items-center justify-center"
+            >
               <X size={20} color="#FFFFFF" />
             </Pressable>
           </View>
 
-          {/* 타이틀 정보 */}
+          {/* 여행 기본 정보: 제목 / 위치 / 날짜 */}
           <View className="absolute bottom-lg left-md w-full pr-md">
             <Text className="text-xl font-sans font-bold text-textPrimary mb-sm">
               {title || '여행 정보'}
             </Text>
             <View className="flex-row items-center justify-between w-full">
 
-              {/* 위치 영역 */}
+              {/* 위치 아이콘 + 목적지 텍스트 */}
               <View className="flex-row items-center gap-xs">
                 <MapPin size={14} color="#39536B" />
-                <Text className="text-sm font-sans text-textSecondary">{destination  || '위치 미정'}</Text>
-              </View>
-              <View className="flex-1 flex-row items-center gap-md flex-wrap">
-              {/* 날짜 영역 */}
-              <View className="flex-row items-center gap-xs">
-                <Calendar size={14} color="#39536B" />
                 <Text className="text-sm font-sans text-textSecondary">
-                  {(() => {
-                    if (!start_date || !end_date) return '날짜 미정';
-                    
-                    //만약 데이터가 이미 '04.01' 형태로 들어온 경우 앞의 연도를 강제로 붙여줍니다.
-                    const format = (dateStr: string) => {
-                      const clean = dateStr.replaceAll('-', '.');
-                      return clean.startsWith('20') ? clean.slice(2) : clean; // '2026.04.01' -> '26.04.01'
-                    };
-
-                    return `${format(start_date)} ~ ${format(end_date)}`;
-                  })()}
+                  {destination || '위치 미정'}
                 </Text>
               </View>
+
+              {/* 날짜 아이콘 + 여행 기간 텍스트 (예: 26.04.01 ~ 26.04.03) */}
+              <View className="flex-1 flex-row items-center gap-md flex-wrap">
+                <View className="flex-row items-center gap-xs">
+                  <Calendar size={14} color="#39536B" />
+                  <Text className="text-sm font-sans text-textSecondary">
+                    {(() => {
+                      if (!start_date || !end_date) return '날짜 미정';
+                      const format = (dateStr: string) => {
+                        const clean = dateStr.replaceAll('-', '.');
+                        return clean.startsWith('20') ? clean.slice(2) : clean;
+                      };
+                      return `${format(start_date)} ~ ${format(end_date)}`;
+                    })()}
+                  </Text>
+                </View>
               </View>
-              {/* (구 day.symbol 심볼 표시 폐지: 여행 단위 trips.flag 로 통일 예정. 노출은 추후 작업) */}
+
             </View>
           </View>
         </LinearGradient>
       </View>
 
-      
-      {/* Day 탭 */}
-        <View className="flex-row items-end px-9 mt-sm">
-          {(dayTabs?.length > 0 ? dayTabs : [1]).map((d: number) => (
-            <Pressable
-              key={d}
-              onPress={() => { setActiveDay(d); setActivePhotoIndex(0); }}
-              // activeDay일 때는 px-lg(크게), 아닐 때는 px-sm(정확히 숫자만 감싸게 고정)으로 크기를 이원화
-              className={`py-xs rounded-t-lg mr-0 shadow-sm ${
-                activeDay === d 
-                  ? 'px-lg bg-primary min-w-[70px] items-center' // 활성화 탭: 넓은 패딩 + 최소 너비 지정으로 듬직하게
-                  : 'px-sm bg-muted min-w-[36px] items-center'   // 일반 숫자 탭: 좁은 패딩 + 정사각형에 가까운 콤팩트한 크기
+      {/* ── 섹션 2. Day 탭 영역 ──────────────────────────────
+          - 여행 일차(Day 1, 2, 3...)를 탭으로 표시
+          - 활성 탭: 넓고 파란 배경 / 비활성 탭: 좁고 회색 배경
+          - 최대 7개까지 표시, 7개 미만이면 + 버튼으로 일차 추가 가능
+      ──────────────────────────────────────────────── */}
+      <View className="flex-row items-end px-9 mt-sm">
+        {(dayTabs?.length > 0 ? dayTabs : [1]).map((d: number) => (
+          <Pressable
+            key={d}
+            onPress={() => { setActiveDay(d); setActivePhotoIndex(0); }}
+            className={`py-xs rounded-t-lg mr-0 shadow-sm ${
+              activeDay === d
+                ? 'px-lg bg-primary min-w-[70px] items-center'  // 활성 탭
+                : 'px-sm bg-muted min-w-[36px] items-center'    // 비활성 탭
+            }`}
+          >
+            <Text
+              className={`${
+                activeDay === d
+                  ? 'font-logo text-xl text-white'                      // 활성: 필기체 큰 글씨
+                  : 'font-sans text-base font-bold text-textSecondary'  // 비활성: 고딕 숫자
               }`}
             >
-              <Text
-                className={`${
-                  activeDay === d 
-                    ? 'font-logo text-xl text-white' // 선택 시 필기체 느낌의 큰 글씨
-                    : 'font-sans text-base font-bold text-textSecondary' // 미선택 시 깔끔한 고딕 숫자
-                }`}
-              >
-                {activeDay === d ? `Day ${d}` : d}
-              </Text>
-            </Pressable>
-          ))}
+              {activeDay === d ? `Day ${d}` : d}
+            </Text>
+          </Pressable>
+        ))}
 
-          {/* 최대 7개 미만일 때만 + 버튼 표시 */}
-          {dayTabs.length < 7 && (
-            <Pressable onPress={()=>router.push({pathname: '/add', params: { trip_id: tripId }})}
-            className=" rounded-t-lg h-[30px] bg-muted min-w-[36px] items-center justify-center shadow-sm">
-              <Plus size={16} color="#39536B" strokeWidth={3} />
-            </Pressable>
-          )}
-        </View>
+        {/* 일차 추가 버튼: 현재 일차가 7개 미만일 때만 표시 */}
+        {dayTabs.length < 7 && (
+          <Pressable
+            onPress={() => router.push({ pathname: '/add', params: { trip_id: tripId } })}
+            className="rounded-t-lg h-[30px] bg-muted min-w-[36px] items-center justify-center shadow-sm"
+          >
+            <Plus size={16} color="#39536B" strokeWidth={3} />
+          </Pressable>
+        )}
+      </View>
 
-      {/* 메인 콘텐츠 카드 */}
-      <View className="px-md  pb-xl pt-sm -mt-[8px]">
+      {/* ── 섹션 3. 메인 콘텐츠 카드 ────────────────────────
+          - 현재 선택된 Day의 상세 내용 표시
+          - 소제목 + 감정 이모지
+          - 위치 / 날짜 / 날씨 정보
+          - 사진 슬라이더 (여러 장일 경우 도트 인디케이터 표시)
+          - 일기 본문 텍스트
+      ──────────────────────────────────────────────── */}
+      <View className="px-md pb-xl pt-sm -mt-[8px]">
         <View className="bg-surface rounded-lg p-md shadow-sm border border-border">
 
-          {/* 소제목 & 감정 이모지 */}
+          {/* ── 3-1. 소제목 & 감정 이모지 ── */}
           <View className="flex-row justify-between items-end mb-md w-full">
             <View className="flex-1 mr-xs">
               <Text className="text-lg font-bold text-textPrimary font-sans">
                 {currentDayData?.subtitle || '상세 일정이 없습니다.'}
               </Text>
             </View>
-            {/* 오른쪽: 감정 이모지 */}
-          <View
-            style={{
-              width: 44,
-              height: 44,
-              flexDirection: "row",
-              justifyContent: "center",
-              alignItems: "center",
-              marginTop: 2,
-            }}
-          >
-            {currentDayData?.emotion && (
-              <EmojiIcon codepoint={currentDayData.emotion} size={28} />
-            )}
+            {/* 감정 이모지: currentDayData.emotion이 있을 때만 표시 */}
+            <View style={{ width: 44, height: 44, flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 2 }}>
+              {currentDayData?.emotion && (
+                <EmojiIcon codepoint={currentDayData.emotion} size={28} />
+              )}
+            </View>
           </View>
-        </View>
 
+          {/* ── 3-2. 위치 / 날짜 / 날씨 정보 ── */}
+          <View className="flex-row items-center gap-xs mb-sm">
+            {/* 세부 위치 */}
+            <MapPin size={10} color="#39536B" />
+            <Text className="text-sm text-textSecondary font-sans mr-1">
+              {currentDayData?.location_summary || '위치 정보 없음'}
+            </Text>
 
-        {/* 📍 세부 위치 정보 연동 */}
-        <View className="flex-row items-center gap-xs mb-sm">
-          <MapPin size={10} color="#39536B" />
-          <Text className="text-sm text-textSecondary font-sans mr-1">
-            {currentDayData?.location_summary || '위치 정보 없음'}
-          </Text>
-          
-           {/* 날짜 & 날씨 */}
+            {/* 날짜: "월.일" 형식으로 표시 (예: 04.01) */}
             <Text className="text-sm text-textSecondary font-sans mr-2">
               {(() => {
                 const targetDate = currentDayData?.date || start_date;
                 if (!targetDate) return '날짜 미정';
-
                 const clean = targetDate.replaceAll('-', '.');
-                //뒤에서부터 5글자만 남겨서 항상 '월.일' (예: 04.01) 형식만 쏙 뽑아냅니다.
                 return clean.length >= 5 ? clean.slice(-5) : clean;
               })()}
             </Text>
+
+            {/* 날씨 이모지 + 텍스트: weatherInfo가 있을 때만 표시 */}
             <View className="flex-row items-center gap-xs px-sm py-xs rounded-full">
-             {weatherInfo && (
-               <View className="flex-row items-center gap-xs">
-                 <EmojiIcon codepoint={weatherInfo.codepoint} size={16} />
-                 <Text className="text-sm text-textSecondary font-sans font-bold">
-                   {weatherInfo.label}
-                 </Text>
-               </View>
-             )}
+              {weatherInfo && (
+                <View className="flex-row items-center gap-xs">
+                  <EmojiIcon codepoint={weatherInfo.codepoint} size={16} />
+                  <Text className="text-sm text-textSecondary font-sans font-bold">
+                    {weatherInfo.label}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 
-         
-          {/* 본문 사진 */}
-          {/* 사진이 1장 이상 있을 때만 가로 슬라이더를 렌더링 */}
+          {/* ── 3-3. 사진 슬라이더 ──
+              - 사진이 1장 이상일 때만 렌더링
+              - 가로 스크롤 / 페이지 단위로 넘김
+              - 하단 도트 인디케이터로 현재 사진 위치 표시
+          ── */}
           {currentDayData?.photos && currentDayData.photos.length > 0 && (
-            // 카드 너비를 화면 너비 - 좌우 패딩(32px)으로 고정해 슬라이더가 카드 밖으로 삐져나오지 않게 함
             <View style={{ width: cardWidth }} className="rounded-lg mb-md mt-md overflow-hidden">
-              {/* pagingEnabled: 손가락을 떼면 사진 경계에 딱 맞춰 멈추는 인스타 스타일 페이징 */}
               <FlatList
                 ref={flatListRef}
                 key={activeDay}
@@ -320,12 +404,12 @@ export default function TravelDetailUI() {
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 keyExtractor={(item: any, index: number) => item.id?.toString() || index.toString()}
+                // 현재 화면에 보이는 사진 인덱스 추적 → 도트 인디케이터 업데이트
                 onViewableItemsChanged={({ viewableItems }) => {
                   if (viewableItems.length > 0) setActivePhotoIndex(viewableItems[0].index ?? 0);
                 }}
                 viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
                 renderItem={({ item }) => (
-                  // 각 사진의 width를 cardWidth와 동일하게 줘야 정확히 한 장씩 넘어감
                   <Image
                     source={{ uri: item.image_url }}
                     style={{ width: cardWidth, height: 240 }}
@@ -334,13 +418,15 @@ export default function TravelDetailUI() {
                   />
                 )}
               />
-              {/* 도트 인디케이터 */}
+
+              {/* 도트 인디케이터: 사진이 2장 이상일 때만 표시 */}
               {currentDayData.photos.length > 1 && (
                 <View className="flex-row justify-center items-center gap-xs py-xs">
                   {currentDayData.photos.map((_: any, i: number) => (
                     <View
                       key={i}
                       style={{
+                        // 현재 보이는 사진 도트는 크게, 나머지는 작게
                         width: activePhotoIndex === i ? 8 : 6,
                         height: activePhotoIndex === i ? 8 : 6,
                         borderRadius: 4,
@@ -353,7 +439,7 @@ export default function TravelDetailUI() {
             </View>
           )}
 
-          {/* 일기 텍스트 */}
+          {/* ── 3-4. 일기 본문 텍스트 ── */}
           <View className="bg-muted p-md rounded-md border border-border">
             <Text className="text-textSecondary text-md font-sans">
               {currentDayData?.content || '이날의 일기 기록이 비어있습니다.'}
