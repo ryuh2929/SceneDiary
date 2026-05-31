@@ -62,7 +62,12 @@ class User(Base):
     # 프로필 (모두 선택값)
     nickname: Mapped[str | None] = mapped_column(String(50), nullable=True)
     profile_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    writing_persona: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # 신규 유저가 생성될 때 별도 선택값이 없으면 가장 기본적인 문체인 daily를 사용합니다.
+    writing_persona: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        server_default=text("'daily'"),
+    )
     # AI 가 사용자의 여행 패턴(사진·일기·일정)을 분석해 자연어 한 줄로 요약한 "여행 스타일".
     # 예: "도시 야경 위주의 감성형 탐험가". 미생성 시 NULL.
     travel_style_analysis: Mapped[str | None] = mapped_column(String(500), nullable=True)

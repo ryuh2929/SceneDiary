@@ -17,6 +17,9 @@ backend/uploads/
 # 사용자 업로드 사진 (테스트로 쌓이는 파일들. backend/uploads/trip-*/day-*/...)
 backend/uploads/
 
+# 업로드된 사진 저장소 (이름은 test_images 지만 실제 운영 사진이 쌓이는 폴더)
+backend/test_images/
+
 ### Node ###
 # Logs
 logs

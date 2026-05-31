@@ -5,10 +5,63 @@ export type PersonaTag = {
   selected: boolean;
 };
 
-export type TravelTypeIconName = 'compass';
+// DB/API에서 내려오는 여행 유형 아이콘 이름입니다.
+// lucide-react-native에서 실제로 import할 수 있는 PascalCase 컴포넌트명만 허용합니다.
+export type TravelTypeIconName =
+  | 'Flower2'
+  | 'Camera'
+  | 'Compass'
+  | 'Trees'
+  | 'TreePalm'
+  | 'TentTree'
+  | 'Binoculars'
+  | 'FlameKindling'
+  | 'PartyPopper'
+  | 'Martini'
+  | 'Beer'
+  | 'BottleWine'
+  | 'Wine'
+  | 'Hamburger'
+  | 'Sandwich'
+  | 'Utensils'
+  | 'TicketsPlane'
+  | 'Map'
+  | 'Helicopter'
+  | 'Ship'
+  | 'CarFront'
+  | 'Amphora'
+  | 'Landmark'
+  | 'FerrisWheel'
+  | 'RollerCoaster'
+  | 'Mountain'
+  | 'Coffee'
+  | 'Building'
+  | 'Castle'
+  | 'Hotel'
+  | 'House'
+  | 'Sailboat'
+  | 'FishingHook'
+  | 'Fish'
+  | 'IceCreamBowl'
+  | 'Soup'
+  | 'CookingPot'
+  | 'Cookie'
+  | 'Dog'
+  | 'Snail'
+  | 'Squirrel'
+  | 'Turtle'
+  | 'Bird'
+  | 'Bug'
+  | 'Origami'
+  | 'Footprints'
+  | 'Rose'
+  | 'Baby'
+  | 'CircleDollarSign'
+  | 'Snowflake'
+  | 'Sun'
+  | 'NotebookPen';
 
 export type TravelType = {
-  id: string;
   title: string;
   description: string;
   icon: TravelTypeIconName;
@@ -65,10 +118,9 @@ export const dummySettingsProfile: SettingsProfile = {
     ],
   },
   travelType: {
-    id: 'explorer',
     title: '탐험가',
     description: '새로운 곳을 끊임없이 찾아다니는 타입',
-    icon: 'compass',
+    icon: 'Compass',
   },
   toggles: [
     {

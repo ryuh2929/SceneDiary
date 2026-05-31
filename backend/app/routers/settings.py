@@ -1,6 +1,7 @@
+import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -11,6 +12,7 @@ from app.schemas.settings import (
     UpdateSettingsToggleRequest,
     UpdateWritingPersonaRequest,
 )
+from app.services.travel_style_analysis import run_travel_style_analysis
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -33,6 +35,67 @@ PERSONA_OPTIONS = {
         "label": "로맨틱",
         "description": "따뜻하고 감성적인 표현",
     },
+}
+
+DEFAULT_TRAVEL_STYLE_ANALYSIS = {
+    "title": "이름 없는 여행자",
+    "description": "아직 분석할 수 있는 여행 데이터가 없습니다",
+    "icon": "NotebookPen",
+}
+# DB에 저장된 travel_style_analysis.icon 값이 프런트에서 렌더링 가능한 아이콘인지 검증하는 허용 목록입니다.
+TRAVEL_STYLE_ICON_NAMES = {
+    "Flower2",
+    "Camera",
+    "Compass",
+    "Trees",
+    "TreePalm",
+    "TentTree",
+    "Binoculars",
+    "FlameKindling",
+    "PartyPopper",
+    "Martini",
+    "Beer",
+    "BottleWine",
+    "Wine",
+    "Hamburger",
+    "Sandwich",
+    "Utensils",
+    "TicketsPlane",
+    "Map",
+    "Helicopter",
+    "Ship",
+    "CarFront",
+    "Amphora",
+    "Landmark",
+    "FerrisWheel",
+    "RollerCoaster",
+    "Mountain",
+    "Coffee",
+    "Building",
+    "Castle",
+    "Hotel",
+    "House",
+    "Sailboat",
+    "FishingHook",
+    "Fish",
+    "IceCreamBowl",
+    "Soup",
+    "CookingPot",
+    "Cookie",
+    "Dog",
+    "Snail",
+    "Squirrel",
+    "Turtle",
+    "Bird",
+    "Bug",
+    "Origami",
+    "Footprints",
+    "Rose",
+    "Baby",
+    "CircleDollarSign",
+    "Snowflake",
+    "Sun",
+    "NotebookPen",
 }
 
 
@@ -58,13 +121,39 @@ def persona_tags(selected_persona: str) -> list[dict[str, object]]:
     ]
 
 
+def travel_style_analysis(user: User) -> dict[str, str]:
+    # travel_style_analysis는 DB에 JSON 문자열로 저장될 예정입니다.
+    # 아직 분석 결과가 없어서 NULL이거나, 파싱할 수 없는 값이면 화면 표시용 fallback을 내려줍니다.
+    raw_analysis = clean(user.travel_style_analysis)
+
+    if not raw_analysis:
+        return DEFAULT_TRAVEL_STYLE_ANALYSIS
+
+    try:
+        parsed_analysis = json.loads(raw_analysis)
+    except json.JSONDecodeError:
+        return DEFAULT_TRAVEL_STYLE_ANALYSIS
+
+    if not isinstance(parsed_analysis, dict):
+        return DEFAULT_TRAVEL_STYLE_ANALYSIS
+
+    icon = clean(parsed_analysis.get("icon"))
+
+    return {
+        "title": clean(parsed_analysis.get("title")) or DEFAULT_TRAVEL_STYLE_ANALYSIS["title"],
+        "description": clean(parsed_analysis.get("description"))
+        or DEFAULT_TRAVEL_STYLE_ANALYSIS["description"],
+        "icon": icon if icon in TRAVEL_STYLE_ICON_NAMES else DEFAULT_TRAVEL_STYLE_ANALYSIS["icon"],
+    }
+
+
 def to_settings_profile(user: User) -> SettingsProfile:
     writing_persona = clean(user.writing_persona).lower()
     selected_persona = PERSONA_OPTIONS.get(writing_persona)
 
     # 아이콘은 프론트에서 lucide-react-native 컴포넌트로 매핑할 수 있는 키만 내려줍니다.
     return SettingsProfile(
-        nickname=clean(user.nickname) or "기록하는 여행자",
+        nickname=clean(user.nickname) or "오늘의 여행자",
         persona={
             "title": "글 작성 페르소나",
             "description": selected_persona["description"]
@@ -72,12 +161,7 @@ def to_settings_profile(user: User) -> SettingsProfile:
             else "선택된 글 작성 페르소나가 없습니다.",
             "tags": persona_tags(writing_persona),
         },
-        travelType={
-            "id": "pending",
-            "title": "분석 중",
-            "description": "여행 유형 분석 데이터는 나중에 연결될 예정입니다.",
-            "icon": "compass",
-        },
+        travelType=travel_style_analysis(user),
         toggles=[
             {
                 "id": "darkMode",
@@ -187,5 +271,19 @@ def update_nickname(
 
     db.commit()
     db.refresh(user)
+
+    return to_settings_profile(user)
+
+
+@router.post("/travel-style-analysis", response_model=SettingsProfile)
+def request_travel_style_analysis(
+    background_tasks: BackgroundTasks,
+    user_uuid: str = Query(...),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    user = find_user_or_404(db, user_uuid)
+
+    # 설정 화면의 분석 버튼은 요청만 빠르게 완료하고, 실제 LLM 분석은 백그라운드 작업에서 처리합니다.
+    background_tasks.add_task(run_travel_style_analysis, user.id, force=True)
 
     return to_settings_profile(user)
