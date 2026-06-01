@@ -464,7 +464,7 @@ export default function LoadingScreen() {
           </Text>
 
           {!isNextDayMode && photos.length > 3 ? (
-            <Text className="mt-sm text-center text-sm font-bold text-textSecondary">
+            <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary">
               외 {photos.length - 3}장 더
             </Text>
           ) : null}
@@ -479,7 +479,7 @@ export default function LoadingScreen() {
                 style={{ width: progressWidth }}
               />
             </View>
-            <Text className="mt-sm text-center text-sm font-bold text-textSecondary">{progress}%</Text>
+            <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary">{progress}%</Text>
           </View>
         </View>
 

@@ -59,7 +59,7 @@ export default function BottomNav() {
 
                 {/* 텍스트 컬러 스타일 안정화 */}
                 <Text 
-                  className={`text-sm font-sans mb-1 mt-xs ${isActive ? 'font-bold' : ''}`}
+                  className={`text-sm font-sans mb-1 mt-xs ${isActive ? 'font-sans-bold' : ''}`}
                   style={{ color: iconColor }} 
                 >
                   {label}
