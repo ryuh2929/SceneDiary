@@ -174,7 +174,7 @@ export default function HomeScreen() {
             <ChevronLeft size={20} color="#39536B" />
           </Pressable>
           {/* 현재 연도 표시 */}
-          <Text className="text-lg font-bold text-textPrimary font-sans">{currentYear}</Text>
+          <Text className="text-lg text-textPrimary font-sans-bold">{currentYear}</Text>
           {/* 다음 연도 버튼 */}
           <Pressable onPress={() => setCurrentYear(prev => prev + 1)} className="p-xs">
             <ChevronRight size={20} color="#39536B" />
@@ -240,7 +240,7 @@ export default function HomeScreen() {
                     - 목적지 위치
                 ── */}
                 <View className="p-md">
-                  <Text className="text-lg font-bold text-textPrimary mb-xs font-sans">
+                  <Text className="text-lg font-sans-bold text-textPrimary mb-xs">
                     {item.title}
                   </Text>
                   <View className="flex-row items-center gap-xs">
@@ -315,7 +315,7 @@ export default function HomeScreen() {
                         <View className="flex-1">
                           {/* Day 번호 + 감정 이모지 */}
                           <View className="flex-row items-center justify-between mb-xs w-full pr-sm">
-                            <Text className="text-sm font-bold text-primary font-sans">
+                            <Text className="text-sm text-primary font-sans-bold">
                               Day {detail.day_number}
                             </Text>
                             {/* 감정 이모지: detail.emotion이 있을 때만 표시 */}
@@ -327,7 +327,7 @@ export default function HomeScreen() {
                           </View>
 
                           {/* 소제목 (1줄 제한) */}
-                          <Text className="text-md font-bold text-textPrimary font-sans mb-xs" numberOfLines={1}>
+                          <Text className="text-md text-textPrimary font-sans-bold mb-xs" numberOfLines={1}>
                             {detail.subtitle}
                           </Text>
 
