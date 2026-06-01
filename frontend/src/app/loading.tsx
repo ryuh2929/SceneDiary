@@ -13,11 +13,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {
-  fetchTripDayGenerationStatus,
-  startTripDayGeneration,
-  type LoadingStep,
-} from '@/api/diary';
+import { fetchTripDayGenerationStatus } from '@/api/diary';
+import type { LoadingStep } from '@/types/api';
 
 type PreparedPhoto = {
   fileUri: string;
@@ -138,7 +135,7 @@ export default function LoadingScreen() {
     tripDayId ? 'analyzing_photos' : null,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [generationAttempt, setGenerationAttempt] = useState(0);
+  const [pollingAttempt, setPollingAttempt] = useState(0);
   const hasApiLoading = Boolean(tripDayId) && !isNextDayMode;
   // 다중 일차 추적: 각 일차의 완료 여부를 id → boolean 맵으로 관리합니다.
   const [completedDayIds, setCompletedDayIds] = useState<Set<number>>(new Set());
@@ -234,20 +231,21 @@ export default function LoadingScreen() {
       ? allDays.map((d) => d.tripDayId)
       : [firstDayId];
 
-    async function startAndPoll() {
+    async function pollInitialStatus() {
       try {
-        const started = await startTripDayGeneration(firstDayId);
+        const firstStatus = await fetchTripDayGenerationStatus(firstDayId);
         if (!isMounted) return;
-        setLoadingStep(started.status);
-        setProgress(started.progress);
+        setLoadingStep(firstStatus.status);
+        setProgress(firstStatus.progress);
+        setErrorMessage(firstStatus.errorMessage ?? null);
       } catch {
         if (!isMounted) return;
         setLoadingStep('failed');
-        setErrorMessage('분석 요청을 시작하지 못했어요.');
+        setErrorMessage('분석 상태를 확인하지 못했어요.');
       }
     }
 
-    startAndPoll();
+    pollInitialStatus();
 
     const doneIds = new Set<number>();
 
@@ -297,7 +295,7 @@ export default function LoadingScreen() {
       isMounted = false;
       clearInterval(pollTimer);
     };
-  }, [allDays, generationAttempt, hasApiLoading, tripDayId]);
+  }, [allDays, pollingAttempt, hasApiLoading, tripDayId]);
 
   useEffect(() => {
     if (progress < 100 || loadingStep === 'failed') {
@@ -323,7 +321,7 @@ export default function LoadingScreen() {
     setErrorMessage(null);
     setCompletedDayIds(new Set());
     setProgress(42);
-    setGenerationAttempt((current) => current + 1);
+    setPollingAttempt((current) => current + 1);
   };
 
   const spinnerStyle = useAnimatedStyle(() => ({
@@ -466,7 +464,7 @@ export default function LoadingScreen() {
           </Text>
 
           {!isNextDayMode && photos.length > 3 ? (
-            <Text className="mt-sm text-center text-sm font-bold text-textSecondary">
+            <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary">
               외 {photos.length - 3}장 더
             </Text>
           ) : null}
@@ -481,7 +479,7 @@ export default function LoadingScreen() {
                 style={{ width: progressWidth }}
               />
             </View>
-            <Text className="mt-sm text-center text-sm font-bold text-textSecondary">{progress}%</Text>
+            <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary">{progress}%</Text>
           </View>
         </View>
 

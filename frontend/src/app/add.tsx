@@ -366,7 +366,7 @@ export default function AddScreen() {
             <ChevronLeft size={24} color={colors.textSecondary} />
           </Pressable>
 
-          <Text className="text-lg font-bold text-primary">사진 추가</Text>
+          <Text className="text-lg font-sans-bold text-primary">사진 추가</Text>
           <View className="h-10 w-10" />
         </View>
 
@@ -375,7 +375,7 @@ export default function AddScreen() {
           contentContainerClassName="px-lg pb-xl"
           showsVerticalScrollIndicator={false}>
           <View className="mb-xl">
-            <Text className="text-xl font-bold leading-8 text-textPrimary">
+            <Text className="text-xl font-sans-bold leading-8 text-textPrimary">
               {photoHeading}
             </Text>
             <Text className="mt-sm text-md leading-6 text-textSecondary">
@@ -398,7 +398,7 @@ export default function AddScreen() {
               ) : (
                 <Camera size={24} color={isPhotoLimitReached ? colors.border : colors.primaryLight} />
               )}
-              <Text className="mt-xs text-sm font-bold text-textSecondary">
+              <Text className="mt-xs text-sm font-sans-bold text-textSecondary">
                 {isPreparing ? '준비 중' : isPhotoLimitReached ? '최대 10장' : '사진 추가'}
               </Text>
             </Pressable>
@@ -410,7 +410,7 @@ export default function AddScreen() {
                 style={{ width: tileSize, height: tileSize }}>
                 <Image source={{ uri: photo.thumbnailUri }} className="h-full w-full" resizeMode="cover" />
                 <View className="absolute bottom-xs left-xs rounded-md bg-textPrimary/70 px-xs py-[2px]">
-                  <Text className="text-xs font-bold text-textOnPrimary">{getPhotoDayLabel(photo, selectedDates)}</Text>
+                  <Text className="text-xs font-sans-bold text-textOnPrimary">{getPhotoDayLabel(photo, selectedDates)}</Text>
                 </View>
                 <Pressable
                   accessibilityRole="button"
@@ -426,12 +426,12 @@ export default function AddScreen() {
           {pendingPhotos.length === 0 ? (
             <View className="mt-2xl items-center rounded-lg bg-muted px-lg py-xl">
               <ImagePlus size={30} color={colors.primaryLight} />
-              <Text className="mt-sm text-center text-sm font-bold text-textSecondary">
+              <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary">
                 사진을 여러 장 선택하면 여기에서 순서대로 확인할 수 있어요.
               </Text>
             </View>
           ) : (
-            <Text className="mt-lg text-center text-sm font-bold text-textSecondary">
+            <Text className="mt-lg text-center text-sm font-sans-bold text-textSecondary">
               {pendingPhotos.length}/{MAX_PHOTO_COUNT}장 선택됨
             </Text>
           )}
