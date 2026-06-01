@@ -2,7 +2,7 @@ import { Stack } from "expo-router";
 import React from "react";
 import { useFonts } from "expo-font";
 import { DancingScript_400Regular } from "@expo-google-fonts/dancing-script";
-import { GowunDodum_400Regular } from "@expo-google-fonts/gowun-dodum";
+import { Hahmlet_400Regular, Hahmlet_600SemiBold } from "@expo-google-fonts/hahmlet";
 import { View } from "react-native";
 import { useUserUuidBootstrap } from "@/hooks/use-user-uuid";
 import "../../global.css";
@@ -13,7 +13,9 @@ export default function RootLayout() {
 
   const [fontsLoaded] = useFonts({
     DancingScript: DancingScript_400Regular,
-    GowunDodum: GowunDodum_400Regular,
+    Hahmlet: Hahmlet_400Regular,        // 추가
+    HahmletBold: Hahmlet_600SemiBold,       // 추가
+
   });
 
   if (!fontsLoaded) {
