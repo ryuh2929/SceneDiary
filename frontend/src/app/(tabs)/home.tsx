@@ -229,8 +229,8 @@ export default function HomeScreen() {
 
                   {/* 여행 대표 이모지: item.flag가 있을 때만 표시 */}
                   <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                    {item.flag && (
-                      <EmojiIcon codepoint={item.flag} size={26} />
+                    {(item.flag || "1f30f") && (
+                      <EmojiIcon codepoint={item.flag || "1f30f"} size={26} />
                     )}
                   </View>
                 </Pressable>

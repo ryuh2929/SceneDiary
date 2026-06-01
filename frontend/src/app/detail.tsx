@@ -288,7 +288,12 @@ export default function TravelDetailUI() {
                   </Text>
                 </View>
               </View>
-
+              {/* 여행 대표 이모지: trip.flag가 있을 때만 표시 (테스트용 폴백: "1f30f" = 🌏) */}
+              {(trip.flag || "1f30f") && (
+                <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
+                  <EmojiIcon codepoint={trip.flag || "1f30f"} size={26} />
+                </View>
+              )}
             </View>
           </View>
         </LinearGradient>
