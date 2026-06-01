@@ -102,6 +102,10 @@ const colors = {
 };
 
 const TRAVEL_ANALYSIS_COOLDOWN_MS = 60 * 1000;
+const TRAVEL_ANALYSIS_FAST_POLL_COUNT = 5;
+const TRAVEL_ANALYSIS_FAST_POLL_INTERVAL_MS = 1000;
+const TRAVEL_ANALYSIS_SLOW_POLL_COUNT = 5;
+const TRAVEL_ANALYSIS_SLOW_POLL_INTERVAL_MS = 3000;
 const PROFILE_IMAGE_SIZE = 256;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -179,6 +183,21 @@ type AppIconProps = {
   size?: number;
   color?: string;
 };
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isSameTravelType(
+  previous: typeof dummySettingsProfile.travelType,
+  next: typeof dummySettingsProfile.travelType,
+) {
+  return (
+    previous.title === next.title &&
+    previous.description === next.description &&
+    previous.icon === next.icon
+  );
+}
 
 function profileImageResizeAction(width: number, height: number) {
   // 원본 비율을 유지한 채 짧은 변을 256px로 맞추면, 가운데를 잘라도 얼굴/풍경이 찌그러지지 않습니다.
@@ -664,6 +683,25 @@ export default function SettingsScreen() {
     }
   };
 
+  const pollTravelStyleAnalysisResult = async (previousTravelType: typeof profile.travelType) => {
+    const pollIntervals = [
+      ...Array(TRAVEL_ANALYSIS_FAST_POLL_COUNT).fill(TRAVEL_ANALYSIS_FAST_POLL_INTERVAL_MS),
+      ...Array(TRAVEL_ANALYSIS_SLOW_POLL_COUNT).fill(TRAVEL_ANALYSIS_SLOW_POLL_INTERVAL_MS),
+    ];
+
+    // LLM 분석은 백그라운드에서 끝나므로, 분석 요청 후 잠깐 설정 프로필을 다시 조회해 최신 결과를 화면에 반영합니다.
+    for (const interval of pollIntervals) {
+      await wait(interval);
+
+      const latestProfile = await fetchSettingsProfile();
+
+      if (!isSameTravelType(previousTravelType, latestProfile.travelType)) {
+        setProfile(latestProfile);
+        return;
+      }
+    }
+  };
+
   const startTravelStyleAnalysis = async () => {
     if (isRequestingTravelAnalysis) {
       return;
@@ -682,6 +720,7 @@ export default function SettingsScreen() {
     setProfileNotice(null);
 
     try {
+      const previousTravelType = profile.travelType;
       const updatedProfile = await requestTravelStyleAnalysis();
       setProfile(updatedProfile);
       // 분석 요청이 정상 접수된 경우에만 1분 제한을 시작합니다. 실패한 요청은 바로 재시도할 수 있습니다.
@@ -690,6 +729,11 @@ export default function SettingsScreen() {
         message: '여행 유형 분석을 시작했어요. 결과가 곧 반영됩니다.',
         type: 'success',
       });
+      try {
+        await pollTravelStyleAnalysisResult(previousTravelType);
+      } catch {
+        // polling은 화면 자동 갱신을 위한 보조 동작입니다. 요청 자체는 성공했으므로 실패 토스트로 덮어쓰지 않습니다.
+      }
     } catch (error) {
       setProfileNotice({
         message: '여행 유형 분석 요청에 실패했어요. 잠시 후 다시 시도해주세요.',
