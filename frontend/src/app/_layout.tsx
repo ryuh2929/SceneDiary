@@ -7,7 +7,6 @@ import {
   Hahmlet_500Medium,
   Hahmlet_600SemiBold,
   Hahmlet_700Bold,
-  Hahmlet_800ExtraBold,
 } from "@expo-google-fonts/hahmlet";
 import { View } from "react-native";
 import { useUserUuidBootstrap } from "@/hooks/use-user-uuid";
@@ -25,7 +24,6 @@ export default function RootLayout() {
     HahmletMedium: Hahmlet_500Medium,
     HahmletSemiBold: Hahmlet_600SemiBold,
     HahmletRealBold: Hahmlet_700Bold,
-    HahmletExtraBold: Hahmlet_800ExtraBold,
 
   });
 

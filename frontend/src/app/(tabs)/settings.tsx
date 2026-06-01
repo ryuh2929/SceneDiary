@@ -242,11 +242,11 @@ const ProfileImageEditIcon = React.memo(function ProfileImageEditIcon() {
 });
 
 const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
-  return <Sparkles size={15} color={colors.primary} strokeWidth={2.2} />;
+  return <Sparkles size={14} color={colors.primary} strokeWidth={2.2} />;
 });
 
 const TravelAnalysisActionIcon = React.memo(function TravelAnalysisActionIcon() {
-  return <WandSparkles size={15} color={colors.primary} strokeWidth={2.2} />;
+  return <WandSparkles size={14} color={colors.primary} strokeWidth={2.2} />;
 });
 
 const TravelAnalysisButtonIcon = React.memo(function TravelAnalysisButtonIcon() {
@@ -362,7 +362,7 @@ function PersonaChip({
       onPress={onPress}
       className={`rounded-full px-3 py-2 ${selected ? 'bg-primary' : 'bg-muted'}`}>
       <Text
-        className={`text-sm font-sans-real-bold ${
+        className={`text-sm font-sans-semibold ${
           selected ? 'text-textOnPrimary' : 'text-textSecondary'
         }`}>
         {label}
@@ -386,7 +386,7 @@ function ToggleRow({
         <View className="h-9 w-9 items-center justify-center rounded-lg bg-muted">
           <ToggleIcon id={item.id} />
         </View>
-        <Text className="text-md font-sans-semibold text-textPrimary">{item.label}</Text>
+        <Text className="text-md font-sans-real-bold text-textPrimary">{item.label}</Text>
       </View>
 
       <ToggleSwitch value={value} onValueChange={onValueChange} />
@@ -716,7 +716,7 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}>
       <View className="mx-auto w-full max-w-[420px] flex-1">
         <View className="mb-xl flex-row items-center justify-between">
-          <Text className="text-lg font-sans-real-bold text-textPrimary">설정</Text>
+          <Text className="text-lg font-sans-semibold text-textPrimary">설정</Text>
           {isLoadingProfile ? (
             <Text className="text-sm font-sans-semibold text-textSecondary">불러오는 중</Text>
           ) : null}
@@ -762,7 +762,7 @@ export default function SettingsScreen() {
           <View className="mt-md flex-row items-center justify-center gap-xs">
             {/* 오른쪽 수정 아이콘과 같은 폭의 빈 공간을 왼쪽에 둬서 닉네임 텍스트가 프로필 사진 중앙과 맞도록 합니다. */}
             <View className="h-7 w-7" />
-            <Text className="text-[20px] font-sans-extrabold text-textPrimary">{profile.nickname}</Text>
+            <Text className="text-[20px] font-sans-semibold text-textPrimary">{profile.nickname}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="닉네임 수정"
@@ -823,7 +823,7 @@ export default function SettingsScreen() {
                 <AppIcon icon={profile.travelType.icon} size={24} color={colors.primary} />
               </View>
               <View className="min-w-0 flex-1">
-                <Text className="text-lg font-sans-extrabold text-textPrimary">
+                <Text className="text-lg font-sans-semibold text-textPrimary">
                   {profile.travelType.title}
                 </Text>
                 <Text className="mt-xs text-sm font-sans-semibold text-textSecondary">
@@ -864,7 +864,7 @@ export default function SettingsScreen() {
             },
             noticeStyle,
           ]}>
-          <Text className="text-center text-sm font-sans-real-bold" style={{ color: noticeColors.textColor }}>
+          <Text className="text-center text-sm font-sans-semibold" style={{ color: noticeColors.textColor }}>
             {profileNotice.message}
           </Text>
         </AnimatedView>
