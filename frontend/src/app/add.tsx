@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import * as MediaLibrary from 'expo-media-library';
 import { PermissionsAndroid } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -20,6 +21,11 @@ type PendingPhoto = {
   takenDate?: string;
   gpsLatitude?: number;
   gpsLongitude?: number;
+  // GPS 좌표를 OS 지오코딩으로 변환한 지명. 백엔드에서 trip_days.location_summary,
+  // trips.destination 자동 채우기에 사용됩니다. 권한·네트워크 실패 시 undefined.
+  placeName?: string;       // 일차 대표 지명 (district 우선)
+  countryName?: string;     // 국가명 — trip destination "국가/도시" 의 앞부분
+  cityName?: string;        // 도시명 — trip destination "국가/도시" 의 뒷부분
   fileSizeBytes?: number;
   width: number;
   height: number;
@@ -195,41 +201,63 @@ function getPhotoDayLabel(photo: PendingPhoto, selectedDates: string[]) {
   return dayIndex >= 0 ? `${dayIndex + 1}일차` : String(photo.displayOrder + 1);
 }
 
+// GPS 좌표 → 지명. 권한 거부·네트워크 실패 시 undefined 반환(조용히 폴백).
+// iOS 는 CLGeocoder 사용 — 위치 권한 없어도 작동. Android 는 위치 권한 필요.
+async function reverseGeocode(
+  lat: number,
+  lon: number,
+): Promise<{ placeName?: string; countryName?: string; cityName?: string } | undefined> {
+  try {
+    const results = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
+    const first = results[0];
+    if (!first) return undefined;
+    // 일차 대표 지명: district(구/동급) 우선, 없으면 city, 그것도 없으면 region.
+    // 예) "신주쿠", "오다이바", "강남구"
+    const placeName = first.district || first.city || first.subregion || first.region || undefined;
+    // trip 단위 destination 의 "국가/도시" 부분. city 가 비어있는 한국식 주소는 region 로 폴백.
+    const countryName = first.country || undefined;
+    const cityName = first.city || first.region || undefined;
+    return { placeName, countryName, cityName };
+  } catch {
+    return undefined;
+  }
+}
+
 async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrder: number): Promise<PendingPhoto> {
   // 리사이즈하면 EXIF가 사라지므로, 원본 asset에서 GPS를 먼저 읽습니다.
   const gps = parseExifGps(asset.exif);
-  // AI 분석용 이미지는 너무 커지지 않게 줄이고, 화면 미리보기용 썸네일은 별도로 생성합니다.
-  const fileImage = await ImageManipulator.manipulateAsync(
-    asset.uri,
-    [resizeAction(asset.width, asset.height, MAX_IMAGE_SIZE)],
-    {
-      compress: 0.85,
-      format: ImageManipulator.SaveFormat.JPEG,
-    },
-  );
-
+  // GPS 가 있으면 OS 지오코딩으로 지명도 미리 확보. 백엔드가 그대로 location_summary/destination 으로 사용.
+  const geo = gps ? await reverseGeocode(gps.latitude, gps.longitude) : undefined;
+  // 썸네일(화면 미리보기용)만 만들고, 백엔드 업로드용 파일은 원본(asset.uri)을 그대로 씁니다.
+  //   이유: ImageManipulator 로 리사이즈하면 EXIF(GPS/촬영일시)가 모두 날아갑니다.
+  //   프론트 parseExifGps 가 권한·picker 제약으로 GPS 를 못 읽을 때, 백엔드의
+  //   extract_image_gps_coordinates fallback 이 raw_bytes 에서 GPS 를 다시 시도하려면
+  //   원본 파일을 받아야 합니다. (리사이즈는 백엔드 image_processor 가 처리)
   const thumbnail = await ImageManipulator.manipulateAsync(
-    fileImage.uri,
-    [resizeAction(fileImage.width, fileImage.height, THUMBNAIL_SIZE)],
+    asset.uri,
+    [resizeAction(asset.width, asset.height, THUMBNAIL_SIZE)],
     {
       compress: 0.72,
       format: ImageManipulator.SaveFormat.JPEG,
     },
   );
-  const fileSizeBytes = await getFileSizeBytes(fileImage.uri);
+  const fileSizeBytes = await getFileSizeBytes(asset.uri);
 
   return {
     id: `${Date.now()}-${displayOrder}-${asset.assetId ?? asset.fileName ?? asset.uri}`,
-    fileUri: fileImage.uri,
+    fileUri: asset.uri, // ← 원본. EXIF 보존됨.
     thumbnailUri: thumbnail.uri,
     originalFilename: asset.fileName ?? `photo-${displayOrder + 1}.jpg`,
-    mimeType: 'image/jpeg',
+    mimeType: asset.mimeType ?? 'image/jpeg',
     takenDate: parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName),
     gpsLatitude: gps?.latitude,
     gpsLongitude: gps?.longitude,
+    placeName: geo?.placeName,
+    countryName: geo?.countryName,
+    cityName: geo?.cityName,
     fileSizeBytes,
-    width: fileImage.width,
-    height: fileImage.height,
+    width: asset.width,
+    height: asset.height,
     displayOrder,
   };
 }
@@ -278,6 +306,11 @@ export default function AddScreen() {
       await PermissionsAndroid.request('android.permission.ACCESS_MEDIA_LOCATION' as never);
       await MediaLibrary.requestPermissionsAsync();
     }
+    // 좌표 → 지명 자동 변환에 필요한 권한.
+    // Android: reverseGeocodeAsync 가 위치 권한 필요 — 여기서 미리 요청.
+    // iOS: 권한 없어도 CLGeocoder 가 동작하지만, 요청은 idempotent 라 무해.
+    // 거부해도 흐름은 계속됨(지명 비워둔 채 업로드 → 작성 화면에서 사용자가 직접 지정).
+    await Location.requestForegroundPermissionsAsync();
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
