@@ -82,6 +82,24 @@ export async function updateNickname(nickname: string) {
   return normalizeSettingsProfile(profile);
 }
 
+export async function requestTravelStyleAnalysis() {
+  const userUuid = await ensureCurrentUser();
+  const query = new URLSearchParams({ user_uuid: userUuid });
+
+  // 설정 화면의 분석 버튼은 백엔드에 분석 작업 예약만 요청하고, 실제 분석은 서버 백그라운드에서 진행됩니다.
+  const response = await fetch(`${getApiBaseUrl()}/settings/travel-style-analysis?${query.toString()}`, {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to request travel style analysis.');
+  }
+
+  const profile = (await response.json()) as SettingsProfile;
+
+  return normalizeSettingsProfile(profile);
+}
+
 function normalizeTravelTypeIcon(icon: unknown): TravelTypeIconName {
   // 백엔드가 재시작되지 않은 경우 예전 { ios, android, web } 형태가 올 수 있어서 프론트에서 한 번 더 정리합니다.
   const iconKey =
