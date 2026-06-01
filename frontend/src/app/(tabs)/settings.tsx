@@ -451,6 +451,9 @@ function ToggleRow({
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const {
+    isDarkMode: globalIsDarkMode,
+    isPushEnabled: globalIsPushEnabled,
+    writingPersona: globalWritingPersona,
     syncSettingsProfile,
     setWritingPersona: setGlobalWritingPersona,
     setIsDarkMode: setGlobalIsDarkMode,
@@ -468,16 +471,33 @@ export default function SettingsScreen() {
   const [travelAnalysisCooldownUntil, setTravelAnalysisCooldownUntil] = useState<number | null>(null);
   const [travelAnalysisCooldownRemaining, setTravelAnalysisCooldownRemaining] = useState(0);
 
-  // 토글 값은 화면에서 즉시 확인할 수 있도록 로컬 상태로 관리하고, 이후 DB/API 값으로 대체하기 쉽게 id 기준 객체로 변환합니다.
+  // 설정 페이지 첫 진입 시 더미 데이터의 라이트모드 값이 잠깐 보이지 않도록,
+  // 이미 앱 전역 상태에 저장된 최신 설정값을 초기 토글값으로 우선 사용합니다.
   const initialToggles = useMemo(
-    () =>
-      Object.fromEntries(profile.toggles.map((toggle) => [toggle.id, toggle.enabled])) as Record<
+    () => ({
+      ...(Object.fromEntries(profile.toggles.map((toggle) => [toggle.id, toggle.enabled])) as Record<
         SettingsToggle['id'],
         boolean
-      >,
-    [profile.toggles],
+      >),
+      darkMode: globalIsDarkMode,
+      pushNotification: globalIsPushEnabled,
+    }),
+    [globalIsDarkMode, globalIsPushEnabled, profile.toggles],
   );
   const [toggles, setToggles] = useState(initialToggles);
+  useEffect(() => {
+    if (isLoaded) {
+      return;
+    }
+
+    // API 응답을 기다리는 동안에는 앱 전역 상태의 값을 따라가서 라이트/다크 깜빡임을 줄입니다.
+    setToggles((current) => ({
+      ...current,
+      darkMode: globalIsDarkMode,
+      pushNotification: globalIsPushEnabled,
+    }));
+  }, [globalIsDarkMode, globalIsPushEnabled, isLoaded]);
+
   const isDarkMode = toggles.darkMode;
   const isPushEnabled = toggles.pushNotification;
   const settingToggleValues: Record<SettingsToggle['id'], boolean> = {
@@ -488,7 +508,7 @@ export default function SettingsScreen() {
 
   // 페르소나는 하나만 선택되도록 선택된 id만 저장합니다.
   const [writingPersona, setWritingPersona] = useState(
-    profile.persona.tags.find((tag) => tag.selected)?.id ?? profile.persona.tags[0]?.id,
+    globalWritingPersona || (profile.persona.tags.find((tag) => tag.selected)?.id ?? profile.persona.tags[0]?.id),
   );
   const selectedPersona = useMemo(
     () => profile.persona.tags.find((tag) => tag.id === writingPersona),
