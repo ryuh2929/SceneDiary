@@ -20,6 +20,10 @@ backend/uploads/
 # 업로드된 사진 저장소 (이름은 test_images 지만 실제 운영 사진이 쌓이는 폴더)
 backend/test_images/
 
+# DB 백업 덤프 (pg_dump 결과 — 실제 데이터 포함이라 절대 커밋 금지)
+scenediary_backup_*.sql
+*.dump
+
 ### Node ###
 # Logs
 logs
