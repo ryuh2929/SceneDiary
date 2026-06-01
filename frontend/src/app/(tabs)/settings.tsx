@@ -450,7 +450,7 @@ function ToggleRow({
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState(dummySettingsProfile);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isSavingPersona, setIsSavingPersona] = useState(false);
   const [savingToggleId, setSavingToggleId] = useState<SettingsToggle['id'] | null>(null);
@@ -472,15 +472,20 @@ export default function SettingsScreen() {
   );
   const [toggles, setToggles] = useState(initialToggles);
   const isDarkMode = toggles.darkMode;
+  const isPushEnabled = toggles.pushNotification;
+  const settingToggleValues: Record<SettingsToggle['id'], boolean> = {
+    darkMode: isDarkMode,
+    pushNotification: isPushEnabled,
+  };
   const colors = isDarkMode ? darkColors : lightColors;
 
   // 페르소나는 하나만 선택되도록 선택된 id만 저장합니다.
-  const [selectedPersonaId, setSelectedPersonaId] = useState(
+  const [writingPersona, setWritingPersona] = useState(
     profile.persona.tags.find((tag) => tag.selected)?.id ?? profile.persona.tags[0]?.id,
   );
   const selectedPersona = useMemo(
-    () => profile.persona.tags.find((tag) => tag.id === selectedPersonaId),
-    [profile.persona.tags, selectedPersonaId],
+    () => profile.persona.tags.find((tag) => tag.id === writingPersona),
+    [profile.persona.tags, writingPersona],
   );
   const noticeProgress = useDerivedValue(
     () => withTiming(profileNotice ? 1 : 0, { duration: 180 }),
@@ -530,7 +535,7 @@ export default function SettingsScreen() {
             settingsProfile.toggles.map((toggle) => [toggle.id, toggle.enabled]),
           ) as Record<SettingsToggle['id'], boolean>,
         );
-        setSelectedPersonaId(
+        setWritingPersona(
           settingsProfile.persona.tags.find((tag) => tag.selected)?.id ??
             settingsProfile.persona.tags[0]?.id,
         );
@@ -544,7 +549,7 @@ export default function SettingsScreen() {
       })
       .finally(() => {
         if (!ignore) {
-          setIsLoadingProfile(false);
+          setIsLoaded(true);
         }
       });
 
@@ -590,14 +595,14 @@ export default function SettingsScreen() {
   }, [travelAnalysisCooldownUntil]);
 
   const handleSelectPersona = async (personaId: string) => {
-    if (personaId === selectedPersonaId || isSavingPersona) {
+    if (personaId === writingPersona || isSavingPersona) {
       return;
     }
 
-    const previousPersonaId = selectedPersonaId;
+    const previousPersona = writingPersona;
 
     // 버튼을 누른 즉시 화면을 바꾸고, 서버 저장이 끝나면 응답값으로 한 번 더 동기화합니다.
-    setSelectedPersonaId(personaId);
+    setWritingPersona(personaId);
     setProfile((currentProfile) => ({
       ...currentProfile,
       persona: {
@@ -619,16 +624,16 @@ export default function SettingsScreen() {
         updatedProfile.persona.tags[0]?.id;
 
       setProfile(updatedProfile);
-      setSelectedPersonaId(selectedId);
+      setWritingPersona(selectedId);
     } catch (error) {
-      setSelectedPersonaId(previousPersonaId);
+      setWritingPersona(previousPersona);
       setProfile((currentProfile) => ({
         ...currentProfile,
         persona: {
           ...currentProfile.persona,
           tags: currentProfile.persona.tags.map((tag) => ({
             ...tag,
-            selected: tag.id === previousPersonaId,
+            selected: tag.id === previousPersona,
           })),
         },
       }));
@@ -810,7 +815,7 @@ export default function SettingsScreen() {
           <Text className={`text-lg font-sans-semibold ${isDarkMode ? 'text-dark-textPrimary' : 'text-textPrimary'}`}>
             설정
           </Text>
-          {isLoadingProfile ? (
+          {!isLoaded ? (
             <Text className={`text-sm font-sans-semibold ${isDarkMode ? 'text-dark-textSecondary' : 'text-textSecondary'}`}>
               불러오는 중
             </Text>
@@ -893,7 +898,7 @@ export default function SettingsScreen() {
                 <PersonaChip
                   key={tag.id}
                   label={tag.label}
-                  selected={tag.id === selectedPersonaId}
+                  selected={tag.id === writingPersona}
                   isDarkMode={isDarkMode}
                   onPress={() => handleSelectPersona(tag.id)}
                 />
@@ -948,7 +953,7 @@ export default function SettingsScreen() {
             <ToggleRow
               key={toggle.id}
               item={toggle}
-              value={toggles[toggle.id]}
+              value={settingToggleValues[toggle.id]}
               colors={colors}
               isDarkMode={isDarkMode}
               onValueChange={(value) => handleToggleChange(toggle.id, value)}
