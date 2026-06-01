@@ -56,18 +56,36 @@ export async function uploadFirstDayPhotos(photos: {
   fileUri: string;
   originalFilename: string;
   mimeType: string;
-}[]) {
+  takenDate?: string;
+  gpsLatitude?: number;
+  gpsLongitude?: number;
+}[], options?: {
+  tripId?: string;
+  dayNumber?: number;
+}) {
   const formData = new FormData();
-  formData.append('day_number', '1');
+  formData.append('day_number', String(options?.dayNumber ?? 1));
   formData.append('title', '새 여행');
+  if (options?.tripId) {
+    formData.append('trip_id', options.tripId);
+  }
 
-  photos.forEach((photo) => {
-    formData.append('files', {
-      uri: photo.fileUri,
-      name: photo.originalFilename,
-      type: photo.mimeType,
-    } as unknown as Blob);
-  });
+  for (const photo of photos) {
+    formData.append('photo_dates', photo.takenDate ?? '');
+    // 리사이즈 후 EXIF가 사라지므로 리사이즈 전에 추출한 GPS를 별도 form 필드로 전송합니다.
+    formData.append('photo_gps_latitudes', photo.gpsLatitude != null ? String(photo.gpsLatitude) : '');
+    formData.append('photo_gps_longitudes', photo.gpsLongitude != null ? String(photo.gpsLongitude) : '');
+    if (Platform.OS === 'web') {
+      const blob = await fetch(photo.fileUri).then((response) => response.blob());
+      formData.append('files', blob, photo.originalFilename);
+    } else {
+      formData.append('files', {
+        uri: photo.fileUri,
+        name: photo.originalFilename,
+        type: photo.mimeType,
+      } as unknown as Blob);
+    }
+  }
 
   const response = await fetch(`${getApiBaseUrl()}/trips/upload-first-day`, {
     method: 'POST',
@@ -108,9 +126,20 @@ export function fetchTripDay(tripDayId: number) {
   return request<DayPage>(`/trip-days/${tripDayId}`);
 }
 
-// ④ 일차 저장 — 여행지(locationSummary)만 수정
-export function saveDayLocation(tripDayId: number, locationSummary: string) {
+// ④ 일차 저장 — 여행지 이름(locationSummary) + 선택적으로 좌표(lat/lon)
+// 지도 피커에서 위치를 고른 경우 좌표까지 같이 넘어옵니다. 좌표 없이 이름만 저장도 가능.
+// lat/lon 둘 다 있을 때만 body 에 포함 (한쪽만 있는 어중간한 데이터는 안 보냄)
+export function saveDayLocation(
+  tripDayId: number,
+  locationSummary: string,
+  lat?: number,
+  lon?: number,
+) {
   const body: DayUpdate = { locationSummary };
+  if (lat !== undefined && lon !== undefined) {
+    body.lat = lat;
+    body.lon = lon;
+  }
   return request<DayPage>(`/trip-days/${tripDayId}`, {
     method: 'PATCH',
     body: JSON.stringify(body),

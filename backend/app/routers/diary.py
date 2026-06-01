@@ -33,6 +33,7 @@ from app.schemas.diary import (
     TripDiary,
     TripStatusUpdate,
 )
+from app.services.travel_style_analysis import run_travel_style_analysis
 
 router = APIRouter(tags=["diary"])
 
@@ -128,6 +129,9 @@ def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
         dayNumber=trip_day.day_number,
         date=trip_day.date.isoformat(),  # date → "YYYY-MM-DD"
         locationSummary=trip_day.location_summary or "",
+        # Decimal → float. NULL 이면 그대로 None (프론트가 "위치 없음" 분기에 사용).
+        representativeLat=float(trip_day.representative_lat) if trip_day.representative_lat is not None else None,
+        representativeLon=float(trip_day.representative_lon) if trip_day.representative_lon is not None else None,
         weather=_weather_codepoint(trip_day.weather),
         subtitle=trip_day.subtitle or "",
         emotion=trip_day.emotion or "",
@@ -214,7 +218,8 @@ def get_trip_day(
     return _build_day(db, trip_day, _base_url(request))
 
 
-# ④ 일차 저장 — 여행지(location_summary)만 수정
+# ④ 일차 저장 — 여행지(location_summary) + 선택적으로 대표 좌표(lat/lon)
+# lat/lon 둘 다 들어오면 함께 저장. 한쪽만 오는 케이스는 무시(현재 UI 가 항상 둘 다 보냄).
 @router.patch("/trip-days/{trip_day_id}", response_model=DayPage)
 def update_trip_day(
     trip_day_id: int,
@@ -224,6 +229,9 @@ def update_trip_day(
 ) -> DayPage:
     trip_day = _get_trip_day_or_404(db, trip_day_id)
     trip_day.location_summary = body.locationSummary
+    if body.lat is not None and body.lon is not None:
+        trip_day.representative_lat = body.lat
+        trip_day.representative_lon = body.lon
     db.commit()
     db.refresh(trip_day)
     return _build_day(db, trip_day, _base_url(request))
@@ -335,6 +343,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
 
 
 # ⑤ 재생성 — 생성기를 백그라운드로 실행하고 즉시 generating 으로 응답.
+# 일기 재생성은 응답을 먼저 돌려주고, 실제 생성 작업은 백그라운드에서 실행합니다.
 @router.post("/trip-days/{trip_day_id}/regenerate", response_model=DayStatus)
 def regenerate_trip_day(
     trip_day_id: int,
@@ -362,9 +371,18 @@ def regenerate_trip_day(
 # ⑥ 최종 저장 — 여행 상태를 'completed'로
 @router.patch("/trips/{trip_id}", response_model=TripStatusUpdate)
 def update_trip_status(
-    trip_id: int, body: TripStatusUpdate, db: Session = Depends(get_db)
+    trip_id: int,
+    body: TripStatusUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
 ) -> TripStatusUpdate:
     trip = _get_trip_or_404(db, trip_id)
+    previous_status = trip.status
     trip.status = body.status
     db.commit()
+
+    if previous_status != "completed" and body.status == "completed":
+        # diary 라우터는 완료 시점만 감지하고, 중복 분석 여부와 실제 LLM 작업은 서비스 함수가 처리합니다.
+        background_tasks.add_task(run_travel_style_analysis, trip.user_id)
+
     return body

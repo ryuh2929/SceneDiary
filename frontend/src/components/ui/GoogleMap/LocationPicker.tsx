@@ -33,12 +33,14 @@ type Coord = {latitude: number; longitude: number};
 // 이 부품이 바깥(일기 화면)에서 받는 값들 = "props".
 //   visible  : 지금 열려 있니? (true면 화면에 보임)
 //   onClose  : "그냥 닫고 싶을 때" 바깥에게 알리는 함수 (X 버튼)
-//   onSelect : "위치를 다 골랐을 때" 그 지명을 바깥에게 건네는 함수
+//   onSelect : "위치를 다 골랐을 때" 지명 + 좌표를 바깥에게 건네는 함수
 //              → 식당 비유: 주문(열기) 후 "음식 나왔어요"라고 번호 부르는 것과 같음.
+//              지명만 보낸 게 예전 방식. 지금은 좌표(lat/lon)도 함께 보내서
+//              DB의 trip_days.representative_lat/lon 에도 저장될 수 있게 함.
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onSelect: (placeName: string) => void;
+  onSelect: (placeName: string, lat: number, lon: number) => void;
 };
 
 // reverseGeocode(좌표→주소) 결과를 사람이 읽기 좋은 짧은 지명 한 줄로 다듬습니다.
@@ -112,7 +114,9 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
         // 변환 실패해도 멈추지 않고, 아래 toPlaceName 이 좌표로 폴백합니다.
         console.error("지오코딩 실패(좌표로 대체):", e);
       }
-      onSelect(toPlaceName(address, picked)); // ★ 결과를 일기 화면에 전달
+      // ★ 결과를 일기 화면에 전달 (지명 + 좌표).
+      // picked 는 사용자가 지도에서 고른 정확한 좌표 — DB에 그대로 저장됨.
+      onSelect(toPlaceName(address, picked), picked.latitude, picked.longitude);
     } finally {
       setBusy(false);
     }

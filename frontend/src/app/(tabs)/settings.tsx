@@ -1,10 +1,63 @@
 import {
+  Amphora,
+  Baby,
   Bell,
+  Beer,
+  Binoculars,
+  Bird,
+  BottleWine,
+  Bug,
+  Building,
+  Camera,
+  CarFront,
+  Castle,
+  CircleDollarSign,
+  Coffee,
   Compass,
+  Cookie,
+  CookingPot,
+  Dog,
+  FerrisWheel,
+  Fish,
+  FishingHook,
+  FlameKindling,
+  Flower2,
+  Footprints,
+  Hamburger,
+  Helicopter,
+  Hotel,
+  House,
+  IceCreamBowl,
+  Landmark,
+  Map,
+  Martini,
+  Mountain,
+  NotebookPen,
   Moon,
+  Origami,
+  PartyPopper,
   Pencil,
+  RefreshCcw,
+  RollerCoaster,
+  Rose,
+  Sailboat,
+  Sandwich,
+  Ship,
+  Snail,
+  Snowflake,
+  Soup,
   Sparkles,
-  User,
+  Squirrel,
+  Sun,
+  TentTree,
+  TicketsPlane,
+  TreePalm,
+  Trees,
+  Turtle,
+  Utensils,
+  Wine,
+  Backpack,
+  WandSparkles,
   type LucideIcon,
 } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -25,6 +78,7 @@ import {
 } from '@/data/settings';
 import {
   fetchSettingsProfile,
+  requestTravelStyleAnalysis,
   updateNickname,
   updateSettingsToggle,
   updateWritingPersona,
@@ -45,9 +99,63 @@ const colors = {
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const AnimatedView = Animated.createAnimatedComponent(View);
 
+// DB/API는 아이콘을 문자열로 내려주므로, 프런트에서 실제 lucide 아이콘 컴포넌트로 매핑합니다.
+// 새 여행 유형 아이콘을 허용하려면 import와 이 매핑, TravelTypeIconName 타입을 함께 추가해야 합니다.
 const travelTypeIcons: Record<TravelTypeIconName, LucideIcon> = {
-  compass: Compass,
+  Flower2,
+  Camera,
+  Compass,
+  Trees,
+  TreePalm,
+  TentTree,
+  Binoculars,
+  FlameKindling,
+  PartyPopper,
+  Martini,
+  Beer,
+  BottleWine,
+  Wine,
+  Hamburger,
+  Sandwich,
+  Utensils,
+  TicketsPlane,
+  Map,
+  Helicopter,
+  Ship,
+  CarFront,
+  Amphora,
+  Landmark,
+  FerrisWheel,
+  RollerCoaster,
+  Mountain,
+  Coffee,
+  Building,
+  Castle,
+  Hotel,
+  House,
+  Sailboat,
+  FishingHook,
+  Fish,
+  IceCreamBowl,
+  Soup,
+  CookingPot,
+  Cookie,
+  Dog,
+  Snail,
+  Squirrel,
+  Turtle,
+  Bird,
+  Bug,
+  Origami,
+  Footprints,
+  Rose,
+  Baby,
+  CircleDollarSign,
+  Snowflake,
+  Sun,
+  NotebookPen,
 };
 
 const toggleIcons: Record<SettingsToggle['id'], LucideIcon> = {
@@ -62,20 +170,32 @@ type AppIconProps = {
 };
 
 const ProfileIcon = React.memo(function ProfileIcon() {
-  return <User size={32} color={colors.primary} strokeWidth={2.2} />;
+  return <Backpack size={32} color={colors.primary} strokeWidth={2.2} />;
 });
 
 const EditIcon = React.memo(function EditIcon() {
   return <Pencil size={13} color={colors.textMuted} strokeWidth={2.2} />;
 });
 
+const ProfileImageEditIcon = React.memo(function ProfileImageEditIcon() {
+  return <Camera size={15} color={colors.textOnPrimary} strokeWidth={2.4} />;
+});
+
 const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
   return <Sparkles size={15} color={colors.primary} strokeWidth={2.2} />;
 });
 
+const TravelAnalysisActionIcon = React.memo(function TravelAnalysisActionIcon() {
+  return <WandSparkles size={15} color={colors.primary} strokeWidth={2.2} />;
+});
+
+const TravelAnalysisButtonIcon = React.memo(function TravelAnalysisButtonIcon() {
+  return <RefreshCcw size={13} color={colors.primary} strokeWidth={2.4} />;
+});
+
 const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
   // lucide 아이콘은 SVG 기반이라 iOS, Android, Web에서 같은 형태로 렌더링됩니다.
-  const Icon = travelTypeIcons[icon] ?? Compass;
+  const Icon = travelTypeIcons[icon] ?? NotebookPen;
 
   return <Icon size={size} color={color} strokeWidth={2.2} />;
 });
@@ -222,6 +342,8 @@ export default function SettingsScreen() {
   const [isSavingPersona, setIsSavingPersona] = useState(false);
   const [savingToggleId, setSavingToggleId] = useState<SettingsToggle['id'] | null>(null);
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
+  const [isRequestingTravelAnalysis, setIsRequestingTravelAnalysis] = useState(false);
+  const [profileNotice, setProfileNotice] = useState<string | null>(null);
 
   // 토글 값은 화면에서 즉시 확인할 수 있도록 로컬 상태로 관리하고, 이후 DB/API 값으로 대체하기 쉽게 id 기준 객체로 변환합니다.
   const initialToggles = useMemo(
@@ -242,6 +364,14 @@ export default function SettingsScreen() {
     () => profile.persona.tags.find((tag) => tag.id === selectedPersonaId),
     [profile.persona.tags, selectedPersonaId],
   );
+  const noticeProgress = useDerivedValue(
+    () => withTiming(profileNotice ? 1 : 0, { duration: 180 }),
+    [profileNotice],
+  );
+  const noticeStyle = useAnimatedStyle(() => ({
+    opacity: noticeProgress.value,
+    transform: [{ translateY: (1 - noticeProgress.value) * -10 }],
+  }));
 
   useEffect(() => {
     let ignore = false;
@@ -263,6 +393,7 @@ export default function SettingsScreen() {
             settingsProfile.persona.tags[0]?.id,
         );
         setProfileError(null);
+        setProfileNotice(null);
       })
       .catch((error: Error) => {
         if (!ignore) {
@@ -279,6 +410,18 @@ export default function SettingsScreen() {
       ignore = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!profileNotice) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setProfileNotice(null);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [profileNotice]);
 
   const handleSelectPersona = async (personaId: string) => {
     if (personaId === selectedPersonaId || isSavingPersona) {
@@ -301,6 +444,7 @@ export default function SettingsScreen() {
     }));
     setIsSavingPersona(true);
     setProfileError(null);
+    setProfileNotice(null);
 
     try {
       const updatedProfile = await updateWritingPersona(personaId);
@@ -339,6 +483,7 @@ export default function SettingsScreen() {
     setToggles((current) => ({ ...current, [toggleId]: enabled }));
     setSavingToggleId(toggleId);
     setProfileError(null);
+    setProfileNotice(null);
 
     try {
       const updatedProfile = await updateSettingsToggle(toggleId, enabled);
@@ -368,9 +513,36 @@ export default function SettingsScreen() {
 
   const handleSaveNickname = async (nickname: string) => {
     setProfileError(null);
+    setProfileNotice(null);
 
     const updatedProfile = await updateNickname(nickname);
     setProfile(updatedProfile);
+  };
+
+  const openProfileImagePicker = () => {
+    // TODO: 프로필 사진 업로드 API를 연결할 때 이미지 선택/업로드 로직을 이 함수에 붙입니다.
+  };
+
+  const startTravelStyleAnalysis = async () => {
+    if (isRequestingTravelAnalysis) {
+      return;
+    }
+
+    setIsRequestingTravelAnalysis(true);
+    setProfileError(null);
+    setProfileNotice(null);
+
+    try {
+      const updatedProfile = await requestTravelStyleAnalysis();
+      setProfile(updatedProfile);
+      setProfileNotice('여행 유형 분석을 시작했어요. 결과가 곧 반영됩니다.');
+    } catch (error) {
+      setProfileError(
+        error instanceof Error ? error.message : 'Failed to request travel style analysis.',
+      );
+    } finally {
+      setIsRequestingTravelAnalysis(false);
+    }
   };
 
   // 하단 네브바는 별도 컴포넌트가 담당하므로, 이 화면은 안전 영역과 본문 여백만 책임집니다.
@@ -402,11 +574,29 @@ export default function SettingsScreen() {
         ) : null}
 
         <View className="items-center">
-          <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-primaryLight">
-            <ProfileIcon />
+          <View className="relative h-[82px] w-[82px] items-center justify-center">
+            <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-primaryLight">
+              <ProfileIcon />
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="프로필 사진 수정"
+              onPress={openProfileImagePicker}
+              className="absolute bottom-0 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-surface bg-primary"
+              style={{
+                shadowColor: colors.text,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.14,
+                shadowRadius: 4,
+                elevation: 3,
+              }}>
+              <ProfileImageEditIcon />
+            </Pressable>
           </View>
 
-          <View className="mt-md flex-row items-center gap-xs">
+          <View className="mt-md flex-row items-center justify-center gap-xs">
+            {/* 오른쪽 수정 아이콘과 같은 폭의 빈 공간을 왼쪽에 둬서 닉네임 텍스트가 프로필 사진 중앙과 맞도록 합니다. */}
+            <View className="h-7 w-7" />
             <Text className="text-[20px] font-extrabold text-textPrimary">{profile.nickname}</Text>
             <Pressable
               accessibilityRole="button"
@@ -442,12 +632,32 @@ export default function SettingsScreen() {
           </SettingsCard>
 
           <SettingsCard>
-            <Text className="mb-md text-md font-bold text-textPrimary">여행 유형 분석</Text>
+            <View className="mb-md flex-row items-center justify-between gap-sm">
+              <View className="flex-row items-center gap-sm">
+                <TravelAnalysisActionIcon />
+                <Text className="text-md font-bold text-textPrimary">여행 유형 분석</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="여행 유형 다시 분석"
+                accessibilityState={{ disabled: isRequestingTravelAnalysis }}
+                onPress={startTravelStyleAnalysis}
+                disabled={isRequestingTravelAnalysis}
+                // 여행 유형 카드의 제목 줄에서 재분석 액션을 오른쪽 끝에 고정합니다.
+                className="h-6 w-6 items-center justify-center rounded-md bg-muted"
+                style={{
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  opacity: isRequestingTravelAnalysis ? 0.55 : 1,
+                }}>
+                <TravelAnalysisButtonIcon />
+              </Pressable>
+            </View>
             <View className="flex-row items-center gap-md">
               <View className="h-[52px] w-[52px] items-center justify-center rounded-lg bg-accent">
                 <AppIcon icon={profile.travelType.icon} size={24} color={colors.primary} />
               </View>
-              <View className="flex-1">
+              <View className="min-w-0 flex-1">
                 <Text className="text-lg font-extrabold text-textPrimary">
                   {profile.travelType.title}
                 </Text>
@@ -470,6 +680,28 @@ export default function SettingsScreen() {
       </View>
 
       </ScrollView>
+
+      {profileNotice ? (
+        <AnimatedView
+          pointerEvents="none"
+          className="absolute left-md right-md z-10 mx-auto max-w-[420px] rounded-lg border px-md py-sm"
+          style={[
+            {
+              top: (contentInset?.paddingTop ?? 24) + 44,
+              alignSelf: 'center',
+              backgroundColor: '#ECFDF3',
+              borderColor: '#86D39B',
+              shadowColor: colors.text,
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: 0.12,
+              shadowRadius: 8,
+              elevation: 5,
+            },
+            noticeStyle,
+          ]}>
+          <Text className="text-center text-sm font-bold text-[#257A3E]">{profileNotice}</Text>
+        </AnimatedView>
+      ) : null}
 
       <NicknameModal
         visible={isNicknameModalVisible}

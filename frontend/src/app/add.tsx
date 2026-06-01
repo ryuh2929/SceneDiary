@@ -1,10 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, ChevronLeft, ImagePlus, Loader2, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { uploadFirstDayPhotos } from '@/api/diary';
@@ -15,6 +15,9 @@ type PendingPhoto = {
   thumbnailUri: string;
   originalFilename: string;
   mimeType: string;
+  takenDate?: string;
+  gpsLatitude?: number;
+  gpsLongitude?: number;
   fileSizeBytes?: number;
   width: number;
   height: number;
@@ -40,7 +43,7 @@ const colors = {
 };
 
 const MAX_IMAGE_SIZE = 1024;
-const THUMBNAIL_SIZE = 240;
+const THUMBNAIL_SIZE = 256;
 const MAX_PHOTO_COUNT = 10;
 
 // 원본 비율을 유지하면서 긴 변만 기준 크기 이하로 줄입니다.
@@ -62,13 +65,143 @@ async function getFileSizeBytes(uri: string) {
   }
 }
 
+function parseExifTakenDate(exif: Record<string, unknown> | null | undefined): string | undefined {
+  if (!exif) {
+    return undefined;
+  }
+
+  const dateCandidates = [
+    exif.SubSecDateTimeOriginal,
+    exif.CompositeSubSecDateTimeOriginal,
+    exif['Composite:SubSecDateTimeOriginal'],
+    exif.TimeStamp,
+    exif.SamsungTimeStamp,
+    exif['Samsung:TimeStamp'],
+    exif.DateTimeOriginal,
+    exif.DateTimeDigitized,
+    exif.DateTime,
+    exif.CreateDate,
+    exif.ModifyDate,
+  ];
+
+  const rawDate = dateCandidates.find((value) => typeof value === 'string');
+  const match = typeof rawDate === 'string' ? rawDate.match(/^(20\d{2})[:/-](\d{2})[:/-](\d{2})/) : null;
+  if (!match) {
+    return undefined;
+  }
+
+  return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
+function parseGpsCoordinateValue(value: unknown): number | undefined {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const rationalMatch = value.match(/^(-?\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/);
+    const parsed = rationalMatch
+      ? Number(rationalMatch[1]) / Number(rationalMatch[2])
+      : Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  if (value && typeof value === 'object' && 'numerator' in value && 'denominator' in value) {
+    const rational = value as { numerator: unknown; denominator: unknown };
+    const numerator = parseGpsCoordinateValue(rational.numerator);
+    const denominator = parseGpsCoordinateValue(rational.denominator);
+    if (numerator == null || !denominator) return undefined;
+    return numerator / denominator;
+  }
+  if (Array.isArray(value) && value.length === 3) {
+    const [degrees, minutes, seconds] = value.map(parseGpsCoordinateValue);
+    if (degrees == null || minutes == null || seconds == null) return undefined;
+    return degrees + minutes / 60 + seconds / 3600;
+  }
+  return undefined;
+}
+
+function parseExifGps(exif: Record<string, unknown> | null | undefined): { latitude: number; longitude: number } | undefined {
+  if (!exif) return undefined;
+
+  const lat = exif.GPSLatitude ?? exif['GPS:GPSLatitude'];
+  const lon = exif.GPSLongitude ?? exif['GPS:GPSLongitude'];
+  const latRef = String(exif.GPSLatitudeRef ?? exif['GPS:GPSLatitudeRef'] ?? 'N').toUpperCase();
+  const lonRef = String(exif.GPSLongitudeRef ?? exif['GPS:GPSLongitudeRef'] ?? 'E').toUpperCase();
+
+  const latitude = parseGpsCoordinateValue(lat);
+  const longitude = parseGpsCoordinateValue(lon);
+  if (latitude === undefined || longitude === undefined) return undefined;
+
+  const signedLat = latRef.startsWith('S') ? -Math.abs(latitude) : Math.abs(latitude);
+  const signedLon = lonRef.startsWith('W') ? -Math.abs(longitude) : Math.abs(longitude);
+
+  if (signedLat === 0 && signedLon === 0) return undefined;
+  if (Math.abs(signedLat) > 90 || Math.abs(signedLon) > 180) return undefined;
+
+  return { latitude: signedLat, longitude: signedLon };
+}
+
+function parseFilenameDate(filename: string | null | undefined): string | undefined {
+  if (!filename) {
+    return undefined;
+  }
+
+  const match = filename.match(/(20\d{2})[-_. ]?(\d{2})[-_. ]?(\d{2})/);
+  if (!match) {
+    return undefined;
+  }
+
+  return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
+function getSelectedDates(photos: PendingPhoto[]) {
+  return Array.from(new Set(photos.map((photo) => photo.takenDate).filter(Boolean) as string[])).sort();
+}
+
+function formatDisplayDate(dateValue: string) {
+  const [year, month, day] = dateValue.split('-');
+  return `${year}.${month}.${day}`;
+}
+
+function getPhotoHeading(selectedDates: string[], targetDayNumber?: number) {
+  if (targetDayNumber) {
+    return `${targetDayNumber}일차 여행 사진을 골라주세요`;
+  }
+
+  if (selectedDates.length === 0) {
+    return '여행 사진을 골라주세요';
+  }
+
+  if (selectedDates.length === 1) {
+    return `${formatDisplayDate(selectedDates[0])} 사진을 골라주세요`;
+  }
+
+  return `총 ${selectedDates.length}일치 사진을 골라주세요`;
+}
+
+function getPhotoDescription(selectedDates: string[]) {
+  if (selectedDates.length <= 1) {
+    return '최대 10장까지 선택할 수 있고, 글 작성 화면용 썸네일을 따로 준비해요.';
+  }
+
+  return '선택한 사진은 촬영일 기준으로 나뉘어 각 날짜의 일기로 준비돼요.';
+}
+
+function getPhotoDayLabel(photo: PendingPhoto, selectedDates: string[]) {
+  if (!photo.takenDate || selectedDates.length <= 1) {
+    return String(photo.displayOrder + 1);
+  }
+
+  const dayIndex = selectedDates.indexOf(photo.takenDate);
+  return dayIndex >= 0 ? `${dayIndex + 1}일차` : String(photo.displayOrder + 1);
+}
+
 async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrder: number): Promise<PendingPhoto> {
+  // 리사이즈하면 EXIF가 사라지므로, 원본 asset에서 GPS를 먼저 읽습니다.
+  const gps = parseExifGps(asset.exif);
   // AI 분석용 이미지는 너무 커지지 않게 줄이고, 화면 미리보기용 썸네일은 별도로 생성합니다.
   const fileImage = await ImageManipulator.manipulateAsync(
     asset.uri,
     [resizeAction(asset.width, asset.height, MAX_IMAGE_SIZE)],
     {
-      compress: 0.82,
+      compress: 0.85,
       format: ImageManipulator.SaveFormat.JPEG,
     },
   );
@@ -89,6 +222,9 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
     thumbnailUri: thumbnail.uri,
     originalFilename: asset.fileName ?? `photo-${displayOrder + 1}.jpg`,
     mimeType: 'image/jpeg',
+    takenDate: parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName),
+    gpsLatitude: gps?.latitude,
+    gpsLongitude: gps?.longitude,
     fileSizeBytes,
     width: fileImage.width,
     height: fileImage.height,
@@ -98,6 +234,7 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
 
 export default function AddScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ trip_id?: string; day_number?: string }>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
@@ -108,6 +245,12 @@ export default function AddScreen() {
   const tileSize = Math.max(88, Math.floor((contentWidth - 48 - (columnCount - 1) * 16) / columnCount));
   const bottomInset = Math.max(insets.bottom, 16);
   const isPhotoLimitReached = pendingPhotos.length >= MAX_PHOTO_COUNT;
+  const targetTripId = typeof params.trip_id === 'string' ? params.trip_id : undefined;
+  const targetDayNumber = Number(params.day_number);
+  const displayDayNumber = Number.isFinite(targetDayNumber) && targetDayNumber > 0 ? targetDayNumber : undefined;
+  const selectedDates = getSelectedDates(pendingPhotos);
+  const photoHeading = getPhotoHeading(selectedDates, displayDayNumber);
+  const photoDescription = getPhotoDescription(selectedDates);
 
   const pickPhotos = async () => {
     if (isPreparing || isUploading) {
@@ -132,6 +275,8 @@ export default function AddScreen() {
       selectionLimit: remainingSlots,
       quality: 1,
       exif: true,
+      // Android 기본 Photo Picker는 GPS EXIF를 0으로 마스킹하는 경우가 있어 legacy picker를 사용합니다.
+      legacy: Platform.OS === 'android',
     });
 
     if (result.canceled) {
@@ -171,7 +316,10 @@ export default function AddScreen() {
 
     setIsUploading(true);
     try {
-      const uploadResponse = await uploadFirstDayPhotos(pendingPhotos);
+      const uploadResponse = await uploadFirstDayPhotos(pendingPhotos, {
+        tripId: targetTripId,
+        dayNumber: displayDayNumber,
+      });
       const photos: LoadingPhotoParam[] = uploadResponse.photos.map((photo) => ({
         fileUri: photo.fileUrl,
         thumbnailUri: photo.thumbnailUrl,
@@ -191,6 +339,7 @@ export default function AddScreen() {
           tripDayId: String(uploadResponse.tripDayId),
           day: String(uploadResponse.day),
           mode: 'initial',
+          days: encodeURIComponent(JSON.stringify(uploadResponse.days)),
         },
       });
     } catch {
@@ -217,7 +366,7 @@ export default function AddScreen() {
             <ChevronLeft size={24} color={colors.textSecondary} />
           </Pressable>
 
-          <Text className="text-lg font-bold text-primary">새 기록</Text>
+          <Text className="text-lg font-bold text-primary">사진 추가</Text>
           <View className="h-10 w-10" />
         </View>
 
@@ -227,10 +376,10 @@ export default function AddScreen() {
           showsVerticalScrollIndicator={false}>
           <View className="mb-xl">
             <Text className="text-xl font-bold leading-8 text-textPrimary">
-              1일차 사진을 골라주세요
+              {photoHeading}
             </Text>
             <Text className="mt-sm text-md leading-6 text-textSecondary">
-              최대 10장까지 선택할 수 있고, 글 작성 화면용 썸네일을 따로 준비해요.
+              {photoDescription}
             </Text>
           </View>
 
@@ -261,7 +410,7 @@ export default function AddScreen() {
                 style={{ width: tileSize, height: tileSize }}>
                 <Image source={{ uri: photo.thumbnailUri }} className="h-full w-full" resizeMode="cover" />
                 <View className="absolute bottom-xs left-xs rounded-md bg-textPrimary/70 px-xs py-[2px]">
-                  <Text className="text-xs font-bold text-textOnPrimary">{photo.displayOrder + 1}</Text>
+                  <Text className="text-xs font-bold text-textOnPrimary">{getPhotoDayLabel(photo, selectedDates)}</Text>
                 </View>
                 <Pressable
                   accessibilityRole="button"

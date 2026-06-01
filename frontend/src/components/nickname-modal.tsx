@@ -96,7 +96,11 @@ export function NicknameModal({
           <TouchableOpacity activeOpacity={1} style={styles.box}>
             <View style={styles.header}>
               <Text style={styles.title}>닉네임 수정</Text>
-              <TouchableOpacity onPress={handleClose} disabled={isSaving}>
+              <TouchableOpacity
+                onPress={handleClose}
+                disabled={isSaving}
+                // 레이아웃 크기는 그대로 두고, 보이지 않는 터치 판정 영역만 넓힙니다.
+                hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
                 <Text style={styles.close}>✕</Text>
               </TouchableOpacity>
             </View>
