@@ -481,7 +481,9 @@ def start_trip_day_generation(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> GenerationStartResponse:
-    # 로딩 화면에서 호출하는 생성 시작 API.
+    # 수동 재시작이나 이전 클라이언트 호환을 위해 남겨둔 생성 시작 API.
+    # 현재 업로드 흐름은 upload_first_day_photos에서 생성을 시작하므로 로딩 화면은 이 API를 호출하지 않습니다.
+    # 삭제 여부는 다른 호출자가 없는지 확인한 뒤 팀에서 결정합니다.
     # 실제 VLM/LLM 처리는 diary.py의 백그라운드 생성 로직을 재사용합니다.
     trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
     if trip_day is None:
