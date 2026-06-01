@@ -74,7 +74,8 @@ module.exports = {
       // 3-2. 폰트
       fontFamily: {
         logo: ["DancingScript"], // 로고 → font-logo
-        sans: ["GowunDodum"], // 기본 → font-sans
+        sans: ["Hahmlet"], // 기본 → font-sans
+        "sans-bold": ["HahmletBold"], // Bold용 추가
       },
 
       // 3-3. 폰트 사이즈

@@ -262,7 +262,7 @@ export default function TravelDetailUI() {
 
           {/* 여행 기본 정보: 제목 / 위치 / 날짜 */}
           <View className="absolute bottom-lg left-md w-full pr-md">
-            <Text className="text-xl font-sans font-bold text-textPrimary mb-sm">
+            <Text className="text-xl font-sans-bold text-textPrimary mb-sm">
               {title || '여행 정보'}
             </Text>
             <View className="flex-row items-center justify-between w-full">
@@ -322,7 +322,7 @@ export default function TravelDetailUI() {
               className={`${
                 activeDay === d
                   ? 'font-logo text-xl text-white'                      // 활성: 필기체 큰 글씨
-                  : 'font-sans text-base font-bold text-textSecondary'  // 비활성: 고딕 숫자
+                  : 'font-sans-bold text-base  text-textSecondary'  // 비활성: 고딕 숫자
               }`}
             >
               {activeDay === d ? `Day ${d}` : d}
@@ -354,7 +354,7 @@ export default function TravelDetailUI() {
           {/* ── 3-1. 소제목 & 감정 이모지 ── */}
           <View className="flex-row justify-between items-end mb-md w-full">
             <View className="flex-1 mr-xs">
-              <Text className="text-lg font-bold text-textPrimary font-sans">
+              <Text className="text-lg text-textPrimary font-sans-bold">
                 {currentDayData?.subtitle || '상세 일정이 없습니다.'}
               </Text>
             </View>
@@ -389,7 +389,7 @@ export default function TravelDetailUI() {
               {weatherInfo && (
                 <View className="flex-row items-center gap-xs">
                   <EmojiIcon codepoint={weatherInfo.codepoint} size={16} />
-                  <Text className="text-sm text-textSecondary font-sans font-bold">
+                  <Text className="text-sm text-textSecondary font-sans-bold">
                     {weatherInfo.label}
                   </Text>
                 </View>
