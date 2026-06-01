@@ -1,6 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
+import { PermissionsAndroid } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, ChevronLeft, ImagePlus, Loader2, X } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -267,6 +269,14 @@ export default function AddScreen() {
     if (!permission.granted) {
       Alert.alert('사진 접근 권한이 필요해요', '여행 사진을 고르려면 사진 보관함 접근을 허용해 주세요.');
       return;
+    }
+
+    // Android 14+ 에서 사진 EXIF GPS 를 노출 받으려면 ACCESS_MEDIA_LOCATION 권한이 필수.
+    // ImagePicker 의 요청은 일반 사진 접근만 다루므로 별도로 요청해야 합니다.
+    // (manifest 선언은 app.config.js 의 expo-media-library 플러그인이 담당)
+    if (Platform.OS === 'android') {
+      await PermissionsAndroid.request('android.permission.ACCESS_MEDIA_LOCATION' as never);
+      await MediaLibrary.requestPermissionsAsync();
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
