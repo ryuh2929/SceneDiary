@@ -163,6 +163,11 @@ const toggleIcons: Record<SettingsToggle['id'], LucideIcon> = {
   pushNotification: Bell,
 };
 
+type ProfileNotice = {
+  message: string;
+  type: 'success' | 'error';
+};
+
 type AppIconProps = {
   icon: TravelTypeIconName;
   size?: number;
@@ -343,7 +348,7 @@ export default function SettingsScreen() {
   const [savingToggleId, setSavingToggleId] = useState<SettingsToggle['id'] | null>(null);
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
   const [isRequestingTravelAnalysis, setIsRequestingTravelAnalysis] = useState(false);
-  const [profileNotice, setProfileNotice] = useState<string | null>(null);
+  const [profileNotice, setProfileNotice] = useState<ProfileNotice | null>(null);
 
   // 토글 값은 화면에서 즉시 확인할 수 있도록 로컬 상태로 관리하고, 이후 DB/API 값으로 대체하기 쉽게 id 기준 객체로 변환합니다.
   const initialToggles = useMemo(
@@ -372,6 +377,18 @@ export default function SettingsScreen() {
     opacity: noticeProgress.value,
     transform: [{ translateY: (1 - noticeProgress.value) * -10 }],
   }));
+  const noticeColors =
+    profileNotice?.type === 'error'
+      ? {
+          backgroundColor: '#FFF1F2',
+          borderColor: '#F4A7AE',
+          textColor: '#A9323C',
+        }
+      : {
+          backgroundColor: '#ECFDF3',
+          borderColor: '#86D39B',
+          textColor: '#257A3E',
+        };
 
   useEffect(() => {
     let ignore = false;
@@ -535,11 +552,15 @@ export default function SettingsScreen() {
     try {
       const updatedProfile = await requestTravelStyleAnalysis();
       setProfile(updatedProfile);
-      setProfileNotice('여행 유형 분석을 시작했어요. 결과가 곧 반영됩니다.');
+      setProfileNotice({
+        message: '여행 유형 분석을 시작했어요. 결과가 곧 반영됩니다.',
+        type: 'success',
+      });
     } catch (error) {
-      setProfileError(
-        error instanceof Error ? error.message : 'Failed to request travel style analysis.',
-      );
+      setProfileNotice({
+        message: '여행 유형 분석 요청에 실패했어요. 잠시 후 다시 시도해주세요.',
+        type: 'error',
+      });
     } finally {
       setIsRequestingTravelAnalysis(false);
     }
@@ -689,8 +710,8 @@ export default function SettingsScreen() {
             {
               top: (contentInset?.paddingTop ?? 24) + 44,
               alignSelf: 'center',
-              backgroundColor: '#ECFDF3',
-              borderColor: '#86D39B',
+              backgroundColor: noticeColors.backgroundColor,
+              borderColor: noticeColors.borderColor,
               shadowColor: colors.text,
               shadowOffset: { width: 0, height: 3 },
               shadowOpacity: 0.12,
@@ -699,7 +720,9 @@ export default function SettingsScreen() {
             },
             noticeStyle,
           ]}>
-          <Text className="text-center text-sm font-bold text-[#257A3E]">{profileNotice}</Text>
+          <Text className="text-center text-sm font-bold" style={{ color: noticeColors.textColor }}>
+            {profileNotice.message}
+          </Text>
         </AnimatedView>
       ) : null}
 
