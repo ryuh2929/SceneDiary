@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // 전역 설정에서 NativeWind 색상 모드를 바꾸면 dark: 클래스가 동작합니다.
+  darkMode: "class",
   // ✅ 1. NativeWind preset (필수)
   presets: [require("nativewind/preset")],
 

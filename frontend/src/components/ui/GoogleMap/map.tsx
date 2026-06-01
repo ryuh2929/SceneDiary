@@ -161,7 +161,7 @@ export default function MapScreen() {
   };
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="flex-1 bg-background dark:bg-dark-background">
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}

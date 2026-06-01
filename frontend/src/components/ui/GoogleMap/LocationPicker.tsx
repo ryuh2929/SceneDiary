@@ -21,6 +21,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {ActivityIndicator, Pressable, StyleSheet, Text, View} from "react-native";
 import MapView, {Marker, PROVIDER_GOOGLE} from "react-native-maps"; // 구글 지도
 import {useSafeAreaInsets} from "react-native-safe-area-context"; // 노치/홈바 여백
+import {useAppThemeColors} from "@/constants/app-colors";
 
 // 지도 초기 중심(서울) — 기존 지도 탭과 동일한 시작 위치.
 const SEOUL = {latitude: 37.5665, longitude: 126.978};
@@ -73,6 +74,7 @@ function toPlaceName(
 
 export default function LocationPicker({visible, onClose, onSelect}: Props) {
   const insets = useSafeAreaInsets(); // 상단 노치/하단 홈바만큼 여백 확보
+  const colors = useAppThemeColors(); // 전역 다크모드에 맞춰 아이콘 색상을 바꿉니다.
   // 지도를 코드로 움직이려면(예: 현재 위치로 이동) 지도에 대한 "리모컨"이 필요합니다.
   // useRef 가 그 리모컨 역할 — mapRef.current 로 지도 명령을 호출합니다.
   const mapRef = useRef<MapView>(null);
@@ -146,14 +148,14 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
     //   "Google Maps API key not found" 에러를 내는 회귀가 있음.
     <View
       style={[StyleSheet.absoluteFill, {zIndex: 50, elevation: 50}]}
-      className="bg-surface"
+      className="bg-surface dark:bg-dark-surface"
     >
       {/* ===== 헤더: 제목 + 닫기(X) ===== */}
-      <View style={{paddingTop: insets.top}} className="bg-surface">
-        <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
-          <Text className="text-base font-sans-bold text-textPrimary">여행지 선택</Text>
+      <View style={{paddingTop: insets.top}} className="bg-surface dark:bg-dark-surface">
+        <View className="flex-row items-center justify-between border-b border-border px-4 py-3 dark:border-dark-border">
+          <Text className="text-base font-sans-bold text-textPrimary dark:text-dark-textPrimary">여행지 선택</Text>
           <Pressable onPress={onClose} hitSlop={8}>
-            <X size={22} color="#39536B" />
+            <X size={22} color={colors.textSecondary} />
           </Pressable>
         </View>
       </View>
@@ -173,16 +175,16 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
         {/* 현재 위치 버튼 (지도 위에 떠 있음) */}
         <Pressable
           onPress={useCurrentLocation}
-          className="absolute right-4 top-4 flex-row items-center gap-1 rounded-full bg-surface px-3 py-2 shadow-md"
+          className="absolute right-4 top-4 flex-row items-center gap-1 rounded-full bg-surface px-3 py-2 shadow-md dark:bg-dark-surface"
         >
-          <LocateFixed size={16} color="#5B7DBB" />
+          <LocateFixed size={16} color={colors.primary} />
           <Text className="text-sm font-medium text-primary">현재 위치</Text>
         </Pressable>
 
         {/* 아직 안 골랐을 때만 보이는 첫 안내 문구 */}
         {!picked && (
-          <View className="absolute left-4 top-4 rounded-lg bg-surface px-3 py-2 shadow-md">
-            <Text className="text-xs text-textSecondary">
+          <View className="absolute left-4 top-4 rounded-lg bg-surface px-3 py-2 shadow-md dark:bg-dark-surface">
+            <Text className="text-xs text-textSecondary dark:text-dark-textSecondary">
               지도를 탭해 여행지를 선택하세요
             </Text>
           </View>
@@ -192,14 +194,14 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
       {/* ===== 하단 확인 바 ===== */}
       <View
         style={{paddingBottom: insets.bottom + 12}}
-        className="border-t border-border bg-surface px-5 pt-3"
+        className="border-t border-border bg-surface px-5 pt-3 dark:border-dark-border dark:bg-dark-surface"
       >
         <Pressable
           onPress={confirm}
           // 아직 안 골랐거나 처리 중이면 누를 수 없게(색도 흐리게).
           disabled={!picked || busy}
           className={`flex-row items-center justify-center gap-2 rounded-2xl py-4 ${
-            picked && !busy ? "bg-primary" : "bg-muted"
+            picked && !busy ? "bg-primary" : "bg-muted dark:bg-dark-muted"
           }`}
         >
           {busy ? (

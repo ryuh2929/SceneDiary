@@ -6,6 +6,7 @@ import { X, MapPin, Calendar, Plus } from 'lucide-react-native';
 import Twemoji from 'react-native-twemoji';
 import { getDetailPage } from '@/api/detail';
 import { DetailPage, Days } from '@/types/api';
+import { useAppThemeColors } from '@/constants/app-colors';
 
 // ─────────────────────────────────────────────
 // 🔧 유틸 함수 섹션
@@ -117,6 +118,7 @@ export default function TravelDetailUI() {
 
   // 기기 화면 너비 가져오기 (사진 슬라이더 너비 계산에 사용)
   const { width: windowWidth } = useWindowDimensions();
+  const colors = useAppThemeColors();
   // 카드 좌우 패딩(32px) 제외한 실제 사진 너비 계산
   const cardWidth = windowWidth - 64;
   // 사진 슬라이더(FlatList)를 코드로 제어하기 위한 ref
@@ -198,8 +200,8 @@ export default function TravelDetailUI() {
   // 무한 "기록을 불러오는 중..." 화면에 갇힘 — 500 발생 시 사용자가 영원히 대기).
   if (error) {
     return (
-      <View className="flex-1 justify-center items-center bg-background px-lg">
-        <Text className="text-textSecondary font-sans text-center">{error}</Text>
+      <View className="flex-1 justify-center items-center bg-background px-lg dark:bg-dark-background">
+        <Text className="text-textSecondary font-sans text-center dark:text-dark-textSecondary">{error}</Text>
       </View>
     );
   }
@@ -207,8 +209,8 @@ export default function TravelDetailUI() {
   // 데이터 로딩 중이거나 trip 데이터가 없으면 로딩 화면 표시
   if (isLoading || !trip) {
     return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-textSecondary font-sans mt-sm">기록을 불러오는 중...</Text>
+      <View className="flex-1 justify-center items-center bg-background dark:bg-dark-background">
+        <Text className="text-textSecondary font-sans mt-sm dark:text-dark-textSecondary">기록을 불러오는 중...</Text>
       </View>
     );
   }
@@ -237,7 +239,7 @@ export default function TravelDetailUI() {
 
   return (
     <ScrollView
-      className="flex-1 bg-background"
+      className="flex-1 bg-background dark:bg-dark-background"
       showsVerticalScrollIndicator={false}
       bounces={false}
     >
@@ -254,7 +256,7 @@ export default function TravelDetailUI() {
 
         {/* 그라데이션 오버레이: 상단 어둡게 → 중간 투명 → 하단 배경색으로 자연스럽게 이어짐 */}
         <LinearGradient
-          colors={['rgba(0,0,0,0.2)', 'transparent', '#F4F6F9']}
+          colors={['rgba(0,0,0,0.2)', 'transparent', colors.background]}
           locations={[0, 0.5, 1]}
           style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
           className="absolute inset-0 p-md"
@@ -272,15 +274,15 @@ export default function TravelDetailUI() {
 
           {/* 여행 기본 정보: 제목 / 위치 / 날짜 */}
           <View className="absolute bottom-lg left-md w-full pr-md">
-            <Text className="text-xl font-sans-bold text-textPrimary mb-sm">
+            <Text className="text-xl font-sans-bold text-textPrimary mb-sm dark:text-dark-textPrimary">
               {title || '여행 정보'}
             </Text>
             <View className="flex-row items-center justify-between w-full">
 
               {/* 위치 아이콘 + 목적지 텍스트 */}
               <View className="flex-row items-center gap-xs">
-                <MapPin size={14} color="#39536B" />
-                <Text className="text-sm font-sans text-textSecondary">
+                <MapPin size={14} color={colors.textSecondary} />
+                <Text className="text-sm font-sans text-textSecondary dark:text-dark-textSecondary">
                   {destination || '위치 미정'}
                 </Text>
               </View>
@@ -288,8 +290,8 @@ export default function TravelDetailUI() {
               {/* 날짜 아이콘 + 여행 기간 텍스트 (예: 26.04.01 ~ 26.04.03) */}
               <View className="flex-1 flex-row items-center gap-md flex-wrap">
                 <View className="flex-row items-center gap-xs">
-                  <Calendar size={14} color="#39536B" />
-                  <Text className="text-sm font-sans text-textSecondary">
+                  <Calendar size={14} color={colors.textSecondary} />
+                  <Text className="text-sm font-sans text-textSecondary dark:text-dark-textSecondary">
                     {(() => {
                       if (!start_date || !end_date) return '날짜 미정';
                       const format = (dateStr: string) => {
@@ -325,14 +327,14 @@ export default function TravelDetailUI() {
             className={`py-xs rounded-t-lg mr-0 shadow-sm ${
               activeDay === d
                 ? 'px-lg bg-primary min-w-[70px] items-center'  // 활성 탭
-                : 'px-sm bg-muted min-w-[36px] items-center'    // 비활성 탭
+                : 'px-sm bg-muted min-w-[36px] items-center dark:bg-dark-muted'    // 비활성 탭
             }`}
           >
             <Text
               className={`${
                 activeDay === d
                   ? 'font-logo text-xl text-white'                      // 활성: 필기체 큰 글씨
-                  : 'font-sans-bold text-base  text-textSecondary'  // 비활성: 고딕 숫자
+                  : 'font-sans-bold text-base  text-textSecondary dark:text-dark-textSecondary'  // 비활성: 고딕 숫자
               }`}
             >
               {activeDay === d ? `Day ${d}` : d}
@@ -344,9 +346,9 @@ export default function TravelDetailUI() {
         {dayTabs.length < 7 && (
           <Pressable
             onPress={() => router.push({ pathname: '/add', params: { trip_id: tripId } })}
-            className="rounded-t-lg h-[30px] bg-muted min-w-[36px] items-center justify-center shadow-sm"
+            className="rounded-t-lg h-[30px] bg-muted min-w-[36px] items-center justify-center shadow-sm dark:bg-dark-muted"
           >
-            <Plus size={16} color="#39536B" strokeWidth={3} />
+            <Plus size={16} color={colors.textSecondary} strokeWidth={3} />
           </Pressable>
         )}
       </View>
@@ -359,12 +361,12 @@ export default function TravelDetailUI() {
           - 일기 본문 텍스트
       ──────────────────────────────────────────────── */}
       <View className="px-md pb-xl pt-sm -mt-[8px]">
-        <View className="bg-surface rounded-lg p-md shadow-sm border border-border">
+        <View className="bg-surface rounded-lg p-md shadow-sm border border-border dark:border-dark-border dark:bg-dark-surface">
 
           {/* ── 3-1. 소제목 & 감정 이모지 ── */}
           <View className="flex-row justify-between items-end mb-md w-full">
             <View className="flex-1 mr-xs">
-              <Text className="text-lg text-textPrimary font-sans-bold">
+              <Text className="text-lg text-textPrimary font-sans-bold dark:text-dark-textPrimary">
                 {currentDayData?.subtitle || '상세 일정이 없습니다.'}
               </Text>
             </View>
@@ -379,13 +381,13 @@ export default function TravelDetailUI() {
           {/* ── 3-2. 위치 / 날짜 / 날씨 정보 ── */}
           <View className="flex-row items-center gap-xs mb-sm">
             {/* 세부 위치 */}
-            <MapPin size={10} color="#39536B" />
-            <Text className="text-sm text-textSecondary font-sans mr-1">
+            <MapPin size={10} color={colors.textSecondary} />
+            <Text className="text-sm text-textSecondary font-sans mr-1 dark:text-dark-textSecondary">
               {currentDayData?.location_summary || '위치 정보 없음'}
             </Text>
 
             {/* 날짜: "월.일" 형식으로 표시 (예: 04.01) */}
-            <Text className="text-sm text-textSecondary font-sans mr-2">
+            <Text className="text-sm text-textSecondary font-sans mr-2 dark:text-dark-textSecondary">
               {(() => {
                 const targetDate = currentDayData?.date || start_date;
                 if (!targetDate) return '날짜 미정';
@@ -399,7 +401,7 @@ export default function TravelDetailUI() {
               {weatherInfo && (
                 <View className="flex-row items-center gap-xs">
                   <EmojiIcon codepoint={weatherInfo.codepoint} size={16} />
-                  <Text className="text-sm text-textSecondary font-sans-bold">
+                  <Text className="text-sm text-textSecondary font-sans-bold dark:text-dark-textSecondary">
                     {weatherInfo.label}
                   </Text>
                 </View>
@@ -448,7 +450,7 @@ export default function TravelDetailUI() {
                         width: activePhotoIndex === i ? 8 : 6,
                         height: activePhotoIndex === i ? 8 : 6,
                         borderRadius: 4,
-                        backgroundColor: activePhotoIndex === i ? '#39536B' : '#C4CDD6',
+                        backgroundColor: activePhotoIndex === i ? colors.textSecondary : colors.border,
                       }}
                     />
                   ))}
@@ -458,8 +460,8 @@ export default function TravelDetailUI() {
           )}
 
           {/* ── 3-4. 일기 본문 텍스트 ── */}
-          <View className="bg-muted p-md rounded-md border border-border">
-            <Text className="text-textSecondary text-md font-sans">
+          <View className="bg-muted p-md rounded-md border border-border dark:border-dark-border dark:bg-dark-muted">
+            <Text className="text-textSecondary text-md font-sans dark:text-dark-textSecondary">
               {currentDayData?.content || '이날의 일기 기록이 비어있습니다.'}
             </Text>
           </View>

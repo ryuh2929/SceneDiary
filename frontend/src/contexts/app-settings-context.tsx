@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useColorScheme } from 'nativewind';
 
 import type { SettingsProfile } from '@/data/settings';
 import { fetchSettingsProfile } from '@/services/settings-api';
@@ -46,11 +47,22 @@ function getToggleEnabled(profile: SettingsProfile, id: 'darkMode' | 'pushNotifi
   return profile.toggles.find((toggle) => toggle.id === id)?.enabled ?? false;
 }
 
+function NativeWindThemeSync({ isDarkMode }: { isDarkMode: boolean }) {
+  const { setColorScheme } = useColorScheme();
+
+  useEffect(() => {
+    // 전역 설정의 다크모드 값을 NativeWind에 알려서 dark: 클래스가 모든 화면에서 동작하게 합니다.
+    setColorScheme(isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode, setColorScheme]);
+
+  return null;
+}
+
 export function AppSettingsProvider({ children }: React.PropsWithChildren) {
   const [settings, setSettings] = useState<AppSettingsState>(defaultSettingsState);
 
   const syncSettingsProfile = useCallback((profile: SettingsProfile) => {
-    // settings API 응답은 화면 표시용 구조이므로, 여러 화면에서 필요한 최소 설정만 전역 상태로 펼쳐 저장합니다.
+    // settings API 응답에서 여러 화면이 함께 써야 하는 최소 설정만 전역 상태로 저장합니다.
     setSettings({
       nickname: profile.nickname,
       profileImageUrl: profile.profileImageUrl ?? null,
@@ -100,7 +112,12 @@ export function AppSettingsProvider({ children }: React.PropsWithChildren) {
     [loadSettings, settings, syncSettingsProfile],
   );
 
-  return <AppSettingsContext.Provider value={value}>{children}</AppSettingsContext.Provider>;
+  return (
+    <AppSettingsContext.Provider value={value}>
+      <NativeWindThemeSync isDarkMode={settings.isDarkMode} />
+      {children}
+    </AppSettingsContext.Provider>
+  );
 }
 
 export function useAppSettings() {

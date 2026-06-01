@@ -11,6 +11,7 @@ import { Alert, Image, Platform, Pressable, ScrollView, Text, useWindowDimension
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { uploadFirstDayPhotos } from '@/api/diary';
+import { useAppThemeColors } from '@/constants/app-colors';
 
 type PendingPhoto = {
   id: string;
@@ -36,19 +37,6 @@ type LoadingPhotoParam = Pick<
   PendingPhoto,
   'fileUri' | 'thumbnailUri' | 'originalFilename' | 'mimeType' | 'fileSizeBytes' | 'width' | 'height' | 'displayOrder'
 >;
-
-const colors = {
-  primary: '#5B7DBB',
-  primaryLight: '#A9C3E6',
-  accent: '#F6D9A6',
-  background: '#F4F6F9',
-  surface: '#FFFFFF',
-  textPrimary: '#152538',
-  textSecondary: '#39536B',
-  textOnPrimary: '#FFFFFF',
-  border: '#A9C3E6',
-  muted: '#E8EDF5',
-};
 
 const MAX_IMAGE_SIZE = 1024;
 const THUMBNAIL_SIZE = 256;
@@ -264,6 +252,7 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
 
 export default function AddScreen() {
   const router = useRouter();
+  const colors = useAppThemeColors();
   const params = useLocalSearchParams<{ trip_id?: string; day_number?: string }>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -393,9 +382,9 @@ export default function AddScreen() {
   };
 
   return (
-    <View className="flex-1 items-center bg-background">
+    <View className="flex-1 items-center bg-background dark:bg-dark-background">
       <View
-        className="w-full max-w-[760px] flex-1 bg-surface"
+        className="w-full max-w-[760px] flex-1 bg-surface dark:bg-dark-surface"
         style={{
           paddingTop: insets.top + 14,
           paddingBottom: bottomInset,
@@ -418,10 +407,10 @@ export default function AddScreen() {
           contentContainerClassName="px-lg pb-xl"
           showsVerticalScrollIndicator={false}>
           <View className="mb-xl">
-            <Text className="text-xl font-sans-bold leading-8 text-textPrimary">
+            <Text className="text-xl font-sans-bold leading-8 text-textPrimary dark:text-dark-textPrimary">
               {photoHeading}
             </Text>
-            <Text className="mt-sm text-md leading-6 text-textSecondary">
+            <Text className="mt-sm text-md leading-6 text-textSecondary dark:text-dark-textSecondary">
               {photoDescription}
             </Text>
           </View>
@@ -433,7 +422,9 @@ export default function AddScreen() {
               onPress={pickPhotos}
               disabled={isPreparing || isUploading || isPhotoLimitReached}
               className={`items-center justify-center rounded-lg border-2 border-dashed ${
-                isPreparing || isUploading || isPhotoLimitReached ? 'border-muted bg-muted' : 'border-border bg-surface'
+                isPreparing || isUploading || isPhotoLimitReached
+                  ? 'border-muted bg-muted dark:border-dark-muted dark:bg-dark-muted'
+                  : 'border-border bg-surface dark:border-dark-border dark:bg-dark-surface'
               }`}
               style={{ width: tileSize, height: tileSize }}>
               {isPreparing ? (
@@ -441,7 +432,7 @@ export default function AddScreen() {
               ) : (
                 <Camera size={24} color={isPhotoLimitReached ? colors.border : colors.primaryLight} />
               )}
-              <Text className="mt-xs text-sm font-sans-bold text-textSecondary">
+              <Text className="mt-xs text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
                 {isPreparing ? '준비 중' : isPhotoLimitReached ? '최대 10장' : '사진 추가'}
               </Text>
             </Pressable>
@@ -449,7 +440,7 @@ export default function AddScreen() {
             {pendingPhotos.map((photo) => (
               <View
                 key={photo.id}
-                className="overflow-hidden rounded-lg bg-muted"
+                className="overflow-hidden rounded-lg bg-muted dark:bg-dark-muted"
                 style={{ width: tileSize, height: tileSize }}>
                 <Image source={{ uri: photo.thumbnailUri }} className="h-full w-full" resizeMode="cover" />
                 <View className="absolute bottom-xs left-xs rounded-md bg-textPrimary/70 px-xs py-[2px]">
@@ -467,20 +458,20 @@ export default function AddScreen() {
           </View>
 
           {pendingPhotos.length === 0 ? (
-            <View className="mt-2xl items-center rounded-lg bg-muted px-lg py-xl">
+            <View className="mt-2xl items-center rounded-lg bg-muted px-lg py-xl dark:bg-dark-muted">
               <ImagePlus size={30} color={colors.primaryLight} />
-              <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary">
+              <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
                 사진을 여러 장 선택하면 여기에서 순서대로 확인할 수 있어요.
               </Text>
             </View>
           ) : (
-            <Text className="mt-lg text-center text-sm font-sans-bold text-textSecondary">
+            <Text className="mt-lg text-center text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
               {pendingPhotos.length}/{MAX_PHOTO_COUNT}장 선택됨
             </Text>
           )}
         </ScrollView>
 
-        <View className="items-center bg-surface px-lg pb-md pt-md">
+        <View className="items-center bg-surface px-lg pb-md pt-md dark:bg-dark-surface">
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="AI로 일기 작성하기"

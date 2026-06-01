@@ -1,11 +1,5 @@
 // 일기 작성/검토 화면 (읽기 전용 멀티데이 뷰어)
 //
-// [2단계] AI가 하루치씩 생성한 일기를, 사용자가 하루씩 순서대로 검토하는 화면입니다.
-//   - 순방향 일방통행: 뒤로가기·자유이동·작성중단 없음.
-//   - 대부분 읽기 전용. 유일한 편집 = 여행지(location_summary, 지도 피커 — 아직 stub).
-//   - "다음날로"로 진행, 마지막 날에서 "저장하기" → (3단계에서) Detail 이동.
-//   - 데이터는 백엔드 API(api/diary)에서 받아옴. genStatus는 폴링으로 갱신.
-//   - 색/폰트는 다른 페이지와 동일한 팀 디자인 토큰(primary, textPrimary, font-sans).
 
 import {Image} from "expo-image";
 import {useLocalSearchParams, useRouter} from "expo-router";
@@ -28,25 +22,17 @@ import {
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import Twemoji from "react-native-twemoji";
 
-import type {DayPage, TripDiary} from "@/types/diary_writing";
 import {
-  fetchTripDiary,
+  completeTrip,
   fetchDayStatuses,
   fetchTripDay,
-  saveDayLocation,
+  fetchTripDiary,
   regenerateDay,
-  completeTrip,
+  saveDayLocation,
 } from "@/api/diary";
 import LocationPicker from "@/components/ui/GoogleMap/LocationPicker";
-
-// 디자인 토큰(색상). 아이콘 색처럼 className으로 주기 번거로운 곳에 hex로 직접 씁니다.
-// 값은 tailwind.config.js의 팀 색상과 동일합니다. (settings 화면과 같은 방식)
-const colors = {
-  textPrimary: "#152538", // 제목·본문 등 진한 글자
-  textSecondary: "#39536B", // 라벨·보조 글자
-  primary: "#5B7DBB", // 메인 포인트(버튼·아이콘)
-  primaryLight: "#A9C3E6", // 흐린 글자·비활성
-};
+import {useAppThemeColors} from "@/constants/app-colors";
+import type {DayPage, TripDiary} from "@/types/diary_writing";
 
 // "YYYY-MM-DD" → "YYYY.MM.DD (요일)". (목업의 날짜 표기와 동일)
 // new Date(연, 월-1, 일) 로 만들어 시간대(UTC) 때문에 날짜가 밀리는 문제를 피합니다.
@@ -81,6 +67,7 @@ function EmojiIcon({codepoint, size}: {codepoint: string; size: number}) {
 export default function DiaryWritingScreen() {
   const insets = useSafeAreaInsets(); // 노치/홈바 영역만큼 헤더·하단바에 여백을 줍니다.
   const router = useRouter(); // 화면 이동(저장 후 Detail로)에 사용.
+  const colors = useAppThemeColors(); // 전역 다크모드에 맞춰 아이콘/스피너 색상을 바꿉니다.
 
   // 어떤 여행을 불러올지: 앞 화면(loading)이 router.replace 로 넘겨준 tripId 를 사용합니다.
   // 직접 진입처럼 tripId 가 없거나 숫자로 못 바꾸면 NaN → loadTrip 가드에서 에러 화면으로.
@@ -361,17 +348,17 @@ export default function DiaryWritingScreen() {
   // [5단계] 정상 데이터가 오기 전까지의 화면 분기.
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-surface">
+      <View className="flex-1 items-center justify-center bg-surface dark:bg-dark-surface">
         <ActivityIndicator color={colors.primary} />
-        <Text className="mt-3 text-textSecondary">불러오는 중…</Text>
+        <Text className="mt-3 text-textSecondary dark:text-dark-textSecondary">불러오는 중…</Text>
       </View>
     );
   }
   // 에러거나 데이터가 없으면 안내 + 다시 시도 버튼.
   if (error || !trip) {
     return (
-      <View className="flex-1 items-center justify-center gap-4 bg-surface px-8">
-        <Text className="text-center text-textSecondary">
+      <View className="flex-1 items-center justify-center gap-4 bg-surface px-8 dark:bg-dark-surface">
+        <Text className="text-center text-textSecondary dark:text-dark-textSecondary">
           {error ?? "여행을 찾을 수 없어요."}
         </Text>
         <Pressable
@@ -386,7 +373,7 @@ export default function DiaryWritingScreen() {
   }
 
   return (
-    <View className="flex-1 bg-surface">
+    <View className="flex-1 bg-surface dark:bg-dark-surface">
       {/* ===== 헤더: 일차 표시 (뒤로가기 없음 — 순방향 일방통행) ===== */}
       <View style={{paddingTop: insets.top}}>
         <View className="mx-auto w-full max-w-[420px] px-5 py-4">
@@ -401,7 +388,7 @@ export default function DiaryWritingScreen() {
         <View className="mx-auto w-full max-w-[420px] gap-6 px-5 pb-8 pt-2">
           {/* --- 요약 카드: trip 대표사진 + 제목(매 페이지 동일) --- */}
           {/* (구 day.symbol 자리 폐지: 여행 단위 trips.flag 로 통일 예정. 노출은 추후 작업) */}
-          <View className="flex-row items-center gap-3 rounded-3xl bg-background p-4">
+          <View className="flex-row items-center gap-3 rounded-3xl bg-background p-4 dark:bg-dark-background">
             <View className="h-16 w-16 overflow-hidden rounded-2xl">
               <Image
                 source={{uri: trip.representImage}}
@@ -409,7 +396,7 @@ export default function DiaryWritingScreen() {
                 style={{width: "100%", height: "100%"}}
               />
             </View>
-            <Text className="flex-1 text-center text-lg font-sans-bold text-textPrimary">
+            <Text className="flex-1 text-center text-lg font-sans-bold text-textPrimary dark:text-dark-textPrimary">
               {trip.title}
             </Text>
           </View>
@@ -424,16 +411,16 @@ export default function DiaryWritingScreen() {
                 // 좌표 있음: 기존 가로 2칸 레이아웃
                 <View className="flex-row gap-4">
                   <View className="flex-1 gap-2">
-                    <Text className="ml-1 text-sm font-sans-bold text-textSecondary">
+                    <Text className="ml-1 text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
                       여행지
                     </Text>
                     {/* 이 화면의 유일한 편집 진입점. 탭하면 지도 피커. */}
                     <Pressable
                       onPress={handleEditLocation}
-                      className="flex-row items-center justify-between rounded-xl bg-background p-4"
+                      className="flex-row items-center justify-between rounded-xl bg-background p-4 dark:bg-dark-background"
                     >
                       <Text
-                        className="flex-1 text-sm font-medium text-textPrimary"
+                        className="flex-1 text-sm font-medium text-textPrimary dark:text-dark-textPrimary"
                         numberOfLines={1}
                       >
                         {day.locationSummary || "여행지 선택"}
@@ -442,11 +429,11 @@ export default function DiaryWritingScreen() {
                     </Pressable>
                   </View>
                   <View className="flex-1 gap-2">
-                    <Text className="ml-1 text-sm font-sans-bold text-textSecondary">
+                    <Text className="ml-1 text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
                       날짜
                     </Text>
-                    <View className="flex-row items-center justify-between rounded-xl bg-background p-4">
-                      <Text className="text-sm font-medium text-textPrimary">
+                    <View className="flex-row items-center justify-between rounded-xl bg-background p-4 dark:bg-dark-background">
+                      <Text className="text-sm font-medium text-textPrimary dark:text-dark-textPrimary">
                         {formatDate(day.date)}
                       </Text>
                       <Calendar size={16} color={colors.textSecondary} />
@@ -456,14 +443,14 @@ export default function DiaryWritingScreen() {
               ) : (
                 // 좌표 없음: 강조 카드 (사진 EXIF에 GPS가 없는 경우 + 사용자가 아직 안 지정한 경우)
                 <View className="gap-3">
-                  <View className="gap-3 rounded-2xl border border-accent bg-accent/20 p-4">
+                  <View className="gap-3 rounded-2xl border border-accent bg-accent/20 p-4 dark:border-dark-accentMuted dark:bg-dark-accentMuted">
                     <View className="flex-row items-center gap-2">
                       <AlertCircle size={18} color={colors.textSecondary} />
-                      <Text className="text-sm font-sans-bold text-textPrimary">
+                      <Text className="text-sm font-sans-bold text-textPrimary dark:text-dark-textPrimary">
                         위치 정보가 없어요
                       </Text>
                     </View>
-                    <Text className="text-sm leading-5 text-textSecondary">
+                    <Text className="text-sm leading-5 text-textSecondary dark:text-dark-textSecondary">
                       이 날 사진엔 위치가 담겨있지 않아요. 직접 알려주실 수
                       있어요.
                     </Text>
@@ -479,11 +466,11 @@ export default function DiaryWritingScreen() {
                   </View>
                   {/* 날짜는 따로 한 줄로 보존 */}
                   <View className="gap-2">
-                    <Text className="ml-1 text-sm font-sans-bold text-textSecondary">
+                    <Text className="ml-1 text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
                       날짜
                     </Text>
-                    <View className="flex-row items-center justify-between rounded-xl bg-background p-4">
-                      <Text className="text-sm font-medium text-textPrimary">
+                    <View className="flex-row items-center justify-between rounded-xl bg-background p-4 dark:bg-dark-background">
+                      <Text className="text-sm font-medium text-textPrimary dark:text-dark-textPrimary">
                         {formatDate(day.date)}
                       </Text>
                       <Calendar size={16} color={colors.textSecondary} />
@@ -494,11 +481,11 @@ export default function DiaryWritingScreen() {
 
               {/* --- 소제목(읽기전용) + 감정 이모지 --- */}
               <View className="gap-2">
-                <Text className="ml-1 text-sm font-sans-bold text-textSecondary">
+                <Text className="ml-1 text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
                   소제목
                 </Text>
-                <View className="flex-row items-center gap-3 rounded-xl bg-background p-4">
-                  <Text className="flex-1 text-md font-sans-bold text-textPrimary">
+                <View className="flex-row items-center gap-3 rounded-xl bg-background p-4 dark:bg-dark-background">
+                  <Text className="flex-1 text-md font-sans-bold text-textPrimary dark:text-dark-textPrimary">
                     {day.subtitle}
                   </Text>
                   {/* trip_days.emotion (Twemoji) */}
@@ -509,15 +496,15 @@ export default function DiaryWritingScreen() {
               {/* --- 여행 기록(본문, 읽기전용) + 날씨 이모지 --- */}
               <View className="gap-2">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-lg font-sans-bold text-textPrimary">
+                  <Text className="text-lg font-sans-bold text-textPrimary dark:text-dark-textPrimary">
                     여행 기록
                   </Text>
                   {/* trip_days.weather (Twemoji 코드포인트) */}
                   <EmojiIcon codepoint={day.weather} size={22} />
                 </View>
-                <View className="rounded-3xl bg-background p-6">
+                <View className="rounded-3xl bg-background p-6 dark:bg-dark-background">
                   <Text
-                    className="font-sans text-md text-textPrimary"
+                    className="font-sans text-md text-textPrimary dark:text-dark-textPrimary"
                     style={{lineHeight: 22}}
                   >
                     {day.content}
@@ -538,9 +525,9 @@ export default function DiaryWritingScreen() {
 
           {/* 생성중: 진입할 일은 거의 없지만(이전 날 버튼이 비활성), 방어적으로 표시 */}
           {day.genStatus === "generating" && (
-            <View className="items-center gap-3 rounded-3xl bg-background px-6 py-12">
+            <View className="items-center gap-3 rounded-3xl bg-background px-6 py-12 dark:bg-dark-background">
               <ActivityIndicator color={colors.primary} />
-              <Text className="text-sm font-medium text-textSecondary">
+              <Text className="text-sm font-medium text-textSecondary dark:text-dark-textSecondary">
                 다음 추억 생성중…
               </Text>
             </View>
@@ -549,8 +536,8 @@ export default function DiaryWritingScreen() {
           {/* 실패: 제목 + 사진 바만 남기고, 본문 자리에 다시 생성하기 */}
           {day.genStatus === "failed" && (
             <>
-              <View className="items-center gap-4 rounded-3xl bg-background px-6 py-10">
-                <Text className="text-center text-sm font-medium text-textSecondary">
+              <View className="items-center gap-4 rounded-3xl bg-background px-6 py-10 dark:bg-dark-background">
+                <Text className="text-center text-sm font-medium text-textSecondary dark:text-dark-textSecondary">
                   이 날의 일기를 생성하지 못했어요.
                 </Text>
                 <Pressable
@@ -573,7 +560,7 @@ export default function DiaryWritingScreen() {
       {day.genStatus === "ready" && (
         <View
           style={{paddingBottom: insets.bottom + 12}}
-          className="border-t border-muted bg-surface px-5 pt-3"
+          className="border-t border-muted bg-surface px-5 pt-3 dark:border-dark-muted dark:bg-dark-surface"
         >
           <View className="mx-auto w-full max-w-[420px]">
             {actionError && (
@@ -601,9 +588,9 @@ export default function DiaryWritingScreen() {
               </Pressable>
             ) : (
               // 다음 날 생성중: 비활성
-              <View className="flex-row items-center justify-center gap-2 rounded-2xl bg-muted py-4">
+              <View className="flex-row items-center justify-center gap-2 rounded-2xl bg-muted py-4 dark:bg-dark-muted">
                 <ActivityIndicator size="small" color={colors.primaryLight} />
-                <Text className="font-sans-bold text-primaryLight">
+                <Text className="font-sans-bold text-primaryLight dark:text-dark-textSecondary">
                   다음 추억 생성중
                 </Text>
               </View>
@@ -626,7 +613,7 @@ export default function DiaryWritingScreen() {
 function PhotoBar({photos}: {photos: {id: number; thumbnailUrl: string}[]}) {
   return (
     <View className="gap-4">
-      <Text className="ml-1 text-sm font-sans-bold text-textSecondary">
+      <Text className="ml-1 text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
         대표 사진
       </Text>
       <ScrollView
@@ -637,7 +624,7 @@ function PhotoBar({photos}: {photos: {id: number; thumbnailUrl: string}[]}) {
         {photos.map((p) => (
           <View
             key={p.id}
-            className="h-16 w-16 overflow-hidden rounded-xl border border-border"
+            className="h-16 w-16 overflow-hidden rounded-xl border border-border dark:border-dark-border"
           >
             <Image
               source={{uri: p.thumbnailUrl}}
