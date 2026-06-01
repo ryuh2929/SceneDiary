@@ -60,8 +60,10 @@ import {
   WandSparkles,
   type LucideIcon,
 } from 'lucide-react-native';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -82,6 +84,7 @@ import {
   updateNickname,
   updateSettingsToggle,
   updateWritingPersona,
+  uploadProfileImage,
 } from '@/services/settings-api';
 
 const colors = {
@@ -99,6 +102,7 @@ const colors = {
 };
 
 const TRAVEL_ANALYSIS_COOLDOWN_MS = 60 * 1000;
+const PROFILE_IMAGE_SIZE = 256;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const AnimatedView = Animated.createAnimatedComponent(View);
@@ -175,6 +179,55 @@ type AppIconProps = {
   size?: number;
   color?: string;
 };
+
+function profileImageResizeAction(width: number, height: number) {
+  // 원본 비율을 유지한 채 짧은 변을 256px로 맞추면, 가운데를 잘라도 얼굴/풍경이 찌그러지지 않습니다.
+  if (width < height) {
+    return { resize: { width: PROFILE_IMAGE_SIZE } };
+  }
+
+  return { resize: { height: PROFILE_IMAGE_SIZE } };
+}
+
+async function buildProfileImageFile(asset: ImagePicker.ImagePickerAsset) {
+  // 1차로 짧은 변을 256px에 맞추고, 2차로 중앙 256x256 영역만 잘라 원형 프로필에 맞는 정사각형을 만듭니다.
+  const resized = await ImageManipulator.manipulateAsync(
+    asset.uri,
+    [profileImageResizeAction(asset.width, asset.height)],
+    {
+      compress: 0.82,
+      format: ImageManipulator.SaveFormat.JPEG,
+    },
+  );
+  const cropWidth = Math.min(PROFILE_IMAGE_SIZE, resized.width);
+  const cropHeight = Math.min(PROFILE_IMAGE_SIZE, resized.height);
+  const originX = Math.max(0, Math.floor((resized.width - cropWidth) / 2));
+  const originY = Math.max(0, Math.floor((resized.height - cropHeight) / 2));
+
+  const cropped = await ImageManipulator.manipulateAsync(
+    resized.uri,
+    [
+      {
+        crop: {
+          originX,
+          originY,
+          width: cropWidth,
+          height: cropHeight,
+        },
+      },
+    ],
+    {
+      compress: 0.82,
+      format: ImageManipulator.SaveFormat.JPEG,
+    },
+  );
+
+  return {
+    uri: cropped.uri,
+    name: `profile-${Date.now()}.jpg`,
+    mimeType: 'image/jpeg',
+  };
+}
 
 const ProfileIcon = React.memo(function ProfileIcon() {
   return <Backpack size={32} color={colors.primary} strokeWidth={2.2} />;
@@ -349,6 +402,7 @@ export default function SettingsScreen() {
   const [isSavingPersona, setIsSavingPersona] = useState(false);
   const [savingToggleId, setSavingToggleId] = useState<SettingsToggle['id'] | null>(null);
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
+  const [isUploadingProfileImage, setIsUploadingProfileImage] = useState(false);
   const [isRequestingTravelAnalysis, setIsRequestingTravelAnalysis] = useState(false);
   const [profileNotice, setProfileNotice] = useState<ProfileNotice | null>(null);
   const [travelAnalysisCooldownUntil, setTravelAnalysisCooldownUntil] = useState<number | null>(null);
@@ -565,8 +619,53 @@ export default function SettingsScreen() {
     setProfile(updatedProfile);
   };
 
-  const openProfileImagePicker = () => {
-    // TODO: 프로필 사진 업로드 API를 연결할 때 이미지 선택/업로드 로직을 이 함수에 붙입니다.
+  const openProfileImagePicker = async () => {
+    if (isUploadingProfileImage) {
+      return;
+    }
+
+    setProfileError(null);
+    setProfileNotice(null);
+
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        setProfileNotice({
+          message: '프로필 사진을 선택하려면 사진 접근 권한이 필요합니다.',
+          type: 'error',
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 1,
+        allowsMultipleSelection: false,
+      });
+
+      if (result.canceled || !result.assets[0]) {
+        return;
+      }
+
+      setIsUploadingProfileImage(true);
+
+      const profileImageFile = await buildProfileImageFile(result.assets[0]);
+      const updatedProfile = await uploadProfileImage(profileImageFile);
+
+      setProfile(updatedProfile);
+      setProfileNotice({
+        message: '프로필 사진을 변경했어요.',
+        type: 'success',
+      });
+    } catch (error) {
+      setProfileNotice({
+        message: '프로필 사진 변경에 실패했어요. 잠시 후 다시 시도해주세요.',
+        type: 'error',
+      });
+    } finally {
+      setIsUploadingProfileImage(false);
+    }
   };
 
   const startTravelStyleAnalysis = async () => {
@@ -635,13 +734,22 @@ export default function SettingsScreen() {
 
         <View className="items-center">
           <View className="relative h-[82px] w-[82px] items-center justify-center">
-            <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-primaryLight">
-              <ProfileIcon />
+            <View className="h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full bg-primaryLight">
+              {profile.profileImageUrl ? (
+                <Image
+                  source={{ uri: profile.profileImageUrl }}
+                  className="h-full w-full"
+                  resizeMode="cover"
+                />
+              ) : (
+                <ProfileIcon />
+              )}
             </View>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="프로필 사진 수정"
               onPress={openProfileImagePicker}
+              disabled={isUploadingProfileImage}
               className="absolute bottom-0 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-surface bg-primary"
               style={{
                 shadowColor: colors.text,
@@ -649,6 +757,7 @@ export default function SettingsScreen() {
                 shadowOpacity: 0.14,
                 shadowRadius: 4,
                 elevation: 3,
+                opacity: isUploadingProfileImage ? 0.6 : 1,
               }}>
               <ProfileImageEditIcon />
             </Pressable>

@@ -1,7 +1,8 @@
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -12,9 +13,15 @@ from app.schemas.settings import (
     UpdateSettingsToggleRequest,
     UpdateWritingPersonaRequest,
 )
+from app.services.image_processor import save_profile_image
 from app.services.travel_style_analysis import run_travel_style_analysis
 
 router = APIRouter(prefix="/settings", tags=["settings"])
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+_PROFILE_IMAGE_PUBLIC_ROOT = "profile_images"
+_PROFILE_IMAGE_ROOT = _BACKEND_DIR / "test_images" / _PROFILE_IMAGE_PUBLIC_ROOT
+MAX_PROFILE_IMAGE_BYTES = 1 * 1024 * 1024
 
 # DB에는 안정적인 코드값(poetic, daily 등)만 저장하고,
 # 화면에 보여줄 라벨/설명은 API 응답을 만들 때 매핑합니다.
@@ -105,6 +112,23 @@ def clean(value: object | None) -> str:
     return str(value).strip()
 
 
+def base_url(request: Request) -> str:
+    return str(request.base_url).rstrip("/")
+
+
+def public_image_url(request: Request, path: str | None) -> str | None:
+    # DB에는 test_images 아래의 상대 경로만 저장하고,
+    # 설정 API 응답에서는 모바일 앱이 바로 읽을 수 있는 절대 URL로 바꿉니다.
+    cleaned_path = clean(path)
+    if not cleaned_path:
+        return None
+    if cleaned_path.startswith(("http://", "https://")):
+        return cleaned_path
+    if cleaned_path.startswith("test_images/"):
+        return f"{base_url(request)}/{cleaned_path}"
+    return f"{base_url(request)}/test_images/{cleaned_path}"
+
+
 def persona_tags(selected_persona: str) -> list[dict[str, object]]:
     normalized = selected_persona.strip().lower()
 
@@ -147,13 +171,14 @@ def travel_style_analysis(user: User) -> dict[str, str]:
     }
 
 
-def to_settings_profile(user: User) -> SettingsProfile:
+def to_settings_profile(user: User, request: Request) -> SettingsProfile:
     writing_persona = clean(user.writing_persona).lower()
     selected_persona = PERSONA_OPTIONS.get(writing_persona)
 
     # 아이콘은 프론트에서 lucide-react-native 컴포넌트로 매핑할 수 있는 키만 내려줍니다.
     return SettingsProfile(
         nickname=clean(user.nickname) or "오늘의 여행자",
+        profileImageUrl=public_image_url(request, user.profile_image_url),
         persona={
             "title": "글 작성 페르소나",
             "description": selected_persona["description"]
@@ -195,17 +220,19 @@ def find_user_or_404(db: Session, user_uuid: str | None) -> User:
 
 @router.get("/profile", response_model=SettingsProfile)
 def get_settings_profile(
+    request: Request,
     user_uuid: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> SettingsProfile:
     user = find_user_or_404(db, user_uuid)
 
-    return to_settings_profile(user)
+    return to_settings_profile(user, request)
 
 
 @router.patch("/persona", response_model=SettingsProfile)
 def update_writing_persona(
     payload: UpdateWritingPersonaRequest,
+    request: Request,
     user_uuid: str = Query(...),
     db: Session = Depends(get_db),
 ) -> SettingsProfile:
@@ -223,12 +250,13 @@ def update_writing_persona(
     db.commit()
     db.refresh(user)
 
-    return to_settings_profile(user)
+    return to_settings_profile(user, request)
 
 
 @router.patch("/toggle", response_model=SettingsProfile)
 def update_settings_toggle(
     payload: UpdateSettingsToggleRequest,
+    request: Request,
     user_uuid: str = Query(...),
     db: Session = Depends(get_db),
 ) -> SettingsProfile:
@@ -246,12 +274,13 @@ def update_settings_toggle(
     db.commit()
     db.refresh(user)
 
-    return to_settings_profile(user)
+    return to_settings_profile(user, request)
 
 
 @router.patch("/nickname", response_model=SettingsProfile)
 def update_nickname(
     payload: UpdateNicknameRequest,
+    request: Request,
     user_uuid: str = Query(...),
     db: Session = Depends(get_db),
 ) -> SettingsProfile:
@@ -272,11 +301,50 @@ def update_nickname(
     db.commit()
     db.refresh(user)
 
-    return to_settings_profile(user)
+    return to_settings_profile(user, request)
+
+
+@router.post("/profile-image", response_model=SettingsProfile)
+async def update_profile_image(
+    request: Request,
+    file: UploadFile = File(...),
+    user_uuid: str = Query(...),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    # 프로필 사진은 프런트에서 256x256 JPEG로 잘라서 보내고,
+    # 백엔드는 용량/타입을 확인한 뒤 users.profile_image_url에 저장 경로만 반영합니다.
+    if file.content_type not in {"image/jpeg", "image/jpg"}:
+        raise HTTPException(status_code=400, detail="Profile image must be a JPEG file")
+
+    raw_bytes = await file.read()
+    if len(raw_bytes) > MAX_PROFILE_IMAGE_BYTES:
+        raise HTTPException(status_code=400, detail="Profile image is larger than 1MB")
+
+    user = find_user_or_404(db, user_uuid)
+
+    try:
+        saved_image = save_profile_image(
+            raw_bytes=raw_bytes,
+            original_filename=file.filename,
+            profile_root=_PROFILE_IMAGE_ROOT,
+            profile_public_root=_PROFILE_IMAGE_PUBLIC_ROOT,
+            user_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Profile image is invalid") from exc
+
+    user.profile_image_url = saved_image.file_url
+    user.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(user)
+
+    return to_settings_profile(user, request)
 
 
 @router.post("/travel-style-analysis", response_model=SettingsProfile)
 def request_travel_style_analysis(
+    request: Request,
     background_tasks: BackgroundTasks,
     user_uuid: str = Query(...),
     db: Session = Depends(get_db),
@@ -286,4 +354,4 @@ def request_travel_style_analysis(
     # 설정 화면의 분석 버튼은 요청만 빠르게 완료하고, 실제 LLM 분석은 백그라운드 작업에서 처리합니다.
     background_tasks.add_task(run_travel_style_analysis, user.id, force=True)
 
-    return to_settings_profile(user)
+    return to_settings_profile(user, request)
