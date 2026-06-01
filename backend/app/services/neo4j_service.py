@@ -1,7 +1,13 @@
 from app.db.neo4j_session import get_neo4j_driver
+from openai import OpenAI
+from openai import AsyncOpenAI
+# from sentence_transformers import SentenceTransformer
+# from keybert import KeyBERT
 
 # db 파일에서 만들어둔 통로를 가져옵니다.
 driver = get_neo4j_driver()
+
+async_client = AsyncOpenAI()
 
 def save_diary_to_neo4j(diary_data: dict):
     # 'session'을 열어 안전하게 쿼리를 실행합니다.
