@@ -62,6 +62,7 @@ module.exports = {
           primary: "#5B7DBB",
           primaryLight: "#39536B",
           accent: "#F6D9A6",
+          accentMuted: "#37445A",
           textPrimary: "#DDE3EE",
           textSecondary: "#A9C3E6",
           textOnPrimary: "#FFFFFF",
@@ -71,7 +72,7 @@ module.exports = {
           error: "#B91C1C",
           success: "#22c55e",
           disabled: "#39536B",
-          toggle: "#F6D9A6",
+          toggle: "#5B7DBB",
         },
       },
 

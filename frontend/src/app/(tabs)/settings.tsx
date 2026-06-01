@@ -87,7 +87,7 @@ import {
   uploadProfileImage,
 } from '@/services/settings-api';
 
-const colors = {
+const lightColors = {
   primary: '#5B7DBB',
   primaryLight: '#A9C3E6',
   accent: '#F6D9A6',
@@ -101,6 +101,23 @@ const colors = {
   muted: '#E8EDF5',
   toggle: '#5B7DBB',
 };
+
+const darkColors = {
+  primary: '#5B7DBB',
+  primaryLight: '#39536B',
+  accent: '#5B7DBB',
+  accentMuted: '#37445A',
+  background: '#152538',
+  surface: '#1C2E43',
+  textOnPrimary: '#FFFFFF',
+  textPrimary: '#DDE3EE',
+  textSecondary: '#A9C3E6',
+  border: '#2A4560',
+  muted: '#1E3A52',
+  toggle: '#5B7DBB',
+};
+
+type SettingsThemeColors = typeof lightColors;
 
 const TRAVEL_ANALYSIS_COOLDOWN_MS = 60 * 1000;
 const PROFILE_IMAGE_SIZE = 256;
@@ -230,31 +247,31 @@ async function buildProfileImageFile(asset: ImagePicker.ImagePickerAsset) {
   };
 }
 
-const ProfileIcon = React.memo(function ProfileIcon() {
-  return <Backpack size={32} color={colors.primary} strokeWidth={2.2} />;
+const ProfileIcon = React.memo(function ProfileIcon({ color }: { color: string }) {
+  return <Backpack size={32} color={color} strokeWidth={2.2} />;
 });
 
-const EditIcon = React.memo(function EditIcon() {
-  return <Pencil size={13} color={colors.textSecondary} strokeWidth={2.2} />;
+const EditIcon = React.memo(function EditIcon({ color }: { color: string }) {
+  return <Pencil size={13} color={color} strokeWidth={2.2} />;
 });
 
-const ProfileImageEditIcon = React.memo(function ProfileImageEditIcon() {
-  return <Camera size={15} color={colors.textOnPrimary} strokeWidth={2.4} />;
+const ProfileImageEditIcon = React.memo(function ProfileImageEditIcon({ color }: { color: string }) {
+  return <Camera size={15} color={color} strokeWidth={2.4} />;
 });
 
-const PersonaTitleIcon = React.memo(function PersonaTitleIcon() {
-  return <Sparkles size={14} color={colors.primary} strokeWidth={2.2} />;
+const PersonaTitleIcon = React.memo(function PersonaTitleIcon({ color }: { color: string }) {
+  return <Sparkles size={14} color={color} strokeWidth={2.2} />;
 });
 
-const TravelAnalysisActionIcon = React.memo(function TravelAnalysisActionIcon() {
-  return <WandSparkles size={14} color={colors.primary} strokeWidth={2.2} />;
+const TravelAnalysisActionIcon = React.memo(function TravelAnalysisActionIcon({ color }: { color: string }) {
+  return <WandSparkles size={14} color={color} strokeWidth={2.2} />;
 });
 
-const TravelAnalysisButtonIcon = React.memo(function TravelAnalysisButtonIcon() {
-  return <RefreshCcw size={13} color={colors.primary} strokeWidth={2.4} />;
+const TravelAnalysisButtonIcon = React.memo(function TravelAnalysisButtonIcon({ color }: { color: string }) {
+  return <RefreshCcw size={13} color={color} strokeWidth={2.4} />;
 });
 
-const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.primary }: AppIconProps) {
+const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = lightColors.primary }: AppIconProps) {
   // lucide 아이콘은 SVG 기반이라 iOS, Android, Web에서 같은 형태로 렌더링됩니다.
   const Icon = travelTypeIcons[icon] ?? NotebookPen;
 
@@ -264,7 +281,7 @@ const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.pr
 const ToggleIcon = React.memo(function ToggleIcon({
   id,
   size = 16,
-  color = colors.textSecondary,
+  color = lightColors.textSecondary,
 }: {
   id: SettingsToggle['id'];
   size?: number;
@@ -279,10 +296,16 @@ const ToggleIcon = React.memo(function ToggleIcon({
 function SettingsCard({
   children,
   className = '',
-}: React.PropsWithChildren<{ className?: string }>) {
+  colors,
+  isDarkMode,
+}: React.PropsWithChildren<{
+  className?: string;
+  colors: SettingsThemeColors;
+  isDarkMode: boolean;
+}>) {
   return (
     <View
-      className={`rounded-lg border bg-surface px-md py-md ${className}`}
+      className={`rounded-lg border px-md py-md ${isDarkMode ? 'bg-dark-surface' : 'bg-surface'} ${className}`}
       style={{
         borderColor: colors.border,
         shadowColor: colors.textPrimary,
@@ -299,9 +322,11 @@ function SettingsCard({
 function ToggleSwitch({
   value,
   onValueChange,
+  colors,
 }: {
   value: boolean;
   onValueChange: (value: boolean) => void;
+  colors: SettingsThemeColors;
 }) {
   const progress = useDerivedValue(() => withTiming(value ? 1 : 0, { duration: 180 }), [value]);
   const trackStyle = useAnimatedStyle(() => ({
@@ -351,20 +376,22 @@ function PersonaChip({
   label,
   selected,
   onPress,
+  isDarkMode,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
+  isDarkMode: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
-      className={`rounded-full px-3 py-2 ${selected ? 'bg-primary' : 'bg-muted'}`}>
+      className={`rounded-full px-3 py-2 ${selected ? 'bg-primary' : isDarkMode ? 'bg-dark-muted' : 'bg-muted'}`}>
       <Text
         className={`text-sm font-sans-semibold ${
-          selected ? 'text-textOnPrimary' : 'text-textSecondary'
+          selected ? 'text-textOnPrimary' : isDarkMode ? 'text-dark-textSecondary' : 'text-textSecondary'
         }`}>
         {label}
       </Text>
@@ -376,21 +403,27 @@ function ToggleRow({
   item,
   value,
   onValueChange,
+  colors,
+  isDarkMode,
 }: {
   item: SettingsToggle;
   value: boolean;
   onValueChange: (value: boolean) => void;
+  colors: SettingsThemeColors;
+  isDarkMode: boolean;
 }) {
   return (
-    <SettingsCard className="flex-row items-center justify-between py-sm">
+    <SettingsCard colors={colors} isDarkMode={isDarkMode} className="flex-row items-center justify-between py-sm">
       <View className="flex-row items-center gap-sm">
-        <View className="h-9 w-9 items-center justify-center rounded-lg bg-muted">
-          <ToggleIcon id={item.id} />
+        <View className={`h-9 w-9 items-center justify-center rounded-lg ${isDarkMode ? 'bg-dark-muted' : 'bg-muted'}`}>
+          <ToggleIcon id={item.id} color={colors.textSecondary} />
         </View>
-        <Text className="text-md font-sans-real-bold text-textPrimary">{item.label}</Text>
+        <Text className={`text-md font-sans-real-bold ${isDarkMode ? 'text-dark-textPrimary' : 'text-textPrimary'}`}>
+          {item.label}
+        </Text>
       </View>
 
-      <ToggleSwitch value={value} onValueChange={onValueChange} />
+      <ToggleSwitch value={value} onValueChange={onValueChange} colors={colors} />
     </SettingsCard>
   );
 }
@@ -419,6 +452,8 @@ export default function SettingsScreen() {
     [profile.toggles],
   );
   const [toggles, setToggles] = useState(initialToggles);
+  const isDarkMode = toggles.darkMode;
+  const colors = isDarkMode ? darkColors : lightColors;
 
   // 페르소나는 하나만 선택되도록 선택된 id만 저장합니다.
   const [selectedPersonaId, setSelectedPersonaId] = useState(
@@ -439,15 +474,26 @@ export default function SettingsScreen() {
   const noticeColors =
     profileNotice?.type === 'error'
       ? {
-          backgroundColor: '#FFF1F2',
-          borderColor: '#F4A7AE',
-          textColor: '#A9323C',
+          backgroundColor: isDarkMode ? '#3B1F28' : '#FFF1F2',
+          borderColor: isDarkMode ? '#8A3A46' : '#F4A7AE',
+          textColor: isDarkMode ? '#FFD6DB' : '#A9323C',
         }
       : {
-          backgroundColor: '#ECFDF3',
-          borderColor: '#86D39B',
-          textColor: '#257A3E',
+          backgroundColor: isDarkMode ? '#183528' : '#ECFDF3',
+          borderColor: isDarkMode ? '#3F8F5F' : '#86D39B',
+          textColor: isDarkMode ? '#A9F0BE' : '#257A3E',
         };
+  const profileErrorColors = isDarkMode
+    ? {
+        backgroundColor: '#3B1F28',
+        borderColor: '#8A3A46',
+        textColor: '#FFD6DB',
+      }
+    : {
+        backgroundColor: '#FFF4F4',
+        borderColor: '#E8B4B4',
+        textColor: '#8A2D2D',
+      };
   const isTravelAnalysisCoolingDown = travelAnalysisCooldownRemaining > 0;
 
   useEffect(() => {
@@ -711,27 +757,38 @@ export default function SettingsScreen() {
   return (
     <>
       <ScrollView
-        className="flex-1 bg-background"
+        className={`flex-1 ${isDarkMode ? 'bg-dark-background' : 'bg-background'}`}
         contentContainerClassName="min-h-full px-md"
         contentContainerStyle={contentInset}
         showsVerticalScrollIndicator={false}>
       <View className="mx-auto w-full max-w-[420px] flex-1">
         <View className="mb-xl flex-row items-center justify-between">
-          <Text className="text-lg font-sans-semibold text-textPrimary">설정</Text>
+          <Text className={`text-lg font-sans-semibold ${isDarkMode ? 'text-dark-textPrimary' : 'text-textPrimary'}`}>
+            설정
+          </Text>
           {isLoadingProfile ? (
-            <Text className="text-sm font-sans-semibold text-textSecondary">불러오는 중</Text>
+            <Text className={`text-sm font-sans-semibold ${isDarkMode ? 'text-dark-textSecondary' : 'text-textSecondary'}`}>
+              불러오는 중
+            </Text>
           ) : null}
         </View>
 
         {profileError ? (
-          <View className="mb-md rounded-lg border border-[#E8B4B4] bg-[#FFF4F4] px-md py-sm">
-            <Text className="text-sm font-sans-semibold text-[#8A2D2D]">{profileError}</Text>
+          <View
+            className="mb-md rounded-lg border px-md py-sm"
+            style={{
+              backgroundColor: profileErrorColors.backgroundColor,
+              borderColor: profileErrorColors.borderColor,
+            }}>
+            <Text className="text-sm font-sans-semibold" style={{ color: profileErrorColors.textColor }}>
+              {profileError}
+            </Text>
           </View>
         ) : null}
 
         <View className="items-center">
           <View className="relative h-[82px] w-[82px] items-center justify-center">
-            <View className="h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full bg-primaryLight">
+            <View className={`h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full ${isDarkMode ? 'bg-dark-primaryLight' : 'bg-primaryLight'}`}>
               {profile.profileImageUrl ? (
                 <Image
                   source={{ uri: profile.profileImageUrl }}
@@ -739,7 +796,7 @@ export default function SettingsScreen() {
                   resizeMode="cover"
                 />
               ) : (
-                <ProfileIcon />
+                <ProfileIcon color={colors.primary} />
               )}
             </View>
             <Pressable
@@ -747,7 +804,9 @@ export default function SettingsScreen() {
               accessibilityLabel="프로필 사진 수정"
               onPress={openProfileImagePicker}
               disabled={isUploadingProfileImage}
-              className="absolute bottom-0 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-surface bg-primary"
+              className={`absolute bottom-0 right-0 h-8 w-8 items-center justify-center rounded-full border-2 bg-primary ${
+                isDarkMode ? 'border-dark-surface' : 'border-surface'
+              }`}
               style={{
                 shadowColor: colors.textPrimary,
                 shadowOffset: { width: 0, height: 2 },
@@ -756,29 +815,33 @@ export default function SettingsScreen() {
                 elevation: 3,
                 opacity: isUploadingProfileImage ? 0.6 : 1,
               }}>
-              <ProfileImageEditIcon />
+              <ProfileImageEditIcon color={colors.textOnPrimary} />
             </Pressable>
           </View>
 
           <View className="mt-md flex-row items-center justify-center gap-xs">
             {/* 오른쪽 수정 아이콘과 같은 폭의 빈 공간을 왼쪽에 둬서 닉네임 텍스트가 프로필 사진 중앙과 맞도록 합니다. */}
             <View className="h-7 w-7" />
-            <Text className="text-[20px] font-sans-semibold text-textPrimary">{profile.nickname}</Text>
+            <Text className={`text-[20px] font-sans-semibold ${isDarkMode ? 'text-dark-textPrimary' : 'text-textPrimary'}`}>
+              {profile.nickname}
+            </Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="닉네임 수정"
               onPress={openNicknameModal}
               className="h-7 w-7 items-center justify-center rounded-full">
-              <EditIcon />
+              <EditIcon color={colors.textSecondary} />
             </Pressable>
           </View>
         </View>
 
         <View className="mt-lg gap-md">
-          <SettingsCard>
+          <SettingsCard colors={colors} isDarkMode={isDarkMode}>
             <View className="flex-row items-center gap-sm">
-              <PersonaTitleIcon />
-              <Text className="text-md font-sans-real-bold text-textPrimary">{profile.persona.title}</Text>
+              <PersonaTitleIcon color={colors.primary} />
+              <Text className={`text-md font-sans-real-bold ${isDarkMode ? 'text-dark-textPrimary' : 'text-textPrimary'}`}>
+                {profile.persona.title}
+              </Text>
             </View>
 
             <View className="mt-sm flex-row flex-wrap gap-sm">
@@ -787,21 +850,24 @@ export default function SettingsScreen() {
                   key={tag.id}
                   label={tag.label}
                   selected={tag.id === selectedPersonaId}
+                  isDarkMode={isDarkMode}
                   onPress={() => handleSelectPersona(tag.id)}
                 />
               ))}
             </View>
 
-            <Text className="mt-sm text-sm font-sans-medium text-textSecondary">
+            <Text className={`mt-sm text-sm font-sans-medium ${isDarkMode ? 'text-dark-textSecondary' : 'text-textSecondary'}`}>
               {selectedPersona?.description ?? profile.persona.description}
             </Text>
           </SettingsCard>
 
-          <SettingsCard>
+          <SettingsCard colors={colors} isDarkMode={isDarkMode}>
             <View className="mb-md flex-row items-center justify-between gap-sm">
               <View className="flex-row items-center gap-sm">
-                <TravelAnalysisActionIcon />
-                <Text className="text-md font-sans-real-bold text-textPrimary">여행 유형 분석</Text>
+                <TravelAnalysisActionIcon color={colors.primary} />
+                <Text className={`text-md font-sans-real-bold ${isDarkMode ? 'text-dark-textPrimary' : 'text-textPrimary'}`}>
+                  여행 유형 분석
+                </Text>
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -810,24 +876,24 @@ export default function SettingsScreen() {
                 onPress={startTravelStyleAnalysis}
                 disabled={isRequestingTravelAnalysis}
                 // 여행 유형 카드의 제목 줄에서 재분석 액션을 오른쪽 끝에 고정합니다.
-                className="h-6 w-6 items-center justify-center rounded-md bg-muted"
+                className={`h-6 w-6 items-center justify-center rounded-md ${isDarkMode ? 'bg-dark-muted' : 'bg-muted'}`}
                 style={{
                   borderColor: colors.border,
                   borderWidth: 1,
                   opacity: isRequestingTravelAnalysis || isTravelAnalysisCoolingDown ? 0.55 : 1,
                 }}>
-                <TravelAnalysisButtonIcon />
+                <TravelAnalysisButtonIcon color={colors.primary} />
               </Pressable>
             </View>
             <View className="flex-row items-center gap-md">
-              <View className="h-[52px] w-[52px] items-center justify-center rounded-lg bg-accent">
-                <AppIcon icon={profile.travelType.icon} size={24} color={colors.primary} />
+              <View className={`h-[52px] w-[52px] items-center justify-center rounded-lg ${isDarkMode ? 'bg-dark-accentMuted' : 'bg-accent'}`}>
+                <AppIcon icon={profile.travelType.icon} size={24} color={isDarkMode ? colors.accent : colors.primary} />
               </View>
               <View className="min-w-0 flex-1">
-                <Text className="text-lg font-sans-semibold text-textPrimary">
+                <Text className={`text-lg font-sans-semibold ${isDarkMode ? 'text-dark-textPrimary' : 'text-textPrimary'}`}>
                   {profile.travelType.title}
                 </Text>
-                <Text className="mt-xs text-sm font-sans-semibold text-textSecondary">
+                <Text className={`mt-xs text-sm font-sans-semibold ${isDarkMode ? 'text-dark-textSecondary' : 'text-textSecondary'}`}>
                   {profile.travelType.description}
                 </Text>
               </View>
@@ -839,6 +905,8 @@ export default function SettingsScreen() {
               key={toggle.id}
               item={toggle}
               value={toggles[toggle.id]}
+              colors={colors}
+              isDarkMode={isDarkMode}
               onValueChange={(value) => handleToggleChange(toggle.id, value)}
             />
           ))}
