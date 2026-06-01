@@ -94,10 +94,11 @@ const colors = {
   background: '#F4F6F9',
   surface: '#FFFFFF',
   textOnPrimary: '#FFFFFF',
-  text: '#152538',
-  textMuted: '#39536B',
+  // tailwind.config.js의 색상 토큰 이름과 맞춰서 다크모드 전환 시 매핑하기 쉽게 둡니다.
+  textPrimary: '#152538',
+  textSecondary: '#39536B',
   border: '#A9C3E6',
-  inactive: '#E8EDF5',
+  muted: '#E8EDF5',
   toggle: '#5B7DBB',
 };
 
@@ -234,7 +235,7 @@ const ProfileIcon = React.memo(function ProfileIcon() {
 });
 
 const EditIcon = React.memo(function EditIcon() {
-  return <Pencil size={13} color={colors.textMuted} strokeWidth={2.2} />;
+  return <Pencil size={13} color={colors.textSecondary} strokeWidth={2.2} />;
 });
 
 const ProfileImageEditIcon = React.memo(function ProfileImageEditIcon() {
@@ -263,7 +264,7 @@ const AppIcon = React.memo(function AppIcon({ icon, size = 18, color = colors.pr
 const ToggleIcon = React.memo(function ToggleIcon({
   id,
   size = 16,
-  color = colors.textMuted,
+  color = colors.textSecondary,
 }: {
   id: SettingsToggle['id'];
   size?: number;
@@ -284,7 +285,7 @@ function SettingsCard({
       className={`rounded-lg border bg-surface px-md py-md ${className}`}
       style={{
         borderColor: colors.border,
-        shadowColor: colors.text,
+        shadowColor: colors.textPrimary,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
         shadowRadius: 5,
@@ -304,7 +305,7 @@ function ToggleSwitch({
 }) {
   const progress = useDerivedValue(() => withTiming(value ? 1 : 0, { duration: 180 }), [value]);
   const trackStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(progress.value, [0, 1], [colors.inactive, colors.toggle]),
+    backgroundColor: interpolateColor(progress.value, [0, 1], [colors.muted, colors.toggle]),
   }));
   const thumbStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: progress.value * 20 }],
@@ -333,7 +334,7 @@ function ToggleSwitch({
             height: 20,
             borderRadius: 999,
             backgroundColor: colors.surface,
-            shadowColor: colors.text,
+            shadowColor: colors.textPrimary,
             shadowOffset: { width: 0, height: 1 },
             shadowOpacity: 0.12,
             shadowRadius: 2,
@@ -748,7 +749,7 @@ export default function SettingsScreen() {
               disabled={isUploadingProfileImage}
               className="absolute bottom-0 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-surface bg-primary"
               style={{
-                shadowColor: colors.text,
+                shadowColor: colors.textPrimary,
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.14,
                 shadowRadius: 4,
@@ -856,7 +857,7 @@ export default function SettingsScreen() {
               alignSelf: 'center',
               backgroundColor: noticeColors.backgroundColor,
               borderColor: noticeColors.borderColor,
-              shadowColor: colors.text,
+              shadowColor: colors.textPrimary,
               shadowOffset: { width: 0, height: 3 },
               shadowOpacity: 0.12,
               shadowRadius: 8,
