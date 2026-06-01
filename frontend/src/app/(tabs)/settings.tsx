@@ -908,7 +908,7 @@ export default function SettingsScreen() {
             },
             noticeStyle,
           ]}>
-          <Text className="text-center text-sm font-sans-semibold" style={{ color: noticeColors.textColor }}>
+          <Text className="text-center text-sm" style={{ color: noticeColors.textColor }}>
             {profileNotice.message}
           </Text>
         </AnimatedView>
