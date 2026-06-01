@@ -5,7 +5,7 @@ export default function CustomMap() {
   return (
     <View className="flex-1 bg-background items-center justify-center p-5">
       <View className="bg-surface p-6 rounded-2xl shadow-md border border-border items-center max-w-sm">
-        <Text className="text-xl font-bold text-textPrimary mb-2">
+        <Text className="text-xl font-sans-bold text-textPrimary mb-2">
           📍 지도 확인 안내
         </Text>
         <Text className="text-sm text-textSecondary text-center leading-5">

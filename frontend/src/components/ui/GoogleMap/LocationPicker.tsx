@@ -132,7 +132,7 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
       {/* ===== 헤더: 제목 + 닫기(X) ===== */}
       <View style={{paddingTop: insets.top}} className="bg-surface">
         <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
-          <Text className="text-base font-bold text-textPrimary">여행지 선택</Text>
+          <Text className="text-base font-sans-bold text-textPrimary">여행지 선택</Text>
           <Pressable onPress={onClose} hitSlop={8}>
             <X size={22} color="#39536B" />
           </Pressable>
@@ -188,7 +188,7 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
           ) : (
             <>
               <MapPin size={18} color="#FFFFFF" />
-              <Text className="font-bold text-textOnPrimary">
+              <Text className="font-sans-bold text-textOnPrimary">
                 {picked ? "이 위치로 선택" : "위치를 먼저 선택하세요"}
               </Text>
             </>

@@ -1,6 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
+import { PermissionsAndroid } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, ChevronLeft, ImagePlus, Loader2, X } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -269,6 +271,14 @@ export default function AddScreen() {
       return;
     }
 
+    // Android 14+ 에서 사진 EXIF GPS 를 노출 받으려면 ACCESS_MEDIA_LOCATION 권한이 필수.
+    // ImagePicker 의 요청은 일반 사진 접근만 다루므로 별도로 요청해야 합니다.
+    // (manifest 선언은 app.config.js 의 expo-media-library 플러그인이 담당)
+    if (Platform.OS === 'android') {
+      await PermissionsAndroid.request('android.permission.ACCESS_MEDIA_LOCATION' as never);
+      await MediaLibrary.requestPermissionsAsync();
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
@@ -366,7 +376,7 @@ export default function AddScreen() {
             <ChevronLeft size={24} color={colors.textSecondary} />
           </Pressable>
 
-          <Text className="text-lg font-bold text-primary">사진 추가</Text>
+          <Text className="text-lg font-sans-bold text-primary">사진 추가</Text>
           <View className="h-10 w-10" />
         </View>
 
@@ -375,7 +385,7 @@ export default function AddScreen() {
           contentContainerClassName="px-lg pb-xl"
           showsVerticalScrollIndicator={false}>
           <View className="mb-xl">
-            <Text className="text-xl font-bold leading-8 text-textPrimary">
+            <Text className="text-xl font-sans-bold leading-8 text-textPrimary">
               {photoHeading}
             </Text>
             <Text className="mt-sm text-md leading-6 text-textSecondary">
@@ -398,7 +408,7 @@ export default function AddScreen() {
               ) : (
                 <Camera size={24} color={isPhotoLimitReached ? colors.border : colors.primaryLight} />
               )}
-              <Text className="mt-xs text-sm font-bold text-textSecondary">
+              <Text className="mt-xs text-sm font-sans-bold text-textSecondary">
                 {isPreparing ? '준비 중' : isPhotoLimitReached ? '최대 10장' : '사진 추가'}
               </Text>
             </Pressable>
@@ -410,7 +420,7 @@ export default function AddScreen() {
                 style={{ width: tileSize, height: tileSize }}>
                 <Image source={{ uri: photo.thumbnailUri }} className="h-full w-full" resizeMode="cover" />
                 <View className="absolute bottom-xs left-xs rounded-md bg-textPrimary/70 px-xs py-[2px]">
-                  <Text className="text-xs font-bold text-textOnPrimary">{getPhotoDayLabel(photo, selectedDates)}</Text>
+                  <Text className="text-xs font-sans-bold text-textOnPrimary">{getPhotoDayLabel(photo, selectedDates)}</Text>
                 </View>
                 <Pressable
                   accessibilityRole="button"
@@ -426,12 +436,12 @@ export default function AddScreen() {
           {pendingPhotos.length === 0 ? (
             <View className="mt-2xl items-center rounded-lg bg-muted px-lg py-xl">
               <ImagePlus size={30} color={colors.primaryLight} />
-              <Text className="mt-sm text-center text-sm font-bold text-textSecondary">
+              <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary">
                 사진을 여러 장 선택하면 여기에서 순서대로 확인할 수 있어요.
               </Text>
             </View>
           ) : (
-            <Text className="mt-lg text-center text-sm font-bold text-textSecondary">
+            <Text className="mt-lg text-center text-sm font-sans-bold text-textSecondary">
               {pendingPhotos.length}/{MAX_PHOTO_COUNT}장 선택됨
             </Text>
           )}
