@@ -17,7 +17,7 @@ import {
   MapPin,
   RotateCcw,
 } from "lucide-react-native";
-import React, {useCallback, useEffect, useState} from "react";
+import React, {useCallback, useEffect, useRef, useState} from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -104,6 +104,21 @@ export default function DiaryWritingScreen() {
   // 여행지 지도 피커 열림 여부.
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  // 각 날의 "마지막으로 서버에 저장된 여행지" 스냅샷. handleNext 가 변경 여부 판단에 사용.
+  // 같은 값을 다시 PATCH 하지 않게 막아서, picker 직후 "다음날로" 연타 시 경합·중복 호출을 방지합니다.
+  type LocationSnapshot = {
+    name: string;
+    lat: number | null;
+    lon: number | null;
+  };
+  const [originalLocations, setOriginalLocations] = useState<
+    Record<number, LocationSnapshot>
+  >({});
+
+  // fillContent 가 진행 중인 tripDayId 모음. 같은 날 본문을 두 번 fetch 하지 않게 막습니다.
+  // (폴링 응답으로 days 가 자주 갱신되어 [days] effect 가 자주 재실행되는 환경 대응)
+  const inflightFillRef = useRef<Set<number>>(new Set());
+
   // 여행 전체를 불러옵니다. (화면 진입 시 + 에러 후 "다시 시도"에서 재호출)
   const loadTrip = useCallback(async () => {
     // tripId 가 없거나 숫자로 못 바꾸면 잘못된 진입 → 에러 화면으로.
@@ -118,6 +133,19 @@ export default function DiaryWritingScreen() {
       const data = await fetchTripDiary(TRIP_ID); // GET /trips/{tripId}
       setTrip(data);
       setDays(data.days);
+      // 서버 진본 값을 스냅샷으로 보관 → handleNext 가 "바뀐 게 있을 때만" PATCH 하도록.
+      setOriginalLocations(
+        Object.fromEntries(
+          data.days.map((d) => [
+            d.tripDayId,
+            {
+              name: d.locationSummary,
+              lat: d.representativeLat,
+              lon: d.representativeLon,
+            },
+          ]),
+        ),
+      );
     } catch (e) {
       console.error(e);
       setError("일기를 불러오지 못했어요. 서버가 켜져 있는지 확인해주세요.");
@@ -166,42 +194,103 @@ export default function DiaryWritingScreen() {
 
   // [5-3] 막 ready가 됐는데 본문이 아직 비어 있는 날은, 그 날 전체 내용을 한 번 가져옵니다.
   // (폴링은 genStatus만 갱신하므로, 본문·사진은 여기서 따로 채웁니다.)
+  //
+  // ※ 두 가지 가드:
+  //   (1) inflightFillRef 로 같은 tripDayId 중복 fetch 차단(폴링이 자주 days 를 갱신해도 한 번만).
+  //   (2) 응답이 도착해도 사용자가 picker 로 옵티미스틱하게 바꿔둔 여행지·좌표는 보존하기 위해
+  //       전체 row 교체 대신 "LLM 생성 필드(content/subtitle/emotion/weather)와 사진"만 머지.
   useEffect(() => {
-    const target = days.find((d) => d.genStatus === "ready" && d.content === "");
+    const target = days.find(
+      (d) =>
+        d.genStatus === "ready" &&
+        d.content === "" &&
+        !inflightFillRef.current.has(d.tripDayId),
+    );
     if (!target) return;
+
+    const targetId = target.tripDayId;
+    inflightFillRef.current.add(targetId);
+    let aborted = false;
 
     async function fillContent() {
       try {
-        const full = await fetchTripDay(target!.tripDayId); // GET /trip-days/{id}
+        const full = await fetchTripDay(targetId); // GET /trip-days/{id}
+        if (aborted) return;
         setDays((prev) =>
-          prev.map((d) => (d.tripDayId === full.tripDayId ? full : d)),
+          prev.map((d) =>
+            d.tripDayId === full.tripDayId
+              ? {
+                  ...d, // 사용자 편집(locationSummary, representativeLat/Lon) 보존
+                  content: full.content,
+                  subtitle: full.subtitle,
+                  emotion: full.emotion,
+                  weather: full.weather,
+                  photos: full.photos,
+                  genStatus: full.genStatus,
+                }
+              : d,
+          ),
         );
       } catch (e) {
         console.error(e);
+      } finally {
+        // 성공/실패와 무관하게 락 해제 → 실패 시 다음 폴링 주기에 재시도 가능.
+        inflightFillRef.current.delete(targetId);
       }
     }
     fillContent();
+
+    return () => {
+      aborted = true;
+    };
   }, [days]);
 
   // 현재 날(여행지)을 저장한 뒤 다음날로. 저장에 성공해야 넘어갑니다.
+  // 변경이 없으면 PATCH 를 보내지 않고 바로 넘어가, picker 직후 연타로 인한 중복/경합을 피합니다.
   const handleNext = async () => {
     if (!canGoNext) return;
     setActionError(null);
+
+    const orig = originalLocations[day.tripDayId];
+    const changed =
+      !orig ||
+      orig.name !== day.locationSummary ||
+      orig.lat !== day.representativeLat ||
+      orig.lon !== day.representativeLon;
+
     try {
-      // 이 화면의 유일한 편집 대상 = 여행지. 현재 값을 저장합니다.
-      await saveDayLocation(day.tripDayId, day.locationSummary); // PATCH /trip-days/{id}
-      setDayIndex((i) => i + 1); // 저장 성공 → 다음날로
+      if (changed) {
+        // 좌표가 있으면 함께 보내서 백엔드가 좌표까지 같이 갱신할 수 있게 합니다.
+        await saveDayLocation(
+          day.tripDayId,
+          day.locationSummary,
+          day.representativeLat ?? undefined,
+          day.representativeLon ?? undefined,
+        ); // PATCH /trip-days/{id}
+        // 스냅샷 갱신 → 다음 진입 시 또 PATCH 하지 않게.
+        setOriginalLocations((prev) => ({
+          ...prev,
+          [day.tripDayId]: {
+            name: day.locationSummary,
+            lat: day.representativeLat,
+            lon: day.representativeLon,
+          },
+        }));
+      }
+      setDayIndex((i) => i + 1);
     } catch (e) {
       console.error(e);
       setActionError("저장하지 못했어요. 잠시 후 다시 시도해주세요.");
     }
   };
   // 최종 저장 → trips.status='completed' → 성공해야 Detail로 이동.
+  // detail 화면은 useLocalSearchParams 로 id 를 받아 그 여행을 조회하므로
+  // 반드시 id 를 함께 넘겨야 합니다. (전엔 누락되어 어떤 여행을 보일지 모름)
   const handleSave = async () => {
     setActionError(null);
     try {
       await completeTrip(TRIP_ID); // PATCH /trips/{id}  { status: 'completed' }
-      router.push("/detail"); // 저장 성공 → 이동
+      router.push({pathname: "/detail", params: {id: String(TRIP_ID)}});
     } catch (e) {
       console.error(e);
       setActionError("최종 저장에 실패했어요. 다시 시도해주세요.");
@@ -232,6 +321,7 @@ export default function DiaryWritingScreen() {
     placeName: string,
     lat: number,
     lon: number,
+    context?: {countryName?: string; cityName?: string},
   ) => {
     setPickerOpen(false);
     setActionError(null);
@@ -248,7 +338,20 @@ export default function DiaryWritingScreen() {
       ),
     );
     try {
-      await saveDayLocation(day.tripDayId, placeName, lat, lon); // PATCH /trip-days/{id}
+      // 국가/도시까지 함께 전달 → 백엔드가 trip.destination 자동 채움(비어있을 때만).
+      await saveDayLocation(
+        day.tripDayId,
+        placeName,
+        lat,
+        lon,
+        context?.countryName,
+        context?.cityName,
+      );
+      // 저장 성공 → 스냅샷 갱신. handleNext 가 동일 값으로 또 PATCH 하지 않도록.
+      setOriginalLocations((prev) => ({
+        ...prev,
+        [day.tripDayId]: {name: placeName, lat, lon},
+      }));
     } catch (e) {
       console.error(e);
       setActionError("여행지를 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
@@ -276,7 +379,7 @@ export default function DiaryWritingScreen() {
           className="flex-row items-center gap-2 rounded-2xl bg-primary px-5 py-3"
         >
           <RotateCcw size={16} color="#FFFFFF" />
-          <Text className="font-bold text-textOnPrimary">다시 시도</Text>
+          <Text className="font-sans-bold text-textOnPrimary">다시 시도</Text>
         </Pressable>
       </View>
     );
@@ -287,7 +390,7 @@ export default function DiaryWritingScreen() {
       {/* ===== 헤더: 일차 표시 (뒤로가기 없음 — 순방향 일방통행) ===== */}
       <View style={{paddingTop: insets.top}}>
         <View className="mx-auto w-full max-w-[420px] px-5 py-4">
-          <Text className="text-center text-base font-bold text-primary">
+          <Text className="text-center text-base font-sans-bold text-primary">
             {day.dayNumber}일차 · 총 {trip.days.length}일
           </Text>
         </View>
@@ -306,7 +409,7 @@ export default function DiaryWritingScreen() {
                 style={{width: "100%", height: "100%"}}
               />
             </View>
-            <Text className="flex-1 text-center font-sans text-lg font-bold text-textPrimary">
+            <Text className="flex-1 text-center text-lg font-sans-bold text-textPrimary">
               {trip.title}
             </Text>
           </View>
@@ -321,7 +424,7 @@ export default function DiaryWritingScreen() {
                 // 좌표 있음: 기존 가로 2칸 레이아웃
                 <View className="flex-row gap-4">
                   <View className="flex-1 gap-2">
-                    <Text className="ml-1 text-sm font-bold text-textSecondary">
+                    <Text className="ml-1 text-sm font-sans-bold text-textSecondary">
                       여행지
                     </Text>
                     {/* 이 화면의 유일한 편집 진입점. 탭하면 지도 피커. */}
@@ -339,7 +442,7 @@ export default function DiaryWritingScreen() {
                     </Pressable>
                   </View>
                   <View className="flex-1 gap-2">
-                    <Text className="ml-1 text-sm font-bold text-textSecondary">
+                    <Text className="ml-1 text-sm font-sans-bold text-textSecondary">
                       날짜
                     </Text>
                     <View className="flex-row items-center justify-between rounded-xl bg-background p-4">
@@ -356,7 +459,7 @@ export default function DiaryWritingScreen() {
                   <View className="gap-3 rounded-2xl border border-accent bg-accent/20 p-4">
                     <View className="flex-row items-center gap-2">
                       <AlertCircle size={18} color={colors.textSecondary} />
-                      <Text className="text-sm font-bold text-textPrimary">
+                      <Text className="text-sm font-sans-bold text-textPrimary">
                         위치 정보가 없어요
                       </Text>
                     </View>
@@ -369,14 +472,14 @@ export default function DiaryWritingScreen() {
                       className="flex-row items-center justify-center gap-2 rounded-xl bg-primary py-3"
                     >
                       <MapPin size={16} color="#FFFFFF" />
-                      <Text className="font-bold text-textOnPrimary">
+                      <Text className="font-sans-bold text-textOnPrimary">
                         위치 알려주기
                       </Text>
                     </Pressable>
                   </View>
                   {/* 날짜는 따로 한 줄로 보존 */}
                   <View className="gap-2">
-                    <Text className="ml-1 text-sm font-bold text-textSecondary">
+                    <Text className="ml-1 text-sm font-sans-bold text-textSecondary">
                       날짜
                     </Text>
                     <View className="flex-row items-center justify-between rounded-xl bg-background p-4">
@@ -391,11 +494,11 @@ export default function DiaryWritingScreen() {
 
               {/* --- 소제목(읽기전용) + 감정 이모지 --- */}
               <View className="gap-2">
-                <Text className="ml-1 text-sm font-bold text-textSecondary">
+                <Text className="ml-1 text-sm font-sans-bold text-textSecondary">
                   소제목
                 </Text>
                 <View className="flex-row items-center gap-3 rounded-xl bg-background p-4">
-                  <Text className="flex-1 font-sans text-md font-bold text-textPrimary">
+                  <Text className="flex-1 text-md font-sans-bold text-textPrimary">
                     {day.subtitle}
                   </Text>
                   {/* trip_days.emotion (Twemoji) */}
@@ -406,7 +509,7 @@ export default function DiaryWritingScreen() {
               {/* --- 여행 기록(본문, 읽기전용) + 날씨 이모지 --- */}
               <View className="gap-2">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-lg font-bold text-textPrimary">
+                  <Text className="text-lg font-sans-bold text-textPrimary">
                     여행 기록
                   </Text>
                   {/* trip_days.weather (Twemoji 코드포인트) */}
@@ -421,7 +524,7 @@ export default function DiaryWritingScreen() {
                   </Text>
                   {/* 글자 수 표시 (읽기전용이지만 분량 확인용으로 유지) */}
                   <View className="mt-2 flex-row justify-end">
-                    <Text className="text-[10px] font-bold text-primaryLight">
+                    <Text className="text-[10px] font-sans-bold text-primaryLight">
                       {day.content.length}자
                     </Text>
                   </View>
@@ -455,7 +558,7 @@ export default function DiaryWritingScreen() {
                   className="flex-row items-center gap-2 rounded-2xl bg-primary px-5 py-3"
                 >
                   <RotateCcw size={16} color="#FFFFFF" />
-                  <Text className="font-bold text-textOnPrimary">
+                  <Text className="font-sans-bold text-textOnPrimary">
                     일기 다시 생성하기
                   </Text>
                 </Pressable>
@@ -484,7 +587,7 @@ export default function DiaryWritingScreen() {
                 onPress={handleSave}
                 className="flex-row items-center justify-center gap-2 rounded-2xl bg-primary py-4"
               >
-                <Text className="font-bold text-textOnPrimary">저장하기</Text>
+                <Text className="font-sans-bold text-textOnPrimary">저장하기</Text>
                 <FileText size={16} color="#FFFFFF" />
               </Pressable>
             ) : canGoNext ? (
@@ -493,14 +596,14 @@ export default function DiaryWritingScreen() {
                 onPress={handleNext}
                 className="flex-row items-center justify-center gap-2 rounded-2xl bg-primary py-4"
               >
-                <Text className="font-bold text-textOnPrimary">다음날로</Text>
+                <Text className="font-sans-bold text-textOnPrimary">다음날로</Text>
                 <ChevronRight size={16} color="#FFFFFF" />
               </Pressable>
             ) : (
               // 다음 날 생성중: 비활성
               <View className="flex-row items-center justify-center gap-2 rounded-2xl bg-muted py-4">
                 <ActivityIndicator size="small" color={colors.primaryLight} />
-                <Text className="font-bold text-primaryLight">
+                <Text className="font-sans-bold text-primaryLight">
                   다음 추억 생성중
                 </Text>
               </View>
@@ -523,7 +626,7 @@ export default function DiaryWritingScreen() {
 function PhotoBar({photos}: {photos: {id: number; thumbnailUrl: string}[]}) {
   return (
     <View className="gap-4">
-      <Text className="ml-1 text-sm font-bold text-textSecondary">
+      <Text className="ml-1 text-sm font-sans-bold text-textSecondary">
         대표 사진
       </Text>
       <ScrollView

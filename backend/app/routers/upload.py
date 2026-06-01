@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
@@ -97,6 +98,12 @@ class UploadDraft:
     photo_date: date
     latitude: Decimal | None
     longitude: Decimal | None
+    # 프론트(add.tsx)가 OS 지오코딩으로 미리 변환해 보낸 지명들.
+    # place_name : 일차 대표 지명 후보 (예: "신주쿠")
+    # country_name + city_name : trip.destination "국가/도시" 의 구성요소
+    place_name: str | None = None
+    country_name: str | None = None
+    city_name: str | None = None
 
 
 def _parse_upload_date(value: str | None) -> date | None:
@@ -272,6 +279,10 @@ async def upload_first_day_photos(
     photo_dates: list[str] | None = Form(None),
     photo_gps_latitudes: list[str] | None = Form(None),
     photo_gps_longitudes: list[str] | None = Form(None),
+    # 프론트가 OS 지오코딩으로 미리 변환한 지명. 위치 권한이 없거나 GPS 가 없으면 빈 문자열.
+    photo_place_names: list[str] | None = Form(None),
+    photo_country_names: list[str] | None = Form(None),
+    photo_city_names: list[str] | None = Form(None),
     user_id: int = Form(1),
     trip_id: int | None = Form(None),
     day_number: int = Form(1),
@@ -310,6 +321,13 @@ async def upload_first_day_photos(
             latitude = _decimal_coordinate(gps.latitude) if gps else None
             longitude = _decimal_coordinate(gps.longitude) if gps else None
 
+        # 지명 form 필드는 같은 index 로 photo 와 매칭. 빈 문자열은 None 으로 정규화.
+        def _form_str_at(values: list[str] | None, idx: int) -> str | None:
+            if not values or idx >= len(values):
+                return None
+            raw = values[idx].strip()
+            return raw or None
+
         drafts.append(
             UploadDraft(
                 raw_bytes=raw_bytes,
@@ -323,6 +341,9 @@ async def upload_first_day_photos(
                 ),
                 latitude=latitude,
                 longitude=longitude,
+                place_name=_form_str_at(photo_place_names, index),
+                country_name=_form_str_at(photo_country_names, index),
+                city_name=_form_str_at(photo_city_names, index),
             )
         )
 
@@ -404,6 +425,8 @@ async def upload_first_day_photos(
                 height=processed.height,
                 latitude=draft.latitude,
                 longitude=draft.longitude,
+                # 프론트가 미리 변환해 보낸 지명. 권한 없거나 GPS 없으면 None.
+                location_name=draft.place_name,
                 display_order=display_order,
                 created_at=datetime.now(),
             )
@@ -430,6 +453,12 @@ async def upload_first_day_photos(
             uploaded_by_day_id[trip_day.id].append(uploaded_photo)
 
         _refresh_trip_day_representative_coordinates(db, trip_day)
+        # 일차 대표 지명: 그날 사진들의 placeName 중 가장 빈도 높은 값.
+        # 이미 값이 있으면 덮어쓰지 않음(이전 업로드/사용자 picker 편집 보존).
+        if not trip_day.location_summary:
+            place_candidates = [d.place_name for d in grouped_drafts if d.place_name]
+            if place_candidates:
+                trip_day.location_summary = Counter(place_candidates).most_common(1)[0][0]
 
     generation_jobs: list[tuple[int, int]] = []
     for trip_day in trip_days_by_date.values():
@@ -451,6 +480,16 @@ async def upload_first_day_photos(
         db.add(gen)
         db.flush()
         generation_jobs.append((trip_day.id, gen.id))
+
+    # trip.destination 자동 설정: "가장 처음 방문한" 사진 = 촬영일이 가장 빠른 사진의 국가/도시.
+    # 이미 값이 있으면 덮어쓰지 않음(다른 화면에서 사용자가 직접 입력한 경우 보존).
+    if not trip.destination:
+        first_draft = next(
+            (d for d in sorted(drafts, key=lambda x: x.photo_date) if d.country_name and d.city_name),
+            None,
+        )
+        if first_draft:
+            trip.destination = f"{first_draft.country_name}/{first_draft.city_name}"
 
     db.commit()
     for trip_day_id, gen_id in generation_jobs:
