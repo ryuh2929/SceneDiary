@@ -99,12 +99,6 @@ export async function uploadFirstDayPhotos(photos: {
   return (await response.json()) as FirstDayUploadResponse;
 }
 
-export function startTripDayGeneration(tripDayId: number) {
-  return request<GenerationResponse>(`/trip-days/${tripDayId}/generate`, {
-    method: 'POST',
-  });
-}
-
 export function fetchTripDayGenerationStatus(tripDayId: number) {
   return request<GenerationResponse>(`/trip-days/${tripDayId}/generation-status`);
 }
