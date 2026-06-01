@@ -40,7 +40,15 @@ type Coord = {latitude: number; longitude: number};
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onSelect: (placeName: string, lat: number, lon: number) => void;
+  // reverseGeocode 결과에서 뽑아낸 국가/도시도 함께 넘깁니다.
+  // 백엔드가 trip.destination 이 비어있을 때 "국가/도시" 형식으로 자동 채우는 데 사용.
+  // 좌표만 있고 reverseGeocode 가 실패하면 country/city 는 undefined.
+  onSelect: (
+    placeName: string,
+    lat: number,
+    lon: number,
+    context?: {countryName?: string; cityName?: string},
+  ) => void;
 };
 
 // reverseGeocode(좌표→주소) 결과를 사람이 읽기 좋은 짧은 지명 한 줄로 다듬습니다.
@@ -79,7 +87,8 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
   }, [visible]);
 
   // 안 열려 있으면 아무것도 그리지 않음(화면에서 사라짐).
-  // ※ useState/useEffect 같은 훅은 위에서 항상 먼저 실행되므로 규칙 위반 아님.
+  // ※ react-native-maps 의 MapView 는 Modal 안에서 Google Maps API key 인식이 실패하는
+  //   안드로이드 회귀가 있어, overlay(absoluteFill) 방식으로 유지합니다.
   if (!visible) return null;
 
   // [현재 위치] 권한을 물어보고, 허락하면 GPS 좌표를 받아 핀+지도를 그쪽으로 옮깁니다.
@@ -114,9 +123,17 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
         // 변환 실패해도 멈추지 않고, 아래 toPlaceName 이 좌표로 폴백합니다.
         console.error("지오코딩 실패(좌표로 대체):", e);
       }
-      // ★ 결과를 일기 화면에 전달 (지명 + 좌표).
+      // ★ 결과를 일기 화면에 전달 (지명 + 좌표 + 국가/도시).
       // picked 는 사용자가 지도에서 고른 정확한 좌표 — DB에 그대로 저장됨.
-      onSelect(toPlaceName(address, picked), picked.latitude, picked.longitude);
+      // country/city 는 add.tsx 의 자동 추출과 같은 의미 — trip.destination 자동 보강용.
+      const countryName = address?.country || undefined;
+      const cityName = address?.city || address?.region || undefined;
+      onSelect(
+        toPlaceName(address, picked),
+        picked.latitude,
+        picked.longitude,
+        {countryName, cityName},
+      );
     } finally {
       setBusy(false);
     }
@@ -125,6 +142,8 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
   return (
     // 화면 전체를 덮는 오버레이.
     //   absoluteFill = 부모 화면을 꽉 채움. zIndex/elevation 50 = 하단 버튼 등 위로 올라옴.
+    //   Modal 대신 이 방식을 쓰는 이유: react-native-maps + Modal 조합이 안드로이드에서
+    //   "Google Maps API key not found" 에러를 내는 회귀가 있음.
     <View
       style={[StyleSheet.absoluteFill, {zIndex: 50, elevation: 50}]}
       className="bg-surface"

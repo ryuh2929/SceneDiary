@@ -53,10 +53,14 @@ export type DayStatus = {
 
 // 일차 저장(PATCH) 요청 body. 이 화면의 유일한 편집 대상 = 여행지.
 // 지도 피커에서 좌표까지 골랐으면 lat/lon 도 함께 전송.
+// picker 의 OS reverseGeocode 가 함께 알려준 국가/도시를 보내면
+// 백엔드가 비어있는 trip.destination 을 "국가/도시" 형식으로 자동 채워줍니다.
 export type DayUpdate = {
   locationSummary: string; // trip_days.location_summary
   lat?: number; // trip_days.representative_lat (옵셔널)
   lon?: number; // trip_days.representative_lon (옵셔널)
+  countryName?: string; // trip.destination 의 "국가" 부분
+  cityName?: string; // trip.destination 의 "도시" 부분
 };
 
 // 최종 저장(PATCH /trips) 요청 body. 여행 상태를 'completed'로.

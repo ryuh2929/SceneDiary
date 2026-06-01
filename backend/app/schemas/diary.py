@@ -78,6 +78,10 @@ class DayUpdate(BaseModel):
     locationSummary: str  # trip_days.location_summary
     lat: float | None = None  # trip_days.representative_lat
     lon: float | None = None  # trip_days.representative_lon
+    # 사용자가 picker 로 위치를 골랐을 때, OS reverseGeocode 가 함께 알려준 국가/도시.
+    # 둘 다 들어오면 trip.destination 이 비어있을 때만 "국가/도시" 형식으로 채워줍니다.
+    countryName: str | None = None
+    cityName: str | None = None
 
 
 # 최종 저장(PATCH /trips) 요청 body. 여행 상태를 'completed'로 변경.

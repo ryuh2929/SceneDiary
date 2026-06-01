@@ -194,6 +194,16 @@ export default function TravelDetailUI() {
   // ⏳ 로딩 상태 처리
   // ─────────────────────────────────────────────
 
+  // 에러가 있으면 메시지 표시 (이게 없으면 fetch 실패 시 trip=null 상태로
+  // 무한 "기록을 불러오는 중..." 화면에 갇힘 — 500 발생 시 사용자가 영원히 대기).
+  if (error) {
+    return (
+      <View className="flex-1 justify-center items-center bg-background px-lg">
+        <Text className="text-textSecondary font-sans text-center">{error}</Text>
+      </View>
+    );
+  }
+
   // 데이터 로딩 중이거나 trip 데이터가 없으면 로딩 화면 표시
   if (isLoading || !trip) {
     return (
