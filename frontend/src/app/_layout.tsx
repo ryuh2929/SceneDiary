@@ -9,6 +9,7 @@ import {
   Hahmlet_700Bold,
 } from "@expo-google-fonts/hahmlet";
 import { View } from "react-native";
+import { AppSettingsProvider } from "@/contexts/app-settings-context";
 import { useUserUuidBootstrap } from "@/hooks/use-user-uuid";
 import "../../global.css";
 import "@/api/client";
@@ -32,13 +33,15 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {/* 1. 메인 진입점을 하단 탭 구조인 (tabs) 폴더로 지정합니다 */}
-      <Stack.Screen name="(tabs)" />
+    <AppSettingsProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* 1. 메인 진입점을 하단 탭 구조인 (tabs) 폴더로 지정합니다 */}
+        <Stack.Screen name="(tabs)" />
 
-      {/* 2. 상세 페이지나 추가 페이지는 탭 바 위로 전체 화면이 덮여야 하므로 여기에 둡니다 */}
-      <Stack.Screen name="detail" />
-      <Stack.Screen name="add" />
-    </Stack>
+        {/* 2. 상세 페이지나 추가 페이지는 탭 바 위로 전체 화면이 덮여야 하므로 여기에 둡니다 */}
+        <Stack.Screen name="detail" />
+        <Stack.Screen name="add" />
+      </Stack>
+    </AppSettingsProvider>
   );
 }

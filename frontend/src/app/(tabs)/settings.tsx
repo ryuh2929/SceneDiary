@@ -73,6 +73,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NicknameModal } from '@/components/nickname-modal';
+import { useAppSettings } from '@/contexts/app-settings-context';
 import {
   dummySettingsProfile,
   SettingsToggle,
@@ -449,6 +450,12 @@ function ToggleRow({
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const {
+    syncSettingsProfile,
+    setWritingPersona: setGlobalWritingPersona,
+    setIsDarkMode: setGlobalIsDarkMode,
+    setIsPushEnabled: setGlobalIsPushEnabled,
+  } = useAppSettings();
   const [profile, setProfile] = useState(dummySettingsProfile);
   const [isLoaded, setIsLoaded] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -530,6 +537,7 @@ export default function SettingsScreen() {
         }
 
         setProfile(settingsProfile);
+        syncSettingsProfile(settingsProfile);
         setToggles(
           Object.fromEntries(
             settingsProfile.toggles.map((toggle) => [toggle.id, toggle.enabled]),
@@ -556,7 +564,7 @@ export default function SettingsScreen() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [syncSettingsProfile]);
 
   useEffect(() => {
     if (!profileNotice) {
@@ -603,6 +611,7 @@ export default function SettingsScreen() {
 
     // 버튼을 누른 즉시 화면을 바꾸고, 서버 저장이 끝나면 응답값으로 한 번 더 동기화합니다.
     setWritingPersona(personaId);
+    setGlobalWritingPersona(personaId);
     setProfile((currentProfile) => ({
       ...currentProfile,
       persona: {
@@ -624,9 +633,11 @@ export default function SettingsScreen() {
         updatedProfile.persona.tags[0]?.id;
 
       setProfile(updatedProfile);
+      syncSettingsProfile(updatedProfile);
       setWritingPersona(selectedId);
     } catch (error) {
       setWritingPersona(previousPersona);
+      setGlobalWritingPersona(previousPersona);
       setProfile((currentProfile) => ({
         ...currentProfile,
         persona: {
@@ -652,6 +663,11 @@ export default function SettingsScreen() {
 
     // 토글은 손맛이 중요하므로 먼저 화면을 바꾸고, 저장 실패 시 이전 값으로 되돌립니다.
     setToggles((current) => ({ ...current, [toggleId]: enabled }));
+    if (toggleId === 'darkMode') {
+      setGlobalIsDarkMode(enabled);
+    } else if (toggleId === 'pushNotification') {
+      setGlobalIsPushEnabled(enabled);
+    }
     setSavingToggleId(toggleId);
     setProfileError(null);
     setProfileNotice(null);
@@ -660,6 +676,7 @@ export default function SettingsScreen() {
       const updatedProfile = await updateSettingsToggle(toggleId, enabled);
 
       setProfile(updatedProfile);
+      syncSettingsProfile(updatedProfile);
       setToggles(
         Object.fromEntries(
           updatedProfile.toggles.map((toggle) => [toggle.id, toggle.enabled]),
@@ -667,6 +684,11 @@ export default function SettingsScreen() {
       );
     } catch (error) {
       setToggles((current) => ({ ...current, [toggleId]: previousValue }));
+      if (toggleId === 'darkMode') {
+        setGlobalIsDarkMode(previousValue);
+      } else if (toggleId === 'pushNotification') {
+        setGlobalIsPushEnabled(previousValue);
+      }
       setProfileError(error instanceof Error ? error.message : 'Failed to update settings toggle.');
     } finally {
       setSavingToggleId(null);
@@ -688,6 +710,7 @@ export default function SettingsScreen() {
 
     const updatedProfile = await updateNickname(nickname);
     setProfile(updatedProfile);
+    syncSettingsProfile(updatedProfile);
   };
 
   const openProfileImagePicker = async () => {
@@ -725,6 +748,7 @@ export default function SettingsScreen() {
       const updatedProfile = await uploadProfileImage(profileImageFile);
 
       setProfile(updatedProfile);
+      syncSettingsProfile(updatedProfile);
     } catch (error) {
       setProfileNotice({
         message: '프로필 사진 변경에 실패했어요. 잠시 후 다시 시도해주세요.',
@@ -749,6 +773,7 @@ export default function SettingsScreen() {
 
       if (!isSameTravelType(previousTravelType, latestProfile.travelType)) {
         setProfile(latestProfile);
+        syncSettingsProfile(latestProfile);
         return;
       }
     }
@@ -775,6 +800,7 @@ export default function SettingsScreen() {
       const previousTravelType = profile.travelType;
       const updatedProfile = await requestTravelStyleAnalysis();
       setProfile(updatedProfile);
+      syncSettingsProfile(updatedProfile);
       // 분석 요청이 정상 접수된 경우에만 1분 제한을 시작합니다. 실패한 요청은 바로 재시도할 수 있습니다.
       setTravelAnalysisCooldownUntil(Date.now() + TRAVEL_ANALYSIS_COOLDOWN_MS);
       setProfileNotice({
