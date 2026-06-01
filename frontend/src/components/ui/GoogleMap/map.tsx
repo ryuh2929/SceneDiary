@@ -22,6 +22,20 @@ function PhotoMarker({ item, photoUrl, onPress }: PhotoMarkerProps) {
 
   const [isLoaded, setIsLoaded] = useState(false);
 
+
+   // 🎯 안드로이드용: 이미지가 로드된 후에도 아주 잠깐 더 렌더링을 허용하기 위한 상태
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+
+  // 🎯 안드로이드 핵심 로직: 로딩 완료 후 0.5초 정도 더 지켜본 뒤 추적을 끕니다.
+  useEffect(() => {
+    if (isLoaded) {
+      const timer = setTimeout(() => {
+        setTracksViewChanges(false);
+      }, 500); // 500ms 정도 여유를 주면 안드로이드에서 이미지가 안정적으로 고정됩니다.
+      return () => clearTimeout(timer);
+    }
+  }, [isLoaded]);
+
   if (Platform.OS === "android") {
     // android버전
     return (
@@ -40,6 +54,50 @@ function PhotoMarker({ item, photoUrl, onPress }: PhotoMarkerProps) {
       //   // 4. [레이아웃 안정화] 마커의 중심점을 고정합니다.
       //   anchor={{ x: 0.5, y: 0.5 }}
       // ></Marker>
+
+      // <Marker
+      //   coordinate={coordinate}
+      //   anchor={{ x: 0.5, y: 0.5 }}
+      //   onPress={onPress}
+      //   // 🎯 변경된 상태값 사용
+      //   tracksViewChanges={tracksViewChanges}
+      // >
+      //   <View
+      //     style={{
+      //       width: imageSize,
+      //       height: imageSize,
+      //       alignItems: "center",
+      //       justifyContent: "center",
+      //     }}
+      //     // 🎯 안드로이드 뷰 최적화 방지
+      //     collapsable={false}
+      //   >
+      //     <View
+      //       style={{
+      //         width: imageSize,
+      //         height: imageSize,
+      //         borderRadius: imageSize / 2,
+      //         borderWidth: 3,
+      //         borderColor: "#5B7DBB",
+      //         backgroundColor: "#D8E2EA",
+      //         overflow: "hidden", // 안드로이드 원형 자르기 필수
+      //       }}
+      //     >
+      //       <Image
+      //         source={{ uri: photoUrl }}
+      //         style={{
+      //           width: "100%",
+      //           height: "100%",
+      //         }}
+      //         resizeMode="cover"
+      //         // 🎯 onLoadEnd를 사용하면 성공/실패 상관없이 무한 렌더링을 막습니다.
+      //         onLoadEnd={() => setIsLoaded(true)}
+      //       />
+      //     </View>
+      //   </View>
+      // </Marker>
+      
+      
     );
   } else {
     // ios 버전
