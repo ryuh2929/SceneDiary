@@ -238,17 +238,20 @@ export default function TravelDetailUI() {
           - 우측 상단 닫기(X) 버튼
           - 하단에 여행 제목 / 위치 / 날짜 표시
       ──────────────────────────────────────────────── */}
-      <View className="relative h-80 w-full">
+      {/* overflow-hidden과 고정 높이를 주어 아이폰에서 상단으로 탈출하는 것을 방지*/}
+      <View style={{ height: 320 }} className="relative w-full overflow-hidden">
         {getMainImage(trip)}
 
         {/* 그라데이션 오버레이: 상단 어둡게 → 중간 투명 → 하단 배경색으로 자연스럽게 이어짐 */}
         <LinearGradient
           colors={['rgba(0,0,0,0.2)', 'transparent', '#F4F6F9']}
           locations={[0, 0.5, 1]}
+          style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
           className="absolute inset-0 p-md"
         >
-          {/* 닫기 버튼: 이전 화면(홈)으로 돌아가기 */}
-          <View className="flex-row justify-end pt-safe">
+          {/* 닫기 버튼: 이전 화면(홈)으로 돌아가기 
+              pt-safe를 빼고 고정 패딩으로 바꾼 닫기 버튼 (아이폰 쏠림 방지) */}          
+          <View className="flex-row justify-end pt-10 pr-4">
             <Pressable
               onPress={() => router.back()}
               className="w-10 h-10 rounded-full bg-black/30 items-center justify-center"
