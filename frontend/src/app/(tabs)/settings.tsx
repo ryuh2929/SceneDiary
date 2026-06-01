@@ -98,6 +98,8 @@ const colors = {
   toggle: '#5B7DBB',
 };
 
+const TRAVEL_ANALYSIS_COOLDOWN_MS = 60 * 1000;
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const AnimatedView = Animated.createAnimatedComponent(View);
 
@@ -349,6 +351,8 @@ export default function SettingsScreen() {
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
   const [isRequestingTravelAnalysis, setIsRequestingTravelAnalysis] = useState(false);
   const [profileNotice, setProfileNotice] = useState<ProfileNotice | null>(null);
+  const [travelAnalysisCooldownUntil, setTravelAnalysisCooldownUntil] = useState<number | null>(null);
+  const [travelAnalysisCooldownRemaining, setTravelAnalysisCooldownRemaining] = useState(0);
 
   // 토글 값은 화면에서 즉시 확인할 수 있도록 로컬 상태로 관리하고, 이후 DB/API 값으로 대체하기 쉽게 id 기준 객체로 변환합니다.
   const initialToggles = useMemo(
@@ -389,6 +393,7 @@ export default function SettingsScreen() {
           borderColor: '#86D39B',
           textColor: '#257A3E',
         };
+  const isTravelAnalysisCoolingDown = travelAnalysisCooldownRemaining > 0;
 
   useEffect(() => {
     let ignore = false;
@@ -439,6 +444,30 @@ export default function SettingsScreen() {
 
     return () => clearTimeout(timer);
   }, [profileNotice]);
+
+  useEffect(() => {
+    if (!travelAnalysisCooldownUntil) {
+      setTravelAnalysisCooldownRemaining(0);
+      return;
+    }
+
+    // 프론트 임시 쿨다운입니다. DB 컬럼이 생기기 전까지 버튼 연타를 UX 차원에서 막습니다.
+    const updateRemainingSeconds = () => {
+      const remainingMs = Math.max(0, travelAnalysisCooldownUntil - Date.now());
+      const remainingSeconds = Math.ceil(remainingMs / 1000);
+
+      setTravelAnalysisCooldownRemaining(remainingSeconds);
+
+      if (remainingSeconds <= 0) {
+        setTravelAnalysisCooldownUntil(null);
+      }
+    };
+
+    updateRemainingSeconds();
+    const timer = setInterval(updateRemainingSeconds, 1000);
+
+    return () => clearInterval(timer);
+  }, [travelAnalysisCooldownUntil]);
 
   const handleSelectPersona = async (personaId: string) => {
     if (personaId === selectedPersonaId || isSavingPersona) {
@@ -545,6 +574,14 @@ export default function SettingsScreen() {
       return;
     }
 
+    if (isTravelAnalysisCoolingDown) {
+      setProfileNotice({
+        message: `재요청까지 잠시 시간이 필요합니다. ${travelAnalysisCooldownRemaining}초 후 다시 시도해주세요.`,
+        type: 'error',
+      });
+      return;
+    }
+
     setIsRequestingTravelAnalysis(true);
     setProfileError(null);
     setProfileNotice(null);
@@ -552,6 +589,8 @@ export default function SettingsScreen() {
     try {
       const updatedProfile = await requestTravelStyleAnalysis();
       setProfile(updatedProfile);
+      // 분석 요청이 정상 접수된 경우에만 1분 제한을 시작합니다. 실패한 요청은 바로 재시도할 수 있습니다.
+      setTravelAnalysisCooldownUntil(Date.now() + TRAVEL_ANALYSIS_COOLDOWN_MS);
       setProfileNotice({
         message: '여행 유형 분석을 시작했어요. 결과가 곧 반영됩니다.',
         type: 'success',
@@ -669,7 +708,7 @@ export default function SettingsScreen() {
                 style={{
                   borderColor: colors.border,
                   borderWidth: 1,
-                  opacity: isRequestingTravelAnalysis ? 0.55 : 1,
+                  opacity: isRequestingTravelAnalysis || isTravelAnalysisCoolingDown ? 0.55 : 1,
                 }}>
                 <TravelAnalysisButtonIcon />
               </Pressable>
