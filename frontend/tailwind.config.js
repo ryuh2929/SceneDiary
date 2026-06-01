@@ -76,6 +76,11 @@ module.exports = {
         logo: ["DancingScript"], // 로고 → font-logo
         sans: ["Hahmlet"], // 기본 → font-sans
         "sans-bold": ["HahmletBold"], // Bold용 추가
+        // Hahmlet 굵기를 React Native에서도 안정적으로 쓰기 위해 weight별 family를 따로 둡니다.
+        "sans-medium": ["HahmletMedium"],
+        "sans-semibold": ["HahmletSemiBold"],
+        "sans-real-bold": ["HahmletRealBold"],
+        "sans-extrabold": ["HahmletExtraBold"],
       },
 
       // 3-3. 폰트 사이즈

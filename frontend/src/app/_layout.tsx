@@ -2,7 +2,13 @@ import { Stack } from "expo-router";
 import React from "react";
 import { useFonts } from "expo-font";
 import { DancingScript_400Regular } from "@expo-google-fonts/dancing-script";
-import { Hahmlet_400Regular, Hahmlet_600SemiBold } from "@expo-google-fonts/hahmlet";
+import {
+  Hahmlet_400Regular,
+  Hahmlet_500Medium,
+  Hahmlet_600SemiBold,
+  Hahmlet_700Bold,
+  Hahmlet_800ExtraBold,
+} from "@expo-google-fonts/hahmlet";
 import { View } from "react-native";
 import { useUserUuidBootstrap } from "@/hooks/use-user-uuid";
 import "../../global.css";
@@ -15,6 +21,11 @@ export default function RootLayout() {
     DancingScript: DancingScript_400Regular,
     Hahmlet: Hahmlet_400Regular,        // 추가
     HahmletBold: Hahmlet_600SemiBold,       // 추가
+    // Hahmlet은 굵기별 파일명이 따로 있어서 화면에서 쓰는 weight를 명시적으로 로드합니다.
+    HahmletMedium: Hahmlet_500Medium,
+    HahmletSemiBold: Hahmlet_600SemiBold,
+    HahmletRealBold: Hahmlet_700Bold,
+    HahmletExtraBold: Hahmlet_800ExtraBold,
 
   });
 

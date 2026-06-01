@@ -362,7 +362,7 @@ function PersonaChip({
       onPress={onPress}
       className={`rounded-full px-3 py-2 ${selected ? 'bg-primary' : 'bg-muted'}`}>
       <Text
-        className={`text-sm font-bold ${
+        className={`text-sm font-sans-real-bold ${
           selected ? 'text-textOnPrimary' : 'text-textSecondary'
         }`}>
         {label}
@@ -386,7 +386,7 @@ function ToggleRow({
         <View className="h-9 w-9 items-center justify-center rounded-lg bg-muted">
           <ToggleIcon id={item.id} />
         </View>
-        <Text className="text-md font-semibold text-textPrimary">{item.label}</Text>
+        <Text className="text-md font-sans-semibold text-textPrimary">{item.label}</Text>
       </View>
 
       <ToggleSwitch value={value} onValueChange={onValueChange} />
@@ -716,15 +716,15 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}>
       <View className="mx-auto w-full max-w-[420px] flex-1">
         <View className="mb-xl flex-row items-center justify-between">
-          <Text className="text-lg font-bold text-textPrimary">설정</Text>
+          <Text className="text-lg font-sans-real-bold text-textPrimary">설정</Text>
           {isLoadingProfile ? (
-            <Text className="text-sm font-semibold text-textSecondary">불러오는 중</Text>
+            <Text className="text-sm font-sans-semibold text-textSecondary">불러오는 중</Text>
           ) : null}
         </View>
 
         {profileError ? (
           <View className="mb-md rounded-lg border border-[#E8B4B4] bg-[#FFF4F4] px-md py-sm">
-            <Text className="text-sm font-semibold text-[#8A2D2D]">{profileError}</Text>
+            <Text className="text-sm font-sans-semibold text-[#8A2D2D]">{profileError}</Text>
           </View>
         ) : null}
 
@@ -762,7 +762,7 @@ export default function SettingsScreen() {
           <View className="mt-md flex-row items-center justify-center gap-xs">
             {/* 오른쪽 수정 아이콘과 같은 폭의 빈 공간을 왼쪽에 둬서 닉네임 텍스트가 프로필 사진 중앙과 맞도록 합니다. */}
             <View className="h-7 w-7" />
-            <Text className="text-[20px] font-extrabold text-textPrimary">{profile.nickname}</Text>
+            <Text className="text-[20px] font-sans-extrabold text-textPrimary">{profile.nickname}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="닉네임 수정"
@@ -777,7 +777,7 @@ export default function SettingsScreen() {
           <SettingsCard>
             <View className="flex-row items-center gap-sm">
               <PersonaTitleIcon />
-              <Text className="text-md font-bold text-textPrimary">{profile.persona.title}</Text>
+              <Text className="text-md font-sans-real-bold text-textPrimary">{profile.persona.title}</Text>
             </View>
 
             <View className="mt-sm flex-row flex-wrap gap-sm">
@@ -791,7 +791,7 @@ export default function SettingsScreen() {
               ))}
             </View>
 
-            <Text className="mt-sm text-sm font-medium text-textSecondary">
+            <Text className="mt-sm text-sm font-sans-medium text-textSecondary">
               {selectedPersona?.description ?? profile.persona.description}
             </Text>
           </SettingsCard>
@@ -800,7 +800,7 @@ export default function SettingsScreen() {
             <View className="mb-md flex-row items-center justify-between gap-sm">
               <View className="flex-row items-center gap-sm">
                 <TravelAnalysisActionIcon />
-                <Text className="text-md font-bold text-textPrimary">여행 유형 분석</Text>
+                <Text className="text-md font-sans-real-bold text-textPrimary">여행 유형 분석</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -823,10 +823,10 @@ export default function SettingsScreen() {
                 <AppIcon icon={profile.travelType.icon} size={24} color={colors.primary} />
               </View>
               <View className="min-w-0 flex-1">
-                <Text className="text-lg font-extrabold text-textPrimary">
+                <Text className="text-lg font-sans-extrabold text-textPrimary">
                   {profile.travelType.title}
                 </Text>
-                <Text className="mt-xs text-sm font-semibold text-textSecondary">
+                <Text className="mt-xs text-sm font-sans-semibold text-textSecondary">
                   {profile.travelType.description}
                 </Text>
               </View>
@@ -864,7 +864,7 @@ export default function SettingsScreen() {
             },
             noticeStyle,
           ]}>
-          <Text className="text-center text-sm font-bold" style={{ color: noticeColors.textColor }}>
+          <Text className="text-center text-sm font-sans-real-bold" style={{ color: noticeColors.textColor }}>
             {profileNotice.message}
           </Text>
         </AnimatedView>
