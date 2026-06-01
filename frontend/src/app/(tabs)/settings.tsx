@@ -654,10 +654,6 @@ export default function SettingsScreen() {
       const updatedProfile = await uploadProfileImage(profileImageFile);
 
       setProfile(updatedProfile);
-      setProfileNotice({
-        message: '프로필 사진을 변경했어요.',
-        type: 'success',
-      });
     } catch (error) {
       setProfileNotice({
         message: '프로필 사진 변경에 실패했어요. 잠시 후 다시 시도해주세요.',
