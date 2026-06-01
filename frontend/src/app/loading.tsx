@@ -14,6 +14,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fetchTripDayGenerationStatus } from '@/api/diary';
+import { useAppThemeColors } from '@/constants/app-colors';
 import type { LoadingStep } from '@/types/api';
 
 type PreparedPhoto = {
@@ -25,18 +26,6 @@ type PreparedPhoto = {
   width: number;
   height: number;
   displayOrder: number;
-};
-
-const colors = {
-  primary: '#5B7DBB',
-  primaryLight: '#A9C3E6',
-  accent: '#F6D9A6',
-  surface: '#FFFFFF',
-  textPrimary: '#152538',
-  textSecondary: '#39536B',
-  muted: '#E8EDF5',
-  ring: '#D8E3F1',
-  textOnPrimary: '#FFFFFF',
 };
 
 const analysisSteps = [
@@ -106,6 +95,7 @@ function parseDaysParam(value: string | string[] | undefined): UploadedDayParam[
 
 export default function LoadingScreen() {
   const router = useRouter();
+  const colors = useAppThemeColors();
   const params = useLocalSearchParams<{
     photos?: string;
     tripId?: string;
@@ -361,7 +351,7 @@ export default function LoadingScreen() {
 
   return (
     <View
-      className="flex-1 items-center bg-surface px-lg"
+      className="flex-1 items-center bg-surface px-lg dark:bg-dark-surface"
       style={{ paddingTop: insets.top + 24, paddingBottom: bottomInset }}>
       <View className="mx-auto w-full max-w-[720px] flex-1 items-center justify-center px-xl">
         <View className="w-full items-center">
@@ -435,7 +425,7 @@ export default function LoadingScreen() {
                 {previewPhotos.slice(0, 3).map((photo, index) => (
                   <View
                     key={`${photo.thumbnailUri}-${photo.displayOrder}`}
-                    className="absolute h-16 w-16 overflow-hidden rounded-lg border-2 border-white bg-muted"
+                    className="absolute h-16 w-16 overflow-hidden rounded-lg border-2 border-white bg-muted dark:bg-dark-muted"
                     style={{
                       left: 20 + index * 12,
                       transform: [{ rotate: `${(index - 1) * 7}deg` }],
@@ -450,27 +440,27 @@ export default function LoadingScreen() {
                 ))}
               </View>
             ) : (
-              <View className="h-14 w-14 items-center justify-center rounded-full bg-muted" style={{ zIndex: 6 }}>
+              <View className="h-14 w-14 items-center justify-center rounded-full bg-muted dark:bg-dark-muted" style={{ zIndex: 6 }}>
                 <ImageIcon size={27} color={colors.primary} strokeWidth={2.1} />
               </View>
             )}
           </View>
 
-          <Text className="mt-md text-center text-2xl font-extrabold text-textPrimary">
+          <Text className="mt-md text-center text-2xl font-extrabold text-textPrimary dark:text-dark-textPrimary">
             {displayStep}
           </Text>
-          <Text className="mt-xs text-center text-md font-semibold text-textSecondary">
+          <Text className="mt-xs text-center text-md font-semibold text-textSecondary dark:text-dark-textSecondary">
             {displayHelperText}
           </Text>
 
           {!isNextDayMode && photos.length > 3 ? (
-            <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary">
+            <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
               외 {photos.length - 3}장 더
             </Text>
           ) : null}
 
           <View className="mt-xl w-[280px] max-w-full">
-            <View className="h-[5px] overflow-hidden rounded-full bg-muted">
+            <View className="h-[5px] overflow-hidden rounded-full bg-muted dark:bg-dark-muted">
               <LinearGradient
                 colors={[colors.primary, colors.primaryLight, colors.accent]}
                 start={{ x: 0, y: 0 }}
@@ -479,7 +469,7 @@ export default function LoadingScreen() {
                 style={{ width: progressWidth }}
               />
             </View>
-            <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary">{progress}%</Text>
+            <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">{progress}%</Text>
           </View>
         </View>
 

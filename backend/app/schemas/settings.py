@@ -86,6 +86,7 @@ class SettingsToggle(BaseModel):
 
 class SettingsProfile(BaseModel):
     nickname: str
+    profileImageUrl: str | None = None
     persona: Persona
     travelType: TravelType
     toggles: list[SettingsToggle]

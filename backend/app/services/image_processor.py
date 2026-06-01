@@ -31,6 +31,13 @@ class ProcessedImage:
 
 
 @dataclass(frozen=True)
+class SavedProfileImage:
+    file_url: str
+    file_size_bytes: int
+    mime_type: str
+
+
+@dataclass(frozen=True)
 class GpsCoordinates:
     latitude: float
     longitude: float
@@ -205,5 +212,36 @@ def process_upload_image(
         file_size_bytes=file_path.stat().st_size,
         width=analysis_image.width,
         height=analysis_image.height,
+        mime_type="image/jpeg",
+    )
+
+
+def save_profile_image(
+    *,
+    raw_bytes: bytes,
+    original_filename: str | None,
+    profile_root: Path,
+    profile_public_root: str,
+    user_id: int,
+) -> SavedProfileImage:
+    # 프로필 이미지는 프런트에서 이미 256x256 JPEG로 정리해서 보내므로
+    # 백엔드에서는 이미지 파일인지 검증한 뒤 그대로 저장합니다.
+    try:
+        with Image.open(BytesIO(raw_bytes)) as opened:
+            opened.verify()
+    except Exception as exc:
+        raise ValueError("Invalid image file") from exc
+
+    unique_name = f"profile-{_safe_stem(original_filename)}-{uuid4().hex[:10]}.jpg"
+    relative_dir = Path(f"user-{user_id}")
+    file_url = str(Path(profile_public_root) / relative_dir / unique_name).replace("\\", "/")
+    file_path = profile_root / relative_dir / unique_name
+
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_bytes(raw_bytes)
+
+    return SavedProfileImage(
+        file_url=file_url,
+        file_size_bytes=file_path.stat().st_size,
         mime_type="image/jpeg",
     )

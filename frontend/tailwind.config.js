@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // 전역 설정에서 NativeWind 색상 모드를 바꾸면 dark: 클래스가 동작합니다.
+  darkMode: "class",
   // ✅ 1. NativeWind preset (필수)
   presets: [require("nativewind/preset")],
 
@@ -58,16 +60,21 @@ module.exports = {
         // 다크모드
         dark: {
           background: "#152538",
-          card: "#1C2E43",
+          surface: "#1C2E43",
           primary: "#5B7DBB",
-          secondary: "#39536B",
+          primaryLight: "#39536B",
           accent: "#F6D9A6",
-          foreground: "#DDE3EE",
+          accentMuted: "#37445A",
+          textPrimary: "#DDE3EE",
+          textSecondary: "#A9C3E6",
+          textOnPrimary: "#FFFFFF",
           muted: "#1E3A52", // 비활성 영역 배경
-          mutedForeground: "#A9C3E6",
           input: "#243D52", // 입력창 배경
           border: "#2A4560",
-          destructive: "#B91C1C",
+          error: "#B91C1C",
+          success: "#22c55e",
+          disabled: "#39536B",
+          toggle: "#5B7DBB",
         },
       },
 
@@ -76,6 +83,10 @@ module.exports = {
         logo: ["DancingScript"], // 로고 → font-logo
         sans: ["Hahmlet"], // 기본 → font-sans
         "sans-bold": ["HahmletBold"], // Bold용 추가
+        // Hahmlet 700은 중요한 라벨에만 제한적으로 사용하고, 800은 굵기가 튀어 제외합니다.
+        "sans-medium": ["HahmletMedium"],
+        "sans-semibold": ["HahmletSemiBold"],
+        "sans-real-bold": ["HahmletRealBold"],
       },
 
       // 3-3. 폰트 사이즈
