@@ -93,7 +93,7 @@ export default function SimpleView({ item }: SimpleViewProps) {
 
           <View className="flex-1">
             <Text
-              className="text-lg text-black font-bold"
+              className="text-lg text-black font-sans-bold"
               numberOfLines={2}
               ellipsizeMode="tail"
             >
@@ -102,7 +102,7 @@ export default function SimpleView({ item }: SimpleViewProps) {
 
             <View className="mt-2 flex-row items-center">
               <Text
-                className="text-sm text-gray-500 font-bold"
+                className="text-sm text-gray-500 font-sans-bold"
                 numberOfLines={1}
               >
                 <MapPin size={imageSize * 0.15} color="#39536B" />{" "}
