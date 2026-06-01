@@ -11,9 +11,13 @@ class DayList(BaseModel):
     weather:Optional[str] = None
     subtitle:Optional[str] = None
     emotion:Optional[str] = None
-    represent_image:Optional[str] = None
+    # DB(trip_days.represent_image)는 photos.id 를 가리키는 정수 FK 입니다.
+    # 이전엔 str 로 잘못 선언되어 있어 Pydantic 검증에서 500 이 발생했습니다.
+    represent_image:Optional[int] = None
     content:Optional[str] = None
-    word_count:int
+    # 생성이 끝나기 전(또는 실패한 날)에는 word_count 가 NULL 입니다.
+    # 필수로 두면 일부 일차만 미완료여도 응답 전체가 500 으로 떨어져 detail 페이지가 못 열립니다.
+    word_count:Optional[int] = None
     
     class Config:
         from_attributes = True  # Pydantic v2 기준 (만약 에러나면 orm_mode = True 로 변경)

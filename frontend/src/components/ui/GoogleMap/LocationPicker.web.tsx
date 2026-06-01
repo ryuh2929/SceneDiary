@@ -20,7 +20,13 @@ import {Modal, Pressable, Text, View} from "react-native";
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onSelect: (placeName: string, lat: number, lon: number) => void; // 웹에선 미사용(모양 맞추기용)
+  // 웹에선 미사용(모양 맞추기용) — native 와 시그니처 일치 위해 동일하게 선언.
+  onSelect: (
+    placeName: string,
+    lat: number,
+    lon: number,
+    context?: {countryName?: string; cityName?: string},
+  ) => void;
 };
 
 export default function LocationPicker({visible, onClose}: Props) {

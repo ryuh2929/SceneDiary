@@ -75,6 +75,7 @@ export type SettingsToggle = {
 
 export type SettingsProfile = {
   nickname: string;
+  profileImageUrl?: string | null;
   persona: {
     title: string;
     description: string;
@@ -87,6 +88,7 @@ export type SettingsProfile = {
 // DB가 붙기 전까지 화면을 바로 확인할 수 있도록 서버 응답과 비슷한 형태로 더미 데이터를 분리해둡니다.
 export const dummySettingsProfile: SettingsProfile = {
   nickname: '기록하는 여행자',
+  profileImageUrl: null,
   persona: {
     title: '글 작성 페르소나',
     description: '감성적이고 문학적인 표현',
