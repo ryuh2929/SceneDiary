@@ -58,16 +58,21 @@ module.exports = {
         // 다크모드
         dark: {
           background: "#152538",
-          card: "#1C2E43",
+          surface: "#1C2E43",
           primary: "#5B7DBB",
-          secondary: "#39536B",
+          primaryLight: "#39536B",
           accent: "#F6D9A6",
-          foreground: "#DDE3EE",
+          accentMuted: "#37445A",
+          textPrimary: "#DDE3EE",
+          textSecondary: "#A9C3E6",
+          textOnPrimary: "#FFFFFF",
           muted: "#1E3A52", // 비활성 영역 배경
-          mutedForeground: "#A9C3E6",
           input: "#243D52", // 입력창 배경
           border: "#2A4560",
-          destructive: "#B91C1C",
+          error: "#B91C1C",
+          success: "#22c55e",
+          disabled: "#39536B",
+          toggle: "#5B7DBB",
         },
       },
 
