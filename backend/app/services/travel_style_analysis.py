@@ -221,7 +221,7 @@ def _normalize_result(result: dict[str, Any]) -> dict[str, str]:
     if not title:
         title = "이름 없는 여행자"
     if not description:
-        description = "아직 여행 기록이 많지 않아 가능성을 넓게 품고 있는 타입입니다."
+        description = "아직 분석할 수 있는 여행 데이터가 없습니다."
     if icon not in TRAVEL_STYLE_ICON_NAMES:
         icon = "NotebookPen"
 

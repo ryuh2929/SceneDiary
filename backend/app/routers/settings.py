@@ -58,7 +58,7 @@ LEGACY_PERSONA_ALIASES = {
 
 DEFAULT_TRAVEL_STYLE_ANALYSIS = {
     "title": "이름 없는 여행자",
-    "description": "아직 분석할 수 있는 여행 데이터가 없습니다",
+    "description": "아직 분석할 수 있는 여행 데이터가 없습니다.",
     "icon": "NotebookPen",
 }
 # DB에 저장된 travel_style_analysis.icon 값이 프런트에서 렌더링 가능한 아이콘인지 검증하는 허용 목록입니다.
