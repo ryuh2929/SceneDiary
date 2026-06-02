@@ -72,6 +72,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DarkModeBackground } from '@/components/dark-mode-background';
 import { NicknameModal } from '@/components/nickname-modal';
 import { useAppSettings } from '@/contexts/app-settings-context';
 import {
@@ -107,16 +108,16 @@ const lightColors = {
 
 const darkColors = {
   primary: '#5B7DBB',
-  primaryLight: '#39536B',
-  accent: '#5B7DBB',
-  accentMuted: '#37445A',
-  background: '#152538',
-  surface: '#1C2E43',
+  primaryLight: '#2F4965',
+  accent: '#6F89B8',
+  accentMuted: '#243348',
+  background: '#0B1624',
+  surface: '#121F2F',
   textOnPrimary: '#FFFFFF',
   textPrimary: '#DDE3EE',
   textSecondary: '#A9C3E6',
-  border: '#2A4560',
-  muted: '#1E3A52',
+  border: '#26384D',
+  muted: '#172A3E',
   toggle: '#5B7DBB',
 };
 
@@ -876,9 +877,11 @@ export default function SettingsScreen() {
   });
 
   return (
-    <>
+    <View className={`flex-1 ${isDarkMode ? 'bg-dark-background' : 'bg-background'}`}>
+      {isDarkMode ? <DarkModeBackground /> : null}
+
       <ScrollView
-        className={`flex-1 ${isDarkMode ? 'bg-dark-background' : 'bg-background'}`}
+        className="flex-1"
         contentContainerClassName="min-h-full px-md"
         contentContainerStyle={contentInset}
         showsVerticalScrollIndicator={false}>
@@ -1066,6 +1069,6 @@ export default function SettingsScreen() {
         onClose={closeNicknameModal}
         onSave={handleSaveNickname}
       />
-    </>
+    </View>
   );
 }
