@@ -72,6 +72,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DarkModeBackground } from '@/components/dark-mode-background';
 import { NicknameModal } from '@/components/nickname-modal';
 import { useAppSettings } from '@/contexts/app-settings-context';
 import {
@@ -876,9 +877,11 @@ export default function SettingsScreen() {
   });
 
   return (
-    <>
+    <View className={`flex-1 ${isDarkMode ? 'bg-dark-background' : 'bg-background'}`}>
+      {isDarkMode ? <DarkModeBackground /> : null}
+
       <ScrollView
-        className={`flex-1 ${isDarkMode ? 'bg-dark-background' : 'bg-background'}`}
+        className="flex-1"
         contentContainerClassName="min-h-full px-md"
         contentContainerStyle={contentInset}
         showsVerticalScrollIndicator={false}>
@@ -1066,6 +1069,6 @@ export default function SettingsScreen() {
         onClose={closeNicknameModal}
         onSave={handleSaveNickname}
       />
-    </>
+    </View>
   );
 }
