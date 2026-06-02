@@ -83,6 +83,7 @@ import {
   fetchSettingsProfile,
   fetchTravelStyleAnalysisStatus,
   requestTravelStyleAnalysis,
+  TravelStyleAnalysisCooldownError,
   updateNickname,
   updateSettingsToggle,
   updateWritingPersona,
@@ -848,6 +849,16 @@ export default function SettingsScreen() {
         });
       }
     } catch (error) {
+      if (error instanceof TravelStyleAnalysisCooldownError) {
+        // 프론트 상태가 초기화되어 요청이 서버까지 갔더라도, 백엔드 쿨다운 응답의 남은 시간을 그대로 안내합니다.
+        setTravelAnalysisCooldownUntil(Date.now() + error.retryAfterSeconds * 1000);
+        setProfileNotice({
+          message: `재요청까지 잠시 시간이 필요합니다. ${error.retryAfterSeconds}초 후 다시 시도해주세요.`,
+          type: 'error',
+        });
+        return;
+      }
+
       setProfileNotice({
         message: '여행 유형 분석 요청에 실패했어요. 잠시 후 다시 시도해주세요.',
         type: 'error',

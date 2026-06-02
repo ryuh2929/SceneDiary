@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile
@@ -27,6 +27,7 @@ _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 _PROFILE_IMAGE_PUBLIC_ROOT = "profile_images"
 _PROFILE_IMAGE_ROOT = _BACKEND_DIR / "test_images" / _PROFILE_IMAGE_PUBLIC_ROOT
 MAX_PROFILE_IMAGE_BYTES = 1 * 1024 * 1024
+TRAVEL_STYLE_ANALYSIS_COOLDOWN_SECONDS = 60
 
 # DB에는 안정적인 코드값(poetic, daily 등)만 저장하고,
 # 화면에 보여줄 라벨/설명은 API 응답을 만들 때 매핑합니다.
@@ -223,6 +224,32 @@ def find_user_or_404(db: Session, user_uuid: str | None) -> User:
     return user
 
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def as_utc(value: datetime) -> datetime:
+    # DB 드라이버 설정에 따라 timezone 정보가 빠진 datetime이 올 수 있어서 UTC 기준으로 맞춰 비교합니다.
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+
+    return value.astimezone(timezone.utc)
+
+
+def travel_style_retry_after_seconds(user: User) -> int:
+    # 마지막으로 분석 요청을 "접수한" 시간을 기준으로 1분 이내 재요청이면 남은 대기 시간을 계산합니다.
+    # NULL이면 아직 제한할 이전 요청이 없는 상태이므로 바로 통과시킵니다.
+    requested_at = user.travel_style_analysis_requested_at
+
+    if requested_at is None:
+        return 0
+
+    available_at = as_utc(requested_at) + timedelta(seconds=TRAVEL_STYLE_ANALYSIS_COOLDOWN_SECONDS)
+    remaining = (available_at - utc_now()).total_seconds()
+
+    return max(0, int(remaining + 0.999))
+
+
 @router.get("/profile", response_model=SettingsProfile)
 def get_settings_profile(
     request: Request,
@@ -355,6 +382,24 @@ def request_travel_style_analysis(
     db: Session = Depends(get_db),
 ) -> SettingsProfile:
     user = find_user_or_404(db, user_uuid)
+    retry_after_seconds = travel_style_retry_after_seconds(user)
+
+    if retry_after_seconds > 0:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "message": "재요청까지 잠시 시간이 필요합니다.",
+                "retry_after_seconds": retry_after_seconds,
+            },
+        )
+
+    # 쿨다운을 통과한 요청만 "접수된 분석 요청"으로 보고 시간을 먼저 기록합니다.
+    # 분석 완료 시점이 아니라 요청 접수 시점을 기록해야, 분석 중 버튼을 다시 눌러도 중복 LLM 호출을 막을 수 있습니다.
+    now = utc_now()
+    user.travel_style_analysis_requested_at = now
+    user.updated_at = now
+    db.commit()
+    db.refresh(user)
 
     # 설정 화면의 분석 버튼은 요청만 빠르게 완료하고, 실제 LLM 분석은 백그라운드 작업에서 처리합니다.
     mark_travel_style_analysis_running(user.id)
