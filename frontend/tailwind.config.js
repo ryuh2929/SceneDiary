@@ -59,21 +59,21 @@ module.exports = {
 
         // 다크모드
         dark: {
-          background: "#152538",
-          surface: "#1C2E43",
+          background: "#0B1624", // 밤하늘처럼 깊은 네이비 배경
+          surface: "#121F2F",
           primary: "#5B7DBB",
-          primaryLight: "#39536B",
-          accent: "#F6D9A6",
-          accentMuted: "#37445A",
+          primaryLight: "#2F4965",
+          accent: "#6F89B8",
+          accentMuted: "#243348",
           textPrimary: "#DDE3EE",
           textSecondary: "#A9C3E6",
           textOnPrimary: "#FFFFFF",
-          muted: "#1E3A52", // 비활성 영역 배경
-          input: "#243D52", // 입력창 배경
-          border: "#2A4560",
+          muted: "#172A3E", // 비활성 영역 배경
+          input: "#182B3F", // 입력창 배경
+          border: "#26384D",
           error: "#B91C1C",
           success: "#22c55e",
-          disabled: "#39536B",
+          disabled: "#2F4965",
           toggle: "#5B7DBB",
         },
       },

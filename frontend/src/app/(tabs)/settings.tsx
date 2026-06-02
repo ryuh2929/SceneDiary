@@ -107,16 +107,16 @@ const lightColors = {
 
 const darkColors = {
   primary: '#5B7DBB',
-  primaryLight: '#39536B',
-  accent: '#5B7DBB',
-  accentMuted: '#37445A',
-  background: '#152538',
-  surface: '#1C2E43',
+  primaryLight: '#2F4965',
+  accent: '#6F89B8',
+  accentMuted: '#243348',
+  background: '#0B1624',
+  surface: '#121F2F',
   textOnPrimary: '#FFFFFF',
   textPrimary: '#DDE3EE',
   textSecondary: '#A9C3E6',
-  border: '#2A4560',
-  muted: '#1E3A52',
+  border: '#26384D',
+  muted: '#172A3E',
   toggle: '#5B7DBB',
 };
 
