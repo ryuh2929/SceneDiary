@@ -76,8 +76,9 @@ import { DarkModeBackground } from '@/components/dark-mode-background';
 import { NicknameModal } from '@/components/nickname-modal';
 import { useAppSettings } from '@/contexts/app-settings-context';
 import {
-  dummySettingsProfile,
+  SettingsProfile,
   SettingsToggle,
+  TravelType,
   TravelTypeIconName,
 } from '@/data/settings';
 import {
@@ -211,8 +212,8 @@ function wait(ms: number) {
 }
 
 function isSameTravelType(
-  previous: typeof dummySettingsProfile.travelType,
-  next: typeof dummySettingsProfile.travelType,
+  previous: TravelType,
+  next: TravelType,
 ) {
   return (
     previous.title === next.title &&
@@ -462,7 +463,9 @@ export default function SettingsScreen() {
     setIsDarkMode: setGlobalIsDarkMode,
     setIsPushEnabled: setGlobalIsPushEnabled,
   } = useAppSettings();
-  const [profile, setProfile] = useState(dummySettingsProfile);
+  // 실제 설정 정보는 서버 응답이 성공한 뒤에만 채웁니다.
+  // DB/API가 끊겼을 때 더미 닉네임이나 여행 유형이 실제 데이터처럼 보이지 않게 null로 시작합니다.
+  const [profile, setProfile] = useState<SettingsProfile | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isSavingPersona, setIsSavingPersona] = useState(false);
@@ -476,18 +479,10 @@ export default function SettingsScreen() {
 
   // 설정 페이지 첫 진입 시 더미 데이터의 라이트모드 값이 잠깐 보이지 않도록,
   // 이미 앱 전역 상태에 저장된 최신 설정값을 초기 토글값으로 우선 사용합니다.
-  const initialToggles = useMemo(
-    () => ({
-      ...(Object.fromEntries(profile.toggles.map((toggle) => [toggle.id, toggle.enabled])) as Record<
-        SettingsToggle['id'],
-        boolean
-      >),
-      darkMode: globalIsDarkMode,
-      pushNotification: globalIsPushEnabled,
-    }),
-    [globalIsDarkMode, globalIsPushEnabled, profile.toggles],
-  );
-  const [toggles, setToggles] = useState(initialToggles);
+  const [toggles, setToggles] = useState<Record<SettingsToggle['id'], boolean>>({
+    darkMode: globalIsDarkMode,
+    pushNotification: globalIsPushEnabled,
+  });
   useEffect(() => {
     if (isLoaded) {
       return;
@@ -510,12 +505,10 @@ export default function SettingsScreen() {
   const colors = isDarkMode ? darkColors : lightColors;
 
   // 페르소나는 하나만 선택되도록 선택된 id만 저장합니다.
-  const [writingPersona, setWritingPersona] = useState(
-    globalWritingPersona || (profile.persona.tags.find((tag) => tag.selected)?.id ?? profile.persona.tags[0]?.id),
-  );
+  const [writingPersona, setWritingPersona] = useState(globalWritingPersona || 'daily');
   const selectedPersona = useMemo(
-    () => profile.persona.tags.find((tag) => tag.id === writingPersona),
-    [profile.persona.tags, writingPersona],
+    () => profile?.persona.tags.find((tag) => tag.id === writingPersona),
+    [profile?.persona.tags, writingPersona],
   );
   const noticeProgress = useDerivedValue(
     () => withTiming(profileNotice ? 1 : 0, { duration: 180 }),
@@ -626,7 +619,7 @@ export default function SettingsScreen() {
   }, [travelAnalysisCooldownUntil]);
 
   const handleSelectPersona = async (personaId: string) => {
-    if (personaId === writingPersona || isSavingPersona) {
+    if (!profile || personaId === writingPersona || isSavingPersona) {
       return;
     }
 
@@ -635,7 +628,7 @@ export default function SettingsScreen() {
     // 버튼을 누른 즉시 화면을 바꾸고, 서버 저장이 끝나면 응답값으로 한 번 더 동기화합니다.
     setWritingPersona(personaId);
     setGlobalWritingPersona(personaId);
-    setProfile((currentProfile) => ({
+    setProfile((currentProfile) => currentProfile ? ({
       ...currentProfile,
       persona: {
         ...currentProfile.persona,
@@ -644,7 +637,7 @@ export default function SettingsScreen() {
           selected: tag.id === personaId,
         })),
       },
-    }));
+    }) : currentProfile);
     setIsSavingPersona(true);
     setProfileError(null);
     setProfileNotice(null);
@@ -661,7 +654,7 @@ export default function SettingsScreen() {
     } catch (error) {
       setWritingPersona(previousPersona);
       setGlobalWritingPersona(previousPersona);
-      setProfile((currentProfile) => ({
+      setProfile((currentProfile) => currentProfile ? ({
         ...currentProfile,
         persona: {
           ...currentProfile.persona,
@@ -670,7 +663,7 @@ export default function SettingsScreen() {
             selected: tag.id === previousPersona,
           })),
         },
-      }));
+      }) : currentProfile);
       setProfileError(error instanceof Error ? error.message : 'Failed to update writing persona.');
     } finally {
       setIsSavingPersona(false);
@@ -782,7 +775,7 @@ export default function SettingsScreen() {
     }
   };
 
-  const pollTravelStyleAnalysisResult = async (previousTravelType: typeof profile.travelType) => {
+  const pollTravelStyleAnalysisResult = async (previousTravelType: TravelType) => {
     const pollIntervals = [
       ...Array(TRAVEL_ANALYSIS_FAST_POLL_COUNT).fill(TRAVEL_ANALYSIS_FAST_POLL_INTERVAL_MS),
       ...Array(TRAVEL_ANALYSIS_SLOW_POLL_COUNT).fill(TRAVEL_ANALYSIS_SLOW_POLL_INTERVAL_MS),
@@ -809,7 +802,7 @@ export default function SettingsScreen() {
   };
 
   const startTravelStyleAnalysis = async () => {
-    if (isRequestingTravelAnalysis) {
+    if (!profile || isRequestingTravelAnalysis) {
       return;
     }
 
@@ -910,6 +903,8 @@ export default function SettingsScreen() {
           </View>
         ) : null}
 
+        {profile ? (
+          <>
         <View className="items-center">
           <View className="relative h-[82px] w-[82px] items-center justify-center">
             <View className={`h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full ${isDarkMode ? 'bg-dark-primaryLight' : 'bg-primaryLight'}`}>
@@ -1035,6 +1030,28 @@ export default function SettingsScreen() {
             />
           ))}
         </View>
+          </>
+        ) : (
+          <View
+            className="rounded-lg border px-md py-lg"
+            style={{
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            }}>
+            <Text
+              className={`text-center text-md font-sans-real-bold ${
+                isDarkMode ? 'text-dark-textPrimary' : 'text-textPrimary'
+              }`}>
+              {isLoaded ? '설정 정보를 불러오지 못했어요' : '설정 정보를 불러오는 중이에요'}
+            </Text>
+            <Text
+              className={`mt-sm text-center text-sm font-sans-medium ${
+                isDarkMode ? 'text-dark-textSecondary' : 'text-textSecondary'
+              }`}>
+              {isLoaded ? '서버 연결을 확인한 뒤 다시 열어주세요.' : '잠시만 기다려주세요.'}
+            </Text>
+          </View>
+        )}
       </View>
 
       </ScrollView>
@@ -1065,7 +1082,7 @@ export default function SettingsScreen() {
 
       <NicknameModal
         visible={isNicknameModalVisible}
-        currentNickname={profile.nickname}
+        currentNickname={profile?.nickname ?? ''}
         onClose={closeNicknameModal}
         onSave={handleSaveNickname}
       />
