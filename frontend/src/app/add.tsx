@@ -491,7 +491,7 @@ export default function AddScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               className="h-14 items-center justify-center">
-              <Text className="text-md font-extrabold text-textOnPrimary">
+              <Text className="text-md font-sans-bold text-textOnPrimary">
                 {isUploading
                   ? '사진 업로드 중'
                   : pendingPhotos.length > 0

@@ -1,10 +1,11 @@
-import React, {useEffect, useState, useRef} from "react";
+import React, {useState, useRef} from "react";
 import {Image, Platform, View, useWindowDimensions} from "react-native";
 import MapView, {Marker, PROVIDER_GOOGLE} from "react-native-maps";
 import SimpleView from "./simpleView";
 import {getTripDays} from "@/api/map";
 import {Days} from "@/types/api";
 import {useFocusEffect} from "expo-router"; // 또는 @react-navigation/native
+
 
 type PhotoMarkerProps = {
   item: Days;
@@ -22,11 +23,14 @@ function PhotoMarker({item, photoUrl, onPress}: PhotoMarkerProps) {
 
   const [isLoaded, setIsLoaded] = useState(false);
 
+  
+
+
   if (Platform.OS === "android") {
     // android버전
     return (
-      <Marker coordinate={coordinate} pinColor="#5B7DBB" onPress={onPress} />
-
+      <Marker coordinate={coordinate} pinColor="#5B7DBB" onPress={onPress} />    
+      
       // <Marker
       //   // 1. [핵심] 커스텀 뷰(자식 컴포넌트)를 모두 제거합니다.
       //   coordinate={coordinate}
