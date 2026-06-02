@@ -18,6 +18,31 @@ from app.db.models import Photo, PhotoGeneration, Trip, User
 from app.db.session import SessionLocal
 
 TRAVEL_STYLE_MODEL = os.getenv("TRAVEL_STYLE_MODEL", "gpt-4.1-mini")
+_TRAVEL_STYLE_ANALYSIS_STATUS: dict[int, dict[str, str | None]] = {}
+
+
+def _set_analysis_status(user_id: int, status: str, message: str | None = None) -> None:
+    # 현재는 DB 컬럼을 늘리지 않고, 서버 프로세스 메모리에 최근 분석 상태만 보관합니다.
+    # 운영 단계에서 여러 서버 프로세스를 쓰게 되면 DB 컬럼이나 작업 큐 상태 저장소로 옮기는 것이 안전합니다.
+    _TRAVEL_STYLE_ANALYSIS_STATUS[user_id] = {
+        "status": status,
+        "message": message,
+    }
+
+
+def get_travel_style_analysis_status(user_id: int) -> dict[str, str | None]:
+    return _TRAVEL_STYLE_ANALYSIS_STATUS.get(
+        user_id,
+        {
+            "status": "idle",
+            "message": None,
+        },
+    )
+
+
+def mark_travel_style_analysis_running(user_id: int) -> None:
+    # 새 분석 요청을 받는 즉시 이전 실패/성공 상태를 running으로 덮어써서 프론트가 낡은 상태를 읽지 않게 합니다.
+    _set_analysis_status(user_id, "running", None)
 
 # 설정 화면에서 렌더링할 수 있는 lucide-react-native 아이콘 이름만 허용합니다.
 TRAVEL_STYLE_ICON_NAMES = {
@@ -208,6 +233,9 @@ def _normalize_result(result: dict[str, Any]) -> dict[str, str]:
 
 
 def _analyze_with_llm(payload: dict[str, Any]) -> dict[str, str]:
+    if not os.getenv("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is not configured")
+
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     response = client.chat.completions.create(
         model=TRAVEL_STYLE_MODEL,
@@ -235,26 +263,32 @@ def run_travel_style_analysis(user_id: int, *, force: bool = False) -> None:
     """
     db = SessionLocal()
     started = datetime.now(timezone.utc)
+    _set_analysis_status(user_id, "running", None)
 
     try:
         user = db.query(User).filter(User.id == user_id).first()
         if user is None:
+            _set_analysis_status(user_id, "failed", "사용자 정보를 찾을 수 없어 여행 유형 분석을 진행하지 못했어요.")
             return
 
         if user.travel_style_analysis and not force:
+            _set_analysis_status(user_id, "success", None)
             return
 
         payload = _collect_analysis_payload(db, user)
         if not payload["trips"]:
+            _set_analysis_status(user_id, "failed", "분석할 여행 사진 데이터가 아직 없습니다.")
             return
 
         result = _analyze_with_llm(payload)
         user.travel_style_analysis = json.dumps(result, ensure_ascii=False)
         user.updated_at = started
         db.commit()
+        _set_analysis_status(user_id, "success", None)
         print(f"[travel-style] done: user_id={user_id}, result={result['title']}")
     except Exception as exc:
         db.rollback()
+        _set_analysis_status(user_id, "failed", "여행 유형 분석 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.")
         print(f"[travel-style] FAILED: user_id={user_id}: {exc}")
         import traceback
 

@@ -9,12 +9,17 @@ from app.db.session import get_db
 from app.db.models import User
 from app.schemas.settings import (
     SettingsProfile,
+    TravelStyleAnalysisStatus,
     UpdateNicknameRequest,
     UpdateSettingsToggleRequest,
     UpdateWritingPersonaRequest,
 )
 from app.services.image_processor import save_profile_image
-from app.services.travel_style_analysis import run_travel_style_analysis
+from app.services.travel_style_analysis import (
+    get_travel_style_analysis_status,
+    mark_travel_style_analysis_running,
+    run_travel_style_analysis,
+)
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -352,6 +357,22 @@ def request_travel_style_analysis(
     user = find_user_or_404(db, user_uuid)
 
     # 설정 화면의 분석 버튼은 요청만 빠르게 완료하고, 실제 LLM 분석은 백그라운드 작업에서 처리합니다.
+    mark_travel_style_analysis_running(user.id)
     background_tasks.add_task(run_travel_style_analysis, user.id, force=True)
 
     return to_settings_profile(user, request)
+
+
+@router.get("/travel-style-analysis/status", response_model=TravelStyleAnalysisStatus)
+def get_travel_style_analysis_state(
+    user_uuid: str = Query(...),
+    db: Session = Depends(get_db),
+) -> TravelStyleAnalysisStatus:
+    user = find_user_or_404(db, user_uuid)
+    status = get_travel_style_analysis_status(user.id)
+
+    # 분석 요청은 백그라운드에서 처리되므로, 프론트가 완료/실패 여부를 짧게 확인할 수 있게 별도 상태를 내려줍니다.
+    return TravelStyleAnalysisStatus(
+        status=status["status"],
+        message=status.get("message"),
+    )

@@ -92,6 +92,15 @@ class SettingsProfile(BaseModel):
     toggles: list[SettingsToggle]
 
 
+TravelStyleAnalysisStatusValue = Literal["idle", "running", "success", "failed"]
+
+
+class TravelStyleAnalysisStatus(BaseModel):
+    # 여행 유형 분석은 백그라운드에서 실행되므로, 프론트가 실제 완료/실패 여부를 따로 확인할 때 사용합니다.
+    status: TravelStyleAnalysisStatusValue
+    message: str | None = None
+
+
 class UpdateWritingPersonaRequest(BaseModel):
     # 사용자가 선택한 글 작성 페르소나 id입니다.
     # 실제 DB에는 label이 아니라 poetic, daily 같은 안정적인 코드값만 저장합니다.

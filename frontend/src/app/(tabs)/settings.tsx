@@ -81,6 +81,7 @@ import {
 } from '@/data/settings';
 import {
   fetchSettingsProfile,
+  fetchTravelStyleAnalysisStatus,
   requestTravelStyleAnalysis,
   updateNickname,
   updateSettingsToggle,
@@ -789,6 +790,12 @@ export default function SettingsScreen() {
     for (const interval of pollIntervals) {
       await wait(interval);
 
+      const latestStatus = await fetchTravelStyleAnalysisStatus();
+
+      if (latestStatus.status === 'failed') {
+        throw new Error(latestStatus.message ?? '여행 유형 분석에 실패했어요. 잠시 후 다시 시도해주세요.');
+      }
+
       const latestProfile = await fetchSettingsProfile();
 
       if (!isSameTravelType(previousTravelType, latestProfile.travelType)) {
@@ -829,8 +836,16 @@ export default function SettingsScreen() {
       });
       try {
         await pollTravelStyleAnalysisResult(previousTravelType);
-      } catch {
-        // polling은 화면 자동 갱신을 위한 보조 동작입니다. 요청 자체는 성공했으므로 실패 토스트로 덮어쓰지 않습니다.
+      } catch (error) {
+        // 백그라운드 분석 실패는 실제 분석 실패이므로 쿨다운을 해제해 바로 재시도할 수 있게 합니다.
+        setTravelAnalysisCooldownUntil(null);
+        setProfileNotice({
+          message:
+            error instanceof Error
+              ? error.message
+              : '여행 유형 분석에 실패했어요. 잠시 후 다시 시도해주세요.',
+          type: 'error',
+        });
       }
     } catch (error) {
       setProfileNotice({

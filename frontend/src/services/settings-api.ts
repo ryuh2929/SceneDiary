@@ -3,6 +3,11 @@ import { Platform } from 'react-native';
 import { getApiBaseUrl } from '@/services/api-base-url';
 import { ensureCurrentUser } from '@/services/user-api';
 
+export type TravelStyleAnalysisStatus = {
+  status: 'idle' | 'running' | 'success' | 'failed';
+  message?: string | null;
+};
+
 export async function fetchSettingsProfile() {
   const userUuid = await ensureCurrentUser();
   const query = new URLSearchParams({ user_uuid: userUuid });
@@ -136,6 +141,20 @@ export async function requestTravelStyleAnalysis() {
   const profile = (await response.json()) as SettingsProfile;
 
   return normalizeSettingsProfile(profile);
+}
+
+export async function fetchTravelStyleAnalysisStatus() {
+  const userUuid = await ensureCurrentUser();
+  const query = new URLSearchParams({ user_uuid: userUuid });
+
+  // 분석 요청 자체는 바로 성공할 수 있지만, 실제 LLM 작업은 백그라운드에서 실패할 수 있어서 상태를 따로 확인합니다.
+  const response = await fetch(`${getApiBaseUrl()}/settings/travel-style-analysis/status?${query.toString()}`);
+
+  if (!response.ok) {
+    throw new Error('Failed to load travel style analysis status.');
+  }
+
+  return (await response.json()) as TravelStyleAnalysisStatus;
 }
 
 function normalizeTravelTypeIcon(icon: unknown): TravelTypeIconName {
