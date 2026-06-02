@@ -29,25 +29,31 @@ _PROFILE_IMAGE_ROOT = _BACKEND_DIR / "test_images" / _PROFILE_IMAGE_PUBLIC_ROOT
 MAX_PROFILE_IMAGE_BYTES = 1 * 1024 * 1024
 TRAVEL_STYLE_ANALYSIS_COOLDOWN_SECONDS = 60
 
-# DB에는 안정적인 코드값(poetic, daily 등)만 저장하고,
+# DB에는 안정적인 코드값(daily, playful 등)만 저장하고,
 # 화면에 보여줄 라벨/설명은 API 응답을 만들 때 매핑합니다.
+# dict 순서가 그대로 프런트 버튼 순서가 되므로, 설정 화면에서 보일 순서대로 작성합니다.
 PERSONA_OPTIONS = {
-    "poetic": {
-        "label": "시적인",
-        "description": "감성적이고 문학적인 표현",
-    },
     "daily": {
         "label": "일상적",
         "description": "담백하고 자연스러운 표현",
     },
-    "adventurous": {
-        "label": "모험가",
-        "description": "생동감 있고 활동적인 표현",
+    "playful": {
+        "label": "유쾌한",
+        "description": "가볍고 재치 있는 표현",
+    },
+    "poetic": {
+        "label": "시적인",
+        "description": "감성적이고 문학적인 표현",
     },
     "romantic": {
         "label": "로맨틱",
-        "description": "따뜻하고 감성적인 표현",
+        "description": "따뜻하고 사랑이 넘치는 표현",
     },
+}
+LEGACY_PERSONA_ALIASES = {
+    # 예전에 사용하던 adventurous 값은 새 페르소나 체계에서 playful로 읽히게 합니다.
+    # 기존 테스트 데이터가 남아있어도 버튼 선택 상태가 비어 보이지 않도록 하는 임시 호환 처리입니다.
+    "adventurous": "playful",
 }
 
 DEFAULT_TRAVEL_STYLE_ANALYSIS = {
@@ -135,8 +141,15 @@ def public_image_url(request: Request, path: str | None) -> str | None:
     return f"{base_url(request)}/test_images/{cleaned_path}"
 
 
+def normalize_persona_id(persona_id: str) -> str:
+    # DB에 예전 코드값이 남아있거나 프런트가 예전 값을 보내도, 현재 사용하는 코드값으로 한 번 정리합니다.
+    normalized = persona_id.strip().lower()
+
+    return LEGACY_PERSONA_ALIASES.get(normalized, normalized)
+
+
 def persona_tags(selected_persona: str) -> list[dict[str, object]]:
-    normalized = selected_persona.strip().lower()
+    normalized = normalize_persona_id(selected_persona)
 
     # 프론트는 tags 배열을 그대로 버튼 목록으로 렌더링합니다.
     # 따라서 항상 전체 페르소나 목록을 내려주고, DB 값과 일치하는 항목만 선택 상태로 표시합니다.
@@ -178,7 +191,7 @@ def travel_style_analysis(user: User) -> dict[str, str]:
 
 
 def to_settings_profile(user: User, request: Request) -> SettingsProfile:
-    writing_persona = clean(user.writing_persona).lower()
+    writing_persona = normalize_persona_id(clean(user.writing_persona))
     selected_persona = PERSONA_OPTIONS.get(writing_persona)
 
     # 아이콘은 프론트에서 lucide-react-native 컴포넌트로 매핑할 수 있는 키만 내려줍니다.
@@ -270,7 +283,7 @@ def update_writing_persona(
 ) -> SettingsProfile:
     # 프런트가 보내는 값은 반드시 PERSONA_OPTIONS에 등록된 id만 허용합니다.
     # 잘못된 값이 DB에 들어가면 이후 버튼 선택 상태를 맞출 수 없어서 여기서 차단합니다.
-    persona_id = payload.persona_id.strip().lower()
+    persona_id = normalize_persona_id(payload.persona_id)
 
     if persona_id not in PERSONA_OPTIONS:
         raise HTTPException(status_code=400, detail="Unknown writing persona")
