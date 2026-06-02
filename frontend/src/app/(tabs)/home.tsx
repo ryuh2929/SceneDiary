@@ -195,11 +195,40 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 180 }}
       >
         <View className="px-md mt-lg mb-md gap-lg">
-          {tripData.map((item) => {
+          {/* 💡 핵심: tripData가 비어있는지 체크합니다 */}
+          {tripData.length === 0 ? (
+            
+            // ⭕ 1. 데이터가 없을 때 보여줄 예쁜 안내 카드
+            <View className="mt-xl items-center justify-center rounded-2xl bg-surface p-xl border border-border dark:border-dark-border dark:bg-dark-surface shadow-sm">
+              {/* 📝 문구와 잘 어울리는 비행기나 일기장 이모지 하나 얹어주면 훨씬 부드러워집니다 */}
+              <Text style={{ fontSize: 32 }} className="mb-sm">✈️</Text> 
+              
+              <Text className="text-base font-sans-bold text-textPrimary dark:text-dark-textPrimary text-center">
+                작성된 일기가 없습니다
+              </Text>
+              
+              <Text className="mt-xs text-sm text-textSecondary dark:text-dark-textSecondary text-center leading-5">
+                오른쪽 아래 '+' 버튼을 눌러{"\n"}새로운 여행의 추억을 기록해 보세요!
+              </Text>
+            </View>
+
+          ) : (
+          tripData.map((item) => {
             const isExpanded = expandedId === item.id;
             return (
-              <View key={item.id} className="bg-surface rounded-lg overflow-hidden shadow-sm border border-border dark:border-dark-border dark:bg-dark-surface">
-
+              <View 
+                key={item.id} 
+                className="bg-surface rounded-lg overflow-hidden border border-border dark:border-dark-border dark:bg-dark-surface shadow-sm shadow-black/10 dark:shadow-none"
+                style={{
+                  //[안드로이드 치트키] 안드로이드는 클래스명이 아니라 이 elevation 수치가 반드시 수동으로 박혀야 그림자가 나옵니다.
+                  elevation: 3,
+                  // [iOS 치트키 브레이크] 가끔 배경색과 그림자 결합이 깨질 때 인라인으로 슥 잡아주는 밀림 방지용
+                  shadowColor: colors.textPrimary,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 4,
+                }}
+              >
                 {/* ── 2-1. 대표 이미지 영역 ──
                     - 클릭 시 상세 페이지로 이동
                     - 좌상단: 날짜 뱃지 / 우상단: 여행 대표 이모지
@@ -231,8 +260,8 @@ export default function HomeScreen() {
 
                   {/* 여행 대표 이모지: item.flag가 있을 때만 표시 */}
                   <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                    {(item.flag || "1f30f") && (
-                      <EmojiIcon codepoint={item.flag || "1f30f"} size={26} />
+                    {(item.flag || "1f1f0-1f1f7") && (
+                      <EmojiIcon codepoint={item.flag || "1f1f0-1f1f7"} size={26} />
                     )}
                   </View>
                 </Pressable>
@@ -348,7 +377,8 @@ export default function HomeScreen() {
 
               </View>
             );
-          })}
+          })
+        )}
         </View>
       </ScrollView>
 

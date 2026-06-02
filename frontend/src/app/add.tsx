@@ -458,7 +458,7 @@ export default function AddScreen() {
           </View>
 
           {pendingPhotos.length === 0 ? (
-            <View className="mt-2xl items-center rounded-lg bg-muted px-lg py-xl dark:bg-dark-muted">
+            <View className="mt-sm items-center rounded-lg bg-muted px-lg py-xl dark:bg-dark-muted">
               <ImagePlus size={30} color={colors.primaryLight} />
               <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
                 사진을 여러 장 선택하면 여기에서 순서대로 확인할 수 있어요.
