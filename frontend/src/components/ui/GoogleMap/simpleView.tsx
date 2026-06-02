@@ -45,19 +45,19 @@ export default function SimpleView({ item }: SimpleViewProps) {
 
   return (
     <View
+      className="absolute bg-surface border border-border shadow-md rounded-2xl dark:bg-dark-surface "
       style={{
-        position: "absolute",
         left: horizontalMargin,
         right: horizontalMargin,
         bottom: bottomOffset,
-        backgroundColor: "#FFFFFF",
         padding: cardPadding,
-        borderRadius,
+        borderRadius: borderRadius,
+        // 그림자는 클래스로 처리하되, 복잡한 커스텀 그림자는 유지 가능
         shadowColor: "#000000",
         shadowOpacity: 0.18,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 3 },
-        elevation: 8,
+        elevation: 8, // 안드로이드용
       }}
     >
       <TouchableOpacity
@@ -84,6 +84,7 @@ export default function SimpleView({ item }: SimpleViewProps) {
               }}
             >
               <Image
+                className="border border-border rounded-lg"
                 source={{ uri: photo.thumbnail_image_url }}
                 style={{ width: imageSize, height: imageSize }}
                 resizeMode="cover"
@@ -93,7 +94,7 @@ export default function SimpleView({ item }: SimpleViewProps) {
 
           <View className="flex-1">
             <Text
-              className="text-lg text-black font-sans-bold"
+              className="text-lg text-textPrimary font-sans-bold dark:text-dark-textPrimary"
               numberOfLines={2}
               ellipsizeMode="tail"
             >
@@ -102,7 +103,7 @@ export default function SimpleView({ item }: SimpleViewProps) {
 
             <View className="mt-2 flex-row items-center">
               <Text
-                className="text-sm text-gray-500 font-sans-bold"
+                className="text-sm text-gray-500 font-sans-bold dark:text-dark-textPrimary"
                 numberOfLines={1}
               >
                 <MapPin size={imageSize * 0.15} color="#39536B" />{" "}
@@ -110,7 +111,7 @@ export default function SimpleView({ item }: SimpleViewProps) {
               </Text>
 
               <Text
-                className="text-sm text-gray-500 flex-1 ml-2"
+                className="text-sm text-gray-500 font-sans-bold dark:text-dark-textPrimary flex-1 ml-2"
                 numberOfLines={1}
               >
                 <Calendar size={imageSize * 0.15} color="#39536B" /> {item.date}
