@@ -71,6 +71,12 @@ class User(Base):
     # AI 가 사용자의 여행 패턴(사진·일기·일정)을 분석해 자연어 한 줄로 요약한 "여행 스타일".
     # 예: "도시 야경 위주의 감성형 탐험가". 미생성 시 NULL.
     travel_style_analysis: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # 여행 유형 분석을 마지막으로 "요청"한 시각.
+    # trip.status 가 completed 로 전환되어 백그라운드 분석이 시작될 때 기록됩니다.
+    # 향후 throttle(연속 요청 방지) 또는 "마지막 분석" 표시 UX 에 활용.
+    travel_style_analysis_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
 
     # 사용자 설정 (DB가 기본값 자동 입력)
     dark_mode: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))

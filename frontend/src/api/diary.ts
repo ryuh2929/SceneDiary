@@ -59,6 +59,9 @@ export async function uploadFirstDayPhotos(photos: {
   takenDate?: string;
   gpsLatitude?: number;
   gpsLongitude?: number;
+  placeName?: string;
+  countryName?: string;
+  cityName?: string;
 }[], options?: {
   tripId?: string;
   dayNumber?: number;
@@ -75,6 +78,10 @@ export async function uploadFirstDayPhotos(photos: {
     // 리사이즈 후 EXIF가 사라지므로 리사이즈 전에 추출한 GPS를 별도 form 필드로 전송합니다.
     formData.append('photo_gps_latitudes', photo.gpsLatitude != null ? String(photo.gpsLatitude) : '');
     formData.append('photo_gps_longitudes', photo.gpsLongitude != null ? String(photo.gpsLongitude) : '');
+    // OS 지오코딩 결과(지명). 백엔드가 photo.location_name + 일차/여행 단위 집계에 사용.
+    formData.append('photo_place_names', photo.placeName ?? '');
+    formData.append('photo_country_names', photo.countryName ?? '');
+    formData.append('photo_city_names', photo.cityName ?? '');
     if (Platform.OS === 'web') {
       const blob = await fetch(photo.fileUri).then((response) => response.blob());
       formData.append('files', blob, photo.originalFilename);
@@ -97,12 +104,6 @@ export async function uploadFirstDayPhotos(photos: {
   }
 
   return (await response.json()) as FirstDayUploadResponse;
-}
-
-export function startTripDayGeneration(tripDayId: number) {
-  return request<GenerationResponse>(`/trip-days/${tripDayId}/generate`, {
-    method: 'POST',
-  });
 }
 
 export function fetchTripDayGenerationStatus(tripDayId: number) {
@@ -134,11 +135,18 @@ export function saveDayLocation(
   locationSummary: string,
   lat?: number,
   lon?: number,
+  countryName?: string,
+  cityName?: string,
 ) {
   const body: DayUpdate = { locationSummary };
   if (lat !== undefined && lon !== undefined) {
     body.lat = lat;
     body.lon = lon;
+  }
+  // 국가/도시 둘 다 있을 때만 보냄 — 백엔드가 trip.destination 빈 경우에만 채움.
+  if (countryName && cityName) {
+    body.countryName = countryName;
+    body.cityName = cityName;
   }
   return request<DayPage>(`/trip-days/${tripDayId}`, {
     method: 'PATCH',

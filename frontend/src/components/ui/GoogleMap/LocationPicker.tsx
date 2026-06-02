@@ -21,6 +21,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {ActivityIndicator, Pressable, StyleSheet, Text, View} from "react-native";
 import MapView, {Marker, PROVIDER_GOOGLE} from "react-native-maps"; // 구글 지도
 import {useSafeAreaInsets} from "react-native-safe-area-context"; // 노치/홈바 여백
+import {useAppThemeColors} from "@/constants/app-colors";
 
 // 지도 초기 중심(서울) — 기존 지도 탭과 동일한 시작 위치.
 const SEOUL = {latitude: 37.5665, longitude: 126.978};
@@ -40,7 +41,15 @@ type Coord = {latitude: number; longitude: number};
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onSelect: (placeName: string, lat: number, lon: number) => void;
+  // reverseGeocode 결과에서 뽑아낸 국가/도시도 함께 넘깁니다.
+  // 백엔드가 trip.destination 이 비어있을 때 "국가/도시" 형식으로 자동 채우는 데 사용.
+  // 좌표만 있고 reverseGeocode 가 실패하면 country/city 는 undefined.
+  onSelect: (
+    placeName: string,
+    lat: number,
+    lon: number,
+    context?: {countryName?: string; cityName?: string},
+  ) => void;
 };
 
 // reverseGeocode(좌표→주소) 결과를 사람이 읽기 좋은 짧은 지명 한 줄로 다듬습니다.
@@ -65,6 +74,7 @@ function toPlaceName(
 
 export default function LocationPicker({visible, onClose, onSelect}: Props) {
   const insets = useSafeAreaInsets(); // 상단 노치/하단 홈바만큼 여백 확보
+  const colors = useAppThemeColors(); // 전역 다크모드에 맞춰 아이콘 색상을 바꿉니다.
   // 지도를 코드로 움직이려면(예: 현재 위치로 이동) 지도에 대한 "리모컨"이 필요합니다.
   // useRef 가 그 리모컨 역할 — mapRef.current 로 지도 명령을 호출합니다.
   const mapRef = useRef<MapView>(null);
@@ -79,7 +89,8 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
   }, [visible]);
 
   // 안 열려 있으면 아무것도 그리지 않음(화면에서 사라짐).
-  // ※ useState/useEffect 같은 훅은 위에서 항상 먼저 실행되므로 규칙 위반 아님.
+  // ※ react-native-maps 의 MapView 는 Modal 안에서 Google Maps API key 인식이 실패하는
+  //   안드로이드 회귀가 있어, overlay(absoluteFill) 방식으로 유지합니다.
   if (!visible) return null;
 
   // [현재 위치] 권한을 물어보고, 허락하면 GPS 좌표를 받아 핀+지도를 그쪽으로 옮깁니다.
@@ -114,9 +125,17 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
         // 변환 실패해도 멈추지 않고, 아래 toPlaceName 이 좌표로 폴백합니다.
         console.error("지오코딩 실패(좌표로 대체):", e);
       }
-      // ★ 결과를 일기 화면에 전달 (지명 + 좌표).
+      // ★ 결과를 일기 화면에 전달 (지명 + 좌표 + 국가/도시).
       // picked 는 사용자가 지도에서 고른 정확한 좌표 — DB에 그대로 저장됨.
-      onSelect(toPlaceName(address, picked), picked.latitude, picked.longitude);
+      // country/city 는 add.tsx 의 자동 추출과 같은 의미 — trip.destination 자동 보강용.
+      const countryName = address?.country || undefined;
+      const cityName = address?.city || address?.region || undefined;
+      onSelect(
+        toPlaceName(address, picked),
+        picked.latitude,
+        picked.longitude,
+        {countryName, cityName},
+      );
     } finally {
       setBusy(false);
     }
@@ -125,16 +144,18 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
   return (
     // 화면 전체를 덮는 오버레이.
     //   absoluteFill = 부모 화면을 꽉 채움. zIndex/elevation 50 = 하단 버튼 등 위로 올라옴.
+    //   Modal 대신 이 방식을 쓰는 이유: react-native-maps + Modal 조합이 안드로이드에서
+    //   "Google Maps API key not found" 에러를 내는 회귀가 있음.
     <View
       style={[StyleSheet.absoluteFill, {zIndex: 50, elevation: 50}]}
-      className="bg-surface"
+      className="bg-surface dark:bg-dark-surface"
     >
       {/* ===== 헤더: 제목 + 닫기(X) ===== */}
-      <View style={{paddingTop: insets.top}} className="bg-surface">
-        <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
-          <Text className="text-base font-bold text-textPrimary">여행지 선택</Text>
+      <View style={{paddingTop: insets.top}} className="bg-surface dark:bg-dark-surface">
+        <View className="flex-row items-center justify-between border-b border-border px-4 py-3 dark:border-dark-border">
+          <Text className="text-base font-sans-bold text-textPrimary dark:text-dark-textPrimary">여행지 선택</Text>
           <Pressable onPress={onClose} hitSlop={8}>
-            <X size={22} color="#39536B" />
+            <X size={22} color={colors.textSecondary} />
           </Pressable>
         </View>
       </View>
@@ -154,16 +175,16 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
         {/* 현재 위치 버튼 (지도 위에 떠 있음) */}
         <Pressable
           onPress={useCurrentLocation}
-          className="absolute right-4 top-4 flex-row items-center gap-1 rounded-full bg-surface px-3 py-2 shadow-md"
+          className="absolute right-4 top-4 flex-row items-center gap-1 rounded-full bg-surface px-3 py-2 shadow-md dark:bg-dark-surface"
         >
-          <LocateFixed size={16} color="#5B7DBB" />
+          <LocateFixed size={16} color={colors.primary} />
           <Text className="text-sm font-medium text-primary">현재 위치</Text>
         </Pressable>
 
         {/* 아직 안 골랐을 때만 보이는 첫 안내 문구 */}
         {!picked && (
-          <View className="absolute left-4 top-4 rounded-lg bg-surface px-3 py-2 shadow-md">
-            <Text className="text-xs text-textSecondary">
+          <View className="absolute left-4 top-4 rounded-lg bg-surface px-3 py-2 shadow-md dark:bg-dark-surface">
+            <Text className="text-xs text-textSecondary dark:text-dark-textSecondary">
               지도를 탭해 여행지를 선택하세요
             </Text>
           </View>
@@ -173,14 +194,14 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
       {/* ===== 하단 확인 바 ===== */}
       <View
         style={{paddingBottom: insets.bottom + 12}}
-        className="border-t border-border bg-surface px-5 pt-3"
+        className="border-t border-border bg-surface px-5 pt-3 dark:border-dark-border dark:bg-dark-surface"
       >
         <Pressable
           onPress={confirm}
           // 아직 안 골랐거나 처리 중이면 누를 수 없게(색도 흐리게).
           disabled={!picked || busy}
           className={`flex-row items-center justify-center gap-2 rounded-2xl py-4 ${
-            picked && !busy ? "bg-primary" : "bg-muted"
+            picked && !busy ? "bg-primary" : "bg-muted dark:bg-dark-muted"
           }`}
         >
           {busy ? (
@@ -188,7 +209,7 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
           ) : (
             <>
               <MapPin size={18} color="#FFFFFF" />
-              <Text className="font-bold text-textOnPrimary">
+              <Text className="font-sans-bold text-textOnPrimary">
                 {picked ? "이 위치로 선택" : "위치를 먼저 선택하세요"}
               </Text>
             </>

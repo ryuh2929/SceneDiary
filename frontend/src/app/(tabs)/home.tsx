@@ -6,6 +6,7 @@ import Twemoji from 'react-native-twemoji';
 import BottomNav from '@/components/bottom-nav';
 import { getTrips } from '@/api/home';
 import { Trip } from '@/types/api';
+import { useAppThemeColors } from '@/constants/app-colors';
 
 // ─────────────────────────────────────────────
 // 🔧 유틸 함수 섹션
@@ -92,6 +93,7 @@ export default function HomeScreen() {
   // ─────────────────────────────────────────────
 
   const router = useRouter();
+  const colors = useAppThemeColors();
 
   // 현재 선택된 연도 (연도별 여행 필터링에 사용)
   const [currentYear, setCurrentYear] = useState<number>(2026);
@@ -160,24 +162,24 @@ export default function HomeScreen() {
   // ─────────────────────────────────────────────
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="flex-1 bg-background dark:bg-dark-background">
 
       {/* ── 섹션 1. 상단 헤더 ────────────────────────────────
           - 앱 로고 (SceneDiary)
           - 연도 변경: ← 이전 연도 / 현재 연도 / 다음 연도 →
       ──────────────────────────────────────────────── */}
-      <View className="bg-surface pt-safe pb-md items-center border-b border-border shadow-sm">
+      <View className="bg-surface pt-safe pb-md items-center border-b border-border shadow-sm dark:border-dark-border dark:bg-dark-surface">
         <Text className="text-xl font-logo text-logo mt-sm">SceneDiary</Text>
         <View className="flex-row items-center justify-center gap-xl mt-md">
           {/* 이전 연도 버튼 */}
           <Pressable onPress={() => setCurrentYear(prev => prev - 1)} className="p-xs">
-            <ChevronLeft size={20} color="#39536B" />
+            <ChevronLeft size={20} color={colors.textSecondary} />
           </Pressable>
           {/* 현재 연도 표시 */}
-          <Text className="text-lg font-bold text-textPrimary font-sans">{currentYear}</Text>
+          <Text className="text-lg text-textPrimary font-sans-bold dark:text-dark-textPrimary">{currentYear}</Text>
           {/* 다음 연도 버튼 */}
           <Pressable onPress={() => setCurrentYear(prev => prev + 1)} className="p-xs">
-            <ChevronRight size={20} color="#39536B" />
+            <ChevronRight size={20} color={colors.textSecondary} />
           </Pressable>
         </View>
       </View>
@@ -196,7 +198,7 @@ export default function HomeScreen() {
           {tripData.map((item) => {
             const isExpanded = expandedId === item.id;
             return (
-              <View key={item.id} className="bg-surface rounded-lg overflow-hidden shadow-sm border border-border">
+              <View key={item.id} className="bg-surface rounded-lg overflow-hidden shadow-sm border border-border dark:border-dark-border dark:bg-dark-surface">
 
                 {/* ── 2-1. 대표 이미지 영역 ──
                     - 클릭 시 상세 페이지로 이동
@@ -221,8 +223,8 @@ export default function HomeScreen() {
                   {getMainImage(item)}
 
                   {/* 날짜 뱃지: 여행 시작일 ~ 종료일 */}
-                  <View className="absolute top-md left-md bg-muted rounded-md px-sm py-xs items-center shadow-sm">
-                    <Text className="text-sm font-sans text-textPrimary">
+                  <View className="absolute top-md left-md bg-muted rounded-md px-sm py-xs items-center shadow-sm dark:bg-dark-muted">
+                    <Text className="text-sm font-sans text-textPrimary dark:text-dark-textPrimary">
                       {item.start_date} ~ {item.end_date}
                     </Text>
                   </View>
@@ -240,12 +242,12 @@ export default function HomeScreen() {
                     - 목적지 위치
                 ── */}
                 <View className="p-md">
-                  <Text className="text-lg font-bold text-textPrimary mb-xs font-sans">
+                  <Text className="text-lg font-sans-bold text-textPrimary mb-xs dark:text-dark-textPrimary">
                     {item.title}
                   </Text>
                   <View className="flex-row items-center gap-xs">
-                    <MapPin size={12} color="#39536B" />
-                    <Text className="text-sm text-textSecondary font-sans">
+                    <MapPin size={12} color={colors.textSecondary} />
+                    <Text className="text-sm text-textSecondary font-sans dark:text-dark-textSecondary">
                       {item.destination}
                     </Text>
                   </View>
@@ -260,8 +262,8 @@ export default function HomeScreen() {
                   <Pressable
                     onPress={() => toggleExpand(item.id)}
                     className={
-                      "w-full flex-row items-center justify-center py-sm gap-xs border-t border-border " +
-                      (isExpanded ? "bg-muted" : "bg-surface")
+                      "w-full flex-row items-center justify-center py-sm gap-xs border-t border-border dark:border-dark-border " +
+                      (isExpanded ? "bg-muted dark:bg-dark-muted" : "bg-surface dark:bg-dark-surface")
                     }
                   >
                     <Text className="text-sm text-primary font-sans">
@@ -269,7 +271,7 @@ export default function HomeScreen() {
                     </Text>
                     <ChevronDown
                       size={14}
-                      color="#5B7DBB"
+                      color={colors.primary}
                       style={{
                         transform: [{ rotate: isExpanded ? '180deg' : '0deg' }],
                         marginLeft: 2,
@@ -284,11 +286,11 @@ export default function HomeScreen() {
                     - 클릭 시 해당 Day로 상세 페이지 이동
                 ── */}
                 {isExpanded && (
-                  <View className="bg-muted px-md pb-md pt-sm gap-sm">
+                  <View className="bg-muted px-md pb-md pt-sm gap-sm dark:bg-dark-muted">
                     {item.tripDays.map((detail) => (
                       <Pressable
                         key={detail.id}
-                        className="flex-row items-center bg-surface p-sm rounded-md shadow-sm"
+                        className="flex-row items-center bg-surface p-sm rounded-md shadow-sm dark:bg-dark-surface"
                         onPress={() => router.push({
                           pathname: '/detail',
                           params: {
@@ -315,7 +317,7 @@ export default function HomeScreen() {
                         <View className="flex-1">
                           {/* Day 번호 + 감정 이모지 */}
                           <View className="flex-row items-center justify-between mb-xs w-full pr-sm">
-                            <Text className="text-sm font-bold text-primary font-sans">
+                            <Text className="text-sm text-primary font-sans-bold">
                               Day {detail.day_number}
                             </Text>
                             {/* 감정 이모지: detail.emotion이 있을 때만 표시 */}
@@ -327,14 +329,14 @@ export default function HomeScreen() {
                           </View>
 
                           {/* 소제목 (1줄 제한) */}
-                          <Text className="text-md font-bold text-textPrimary font-sans mb-xs" numberOfLines={1}>
+                          <Text className="text-md text-textPrimary font-sans-bold mb-xs dark:text-dark-textPrimary" numberOfLines={1}>
                             {detail.subtitle}
                           </Text>
 
                           {/* 세부 위치 */}
                           <View className="flex-row items-center gap-xs">
-                            <MapPin size={10} color="#39536B" />
-                            <Text className="text-sm text-textSecondary font-sans">
+                            <MapPin size={10} color={colors.textSecondary} />
+                            <Text className="text-sm text-textSecondary font-sans dark:text-dark-textSecondary">
                               {detail.location_summary}
                             </Text>
                           </View>

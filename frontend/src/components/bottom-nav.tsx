@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Link, usePathname,Href } from 'expo-router';
 import { Home, Map, Settings, LucideIcon } from 'lucide-react-native';
+import { useAppThemeColors } from '@/constants/app-colors';
 
 type NavItem = {
   // path: '/(tabs)' | '/(tabs)/map' | '/(tabs)/settings';
@@ -19,10 +20,11 @@ const navItems: NavItem[] = [
 
 export default function BottomNav() {
   const pathname = usePathname();       
+  const colors = useAppThemeColors();
           
 
   return (
-    <View className="absolute bottom-0 left-0 right-0 z-50 bg-surface border-t border-border pb-safe shadow-lg">
+    <View className="absolute bottom-0 left-0 right-0 z-50 bg-surface border-t border-border pb-safe shadow-lg dark:border-dark-border dark:bg-dark-surface">
       <View className="flex-row items-center justify-around h-16 px-md">
         {navItems.map(({ path, href, icon: Icon, label }) => {
           
@@ -40,8 +42,8 @@ export default function BottomNav() {
           }
           
           // 테일윈드 씹힘 방지를 위한 헥사코드 강제 바인딩 스타일
-          const activeColor = "#5B7DBB";
-          const inactiveColor = "#39536B";
+          const activeColor = colors.primary;
+          const inactiveColor = colors.textSecondary;
           const iconColor = isActive ? activeColor : inactiveColor;
 
           return (
@@ -59,7 +61,7 @@ export default function BottomNav() {
 
                 {/* 텍스트 컬러 스타일 안정화 */}
                 <Text 
-                  className={`text-sm font-sans mb-1 mt-xs ${isActive ? 'font-bold' : ''}`}
+                  className={`text-sm font-sans mb-1 mt-xs ${isActive ? 'font-sans-bold' : ''}`}
                   style={{ color: iconColor }} 
                 >
                   {label}
@@ -69,7 +71,7 @@ export default function BottomNav() {
                 {isActive && (
                   <View 
                     className="absolute bottom-1 w-1 h-1 rounded-full" 
-                    style={{ backgroundColor: "#F6D9A6" }}
+                    style={{ backgroundColor: colors.accent }}
                   />
                 )}
               </Pressable>

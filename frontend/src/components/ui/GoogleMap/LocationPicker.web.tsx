@@ -20,7 +20,13 @@ import {Modal, Pressable, Text, View} from "react-native";
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onSelect: (placeName: string, lat: number, lon: number) => void; // 웹에선 미사용(모양 맞추기용)
+  // 웹에선 미사용(모양 맞추기용) — native 와 시그니처 일치 위해 동일하게 선언.
+  onSelect: (
+    placeName: string,
+    lat: number,
+    lon: number,
+    context?: {countryName?: string; cityName?: string},
+  ) => void;
 };
 
 export default function LocationPicker({visible, onClose}: Props) {
@@ -34,7 +40,7 @@ export default function LocationPicker({visible, onClose}: Props) {
     >
       <View className="flex-1 items-center justify-center bg-black/40 p-6">
         <View className="w-full max-w-sm items-center gap-3 rounded-2xl bg-surface p-6">
-          <Text className="text-base font-bold text-textPrimary">
+          <Text className="text-base font-sans-bold text-textPrimary">
             📍 여행지 선택
           </Text>
           <Text className="text-center text-sm leading-5 text-textSecondary">
@@ -45,7 +51,7 @@ export default function LocationPicker({visible, onClose}: Props) {
             onPress={onClose}
             className="mt-2 rounded-xl bg-primary px-5 py-3"
           >
-            <Text className="font-bold text-textOnPrimary">닫기</Text>
+            <Text className="font-sans-bold text-textOnPrimary">닫기</Text>
           </Pressable>
         </View>
       </View>

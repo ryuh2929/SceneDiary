@@ -1,4 +1,5 @@
 import type { SettingsProfile, SettingsToggle, TravelTypeIconName } from '@/data/settings';
+import { Platform } from 'react-native';
 import { getApiBaseUrl } from '@/services/api-base-url';
 import { ensureCurrentUser } from '@/services/user-api';
 
@@ -75,6 +76,43 @@ export async function updateNickname(nickname: string) {
 
   if (!response.ok) {
     throw new Error('Failed to update nickname.');
+  }
+
+  const profile = (await response.json()) as SettingsProfile;
+
+  return normalizeSettingsProfile(profile);
+}
+
+export async function uploadProfileImage(file: {
+  uri: string;
+  name: string;
+  mimeType: string;
+}) {
+  const userUuid = await ensureCurrentUser();
+  const query = new URLSearchParams({ user_uuid: userUuid });
+  const formData = new FormData();
+
+  // 프로필 사진은 설정 화면에서 256x256 JPEG로 정리한 뒤 이 함수로 업로드합니다.
+  // multipart 요청은 JSON 헤더를 직접 넣지 않아야 브라우저/앱이 boundary를 자동으로 붙여줍니다.
+  if (Platform.OS === 'web') {
+    const blob = await fetch(file.uri).then((response) => response.blob());
+    const jpegBlob = blob.type ? blob : new Blob([blob], { type: file.mimeType });
+    formData.append('file', jpegBlob, file.name);
+  } else {
+    formData.append('file', {
+      uri: file.uri,
+      name: file.name,
+      type: file.mimeType,
+    } as unknown as Blob);
+  }
+
+  const response = await fetch(`${getApiBaseUrl()}/settings/profile-image?${query.toString()}`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update profile image.');
   }
 
   const profile = (await response.json()) as SettingsProfile;
