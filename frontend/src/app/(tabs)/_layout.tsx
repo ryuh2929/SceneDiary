@@ -1,17 +1,17 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { View } from 'react-native';
-import BottomNav from '../../components/bottom-nav';
+import { Tabs } from "expo-router";
+import React from "react";
+import { View } from "react-native";
+import BottomNav from "../../components/bottom-nav";
 
 export default function TabsLayout() {
   return (
-    <View className="flex-1">
-        {/* 화면 전환은 Expo Router의 Tabs가 처리하도록 둡니다 */}
+    <View className="flex-1 bg-surface dark:bg-dark-surface">
+      {/* 화면 전환은 Expo Router의 Tabs가 처리하도록 둡니다 */}
       <Tabs
         screenOptions={{
           headerShown: false,
           // Expo Router가 기본으로 제공하는 하단 탭 바를 화면에서 숨깁니다.
-          tabBarStyle: { display: 'none' }, 
+          tabBarStyle: { display: "none" },
         }}
       >
         <Tabs.Screen name="index" />
