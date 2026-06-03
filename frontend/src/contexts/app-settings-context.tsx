@@ -6,9 +6,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import Constants from 'expo-constants';
 import { useColorScheme } from 'nativewind';
-import { Platform } from 'react-native';
 
 import type { SettingsProfile } from '@/data/settings';
 import { getStoredDarkMode, saveStoredDarkMode } from '@/services/app-settings-storage';
@@ -56,29 +54,9 @@ function NativeWindThemeSync({ isDarkMode }: { isDarkMode: boolean }) {
   const { setColorScheme } = useColorScheme();
 
   useEffect(() => {
-    let isMounted = true;
-
     // 전역 설정의 다크모드 값을 NativeWind에 알려서 dark: 클래스가 모든 화면에서 동작하게 합니다.
+    // Android 시스템 내비게이션 바 색상은 Expo Go/기존 APK에서 네이티브 모듈 누락 오류가 생길 수 있어 여기서 건드리지 않습니다.
     setColorScheme(isDarkMode ? 'dark' : 'light');
-
-    if (Platform.OS === 'android' && Constants.appOwnership !== 'expo') {
-      // 패키지 루트 import가 Expo Go의 Metro 해석 과정에서 타입 파일을 잘못 따라가는 경우가 있어,
-      // Expo Go에서는 건너뛰고, 별도 APK/개발 빌드에서 실제로 필요할 때만 런타임 파일을 불러옵니다.
-      import('expo-navigation-bar/build/NavigationBar.android')
-        .then((NavigationBar) => {
-          if (!isMounted) return;
-
-          // 별도 APK에서는 Expo Go와 달리 Android 하단 시스템 내비게이션 바 색상이 자동으로 따라오지 않을 수 있습니다.
-          // 앱 전역 다크모드 값이 바뀔 때 시스템 바 배경과 버튼 색상도 함께 맞춰줍니다.
-          NavigationBar.setBackgroundColorAsync(isDarkMode ? '#0B1624' : '#F4F6F9').catch(() => {});
-          NavigationBar.setButtonStyleAsync(isDarkMode ? 'light' : 'dark').catch(() => {});
-        })
-        .catch(() => {});
-    }
-
-    return () => {
-      isMounted = false;
-    };
   }, [isDarkMode, setColorScheme]);
 
   return null;
