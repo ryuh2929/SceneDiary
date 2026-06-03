@@ -127,11 +127,6 @@ export default function HomeScreen() {
    * - currentYear가 바뀔 때마다 자동 실행
    * - 로딩/에러 상태 관리 포함
    */
-  // useEffect(() => {
-    
-
-  //   loadTripData();
-  // }, [currentYear]); // currentYear가 바뀔 때만 재실행
   const loadTripData = async () => {
       try {
         setIsLoading(true); // 로딩 시작
