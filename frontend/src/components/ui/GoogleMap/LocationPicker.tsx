@@ -16,9 +16,16 @@
 //   (Expo가 웹이면 .web.tsx, 앱이면 .tsx 를 알아서 골라줍니다.)
 // ─────────────────────────────────────────────────────────────────────────
 import * as Location from "expo-location"; // 위치 권한·GPS·좌표→지명 변환
-import {LocateFixed, MapPin, X} from "lucide-react-native"; // 아이콘
+import {LocateFixed, MapPin, Search, X} from "lucide-react-native"; // 아이콘
 import React, {useEffect, useRef, useState} from "react";
-import {ActivityIndicator, Pressable, StyleSheet, Text, View} from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import MapView, {Marker, PROVIDER_GOOGLE} from "react-native-maps"; // 구글 지도
 import {useSafeAreaInsets} from "react-native-safe-area-context"; // 노치/홈바 여백
 import {useAppThemeColors} from "@/constants/app-colors";
@@ -83,9 +90,36 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
   // 현재 위치 잡기 / 지명 변환처럼 "잠깐 기다리는 중"인지. true면 버튼에 스피너.
   const [busy, setBusy] = useState(false);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+
   // 피커가 새로 열릴 때마다 이전에 찍었던 핀을 지웁니다(다른 날에 다시 열 때 깨끗하게).
   useEffect(() => {
     if (visible) setPicked(null);
+  }, [visible]);
+
+  // 피커를 열 때 사용자의 현재 위치로 지도 카메라를 이동하고 핀도 미리 박아둡니다.
+  // 권한 거부 / GPS 실패 시엔 기본 시작 위치(SEOUL)에서 핀 없이 시작.
+  useEffect(() => {
+    if (!visible) return;
+    (async () => {
+      try {
+        const {status} = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") return;
+        const pos = await Location.getCurrentPositionAsync({});
+        const c = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        };
+        setPicked(c); // 핀 미리 박기 → 하단 "이 위치로 선택" 즉시 활성화
+        mapRef.current?.animateToRegion(
+          {...c, ...DELTA},
+          0, // 0ms = 즉시 이동 (열릴 때라 애니메이션 생략)
+        );
+      } catch (e) {
+        console.error("초기 위치 설정 실패:", e);
+      }
+    })();
   }, [visible]);
 
   // 안 열려 있으면 아무것도 그리지 않음(화면에서 사라짐).
@@ -100,13 +134,39 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
       const {status} = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") return; // 거부해도 OK — 지도 탭으로 고르면 됨
       const pos = await Location.getCurrentPositionAsync({});
-      const c = {latitude: pos.coords.latitude, longitude: pos.coords.longitude};
+      const c = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      };
       setPicked(c); // 핀 표시
       mapRef.current?.animateToRegion({...c, ...DELTA}, 500); // 지도 카메라 이동(0.5초)
     } catch (e) {
       console.error("현재 위치 가져오기 실패:", e);
     } finally {
       setBusy(false); // 성공/실패 무관하게 대기 상태 해제
+    }
+  };
+
+  // [장소 검색] 검색어 → OS 지오코딩 → 첫 번째 결과로 핀 + 지도 이동.
+  // useCurrentLocation 과 같은 모양 — GPS 대신 검색어로 좌표를 얻는 것만 다릅니다.
+  const searchLocation = async () => {
+    const query = searchQuery.trim();
+    if (!query) return; // 빈 검색어는 무시
+    setIsSearching(true);
+    try {
+      const results = await Location.geocodeAsync(query);
+      const first = results[0];
+      if (!first) {
+        // 결과 없으면 조용히 종료 (검색바에 안내는 추후 작업으로)
+        return;
+      }
+      const c = {latitude: first.latitude, longitude: first.longitude};
+      setPicked(c); // 핀 표시
+      mapRef.current?.animateToRegion({...c, ...DELTA}, 500); // 지도 카메라 이동
+    } catch (e) {
+      console.error("위치 검색 실패:", e);
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -151,11 +211,45 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
       className="bg-surface dark:bg-dark-surface"
     >
       {/* ===== 헤더: 제목 + 닫기(X) ===== */}
-      <View style={{paddingTop: insets.top}} className="bg-surface dark:bg-dark-surface">
+      <View
+        style={{paddingTop: insets.top}}
+        className="bg-surface dark:bg-dark-surface"
+      >
         <View className="flex-row items-center justify-between border-b border-border px-4 py-3 dark:border-dark-border">
-          <Text className="text-base font-sans-bold text-textPrimary dark:text-dark-textPrimary">여행지 선택</Text>
+          <Text className="text-base font-sans-bold text-textPrimary dark:text-dark-textPrimary">
+            여행지 선택
+          </Text>
           <Pressable onPress={onClose} hitSlop={8}>
             <X size={22} color={colors.textSecondary} />
+          </Pressable>
+        </View>
+      </View>
+
+      {/* ===== 검색바: 입력창 + 검색 버튼 ===== */}
+      <View className="border-b border-border bg-surface px-4 py-2">
+        <View className="flex-row items-center gap-2 rounded-full bg-background px-4 py-2">
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="장소를 검색하세요"
+            placeholderTextColor="#A9C3E6"
+            onSubmitEditing={searchLocation} // 키보드 검색 키로도 실행
+            returnKeyType="search"
+            className="flex-1 text-textPrimary"
+          />
+          <Pressable
+            onPress={searchLocation}
+            disabled={isSearching || !searchQuery.trim()}
+            hitSlop={8}
+          >
+            {isSearching ? (
+              <ActivityIndicator size="small" color="#5B7DBB" />
+            ) : (
+              <Search
+                size={18}
+                color={searchQuery.trim() ? "#5B7DBB" : "#A9C3E6"}
+              />
+            )}
           </Pressable>
         </View>
       </View>
@@ -169,7 +263,8 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
           initialRegion={{...SEOUL, ...DELTA}} // 처음엔 서울 중심
           onPress={(e) => setPicked(e.nativeEvent.coordinate)} // 탭한 좌표에 핀
         >
-          {picked && <Marker coordinate={picked} />}{/* 고른 곳에만 핀 표시 */}
+          {picked && <Marker coordinate={picked} />}
+          {/* 고른 곳에만 핀 표시 */}
         </MapView>
 
         {/* 현재 위치 버튼 (지도 위에 떠 있음) */}

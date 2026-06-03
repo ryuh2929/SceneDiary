@@ -349,6 +349,45 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             f"[diary-gen] done: trip_day={trip_day_id} in {elapsed:.1f}s "
             f"(analyses {len(analyses)}, content {len(result['content'])} chars)"
         )
+
+        # ── 3단계: 이 여행의 모든 일차가 끝났다면 trip 제목 자동 생성 ──
+        # 마지막 일차가 막 success 가 된 지금 시점에서 한 번만 실행.
+        # 이미 사용자/AI 가 만든 제목이 있으면(= '새 여행' 기본값이 아니면) 건드리지 않음.
+        try:
+            remaining = (
+                db.query(TripDay)
+                .filter(
+                    TripDay.trip_id == trip_day.trip_id,
+                    (TripDay.content.is_(None)) | (TripDay.content == ""),
+                )
+                .count()
+            )
+            trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
+            if remaining == 0 and trip is not None and (not trip.title or trip.title == "새 여행"):
+                from app.services.diary_generator import write_trip_title
+
+                all_days = (
+                    db.query(TripDay)
+                    .filter(TripDay.trip_id == trip.id)
+                    .order_by(TripDay.day_number)
+                    .all()
+                )
+                days_payload = [
+                    {
+                        "subtitle": d.subtitle or "",
+                        # 너무 길면 토큰 낭비. 앞 200자만 발췌해 분위기 전달.
+                        "content_excerpt": (d.content or "")[:200],
+                    }
+                    for d in all_days
+                ]
+                title = write_trip_title(days_payload, destination=trip.destination or "")
+                if title:
+                    trip.title = title
+                    db.commit()
+                    print(f"[trip-title] generated: trip={trip.id} title={title!r}")
+        except Exception as exc:
+            # 제목 생성 실패해도 일기 본문 흐름엔 영향 없게 — 로그만.
+            print(f"[trip-title] FAILED: trip_day={trip_day_id}: {exc}")
     except Exception as exc:  # 실패 기록 → genStatus 가 failed 로 보이게
         db.rollback()
         gen = db.query(DiaryGeneration).filter(DiaryGeneration.id == gen_id).first()
