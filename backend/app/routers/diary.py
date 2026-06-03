@@ -230,22 +230,26 @@ def update_trip_day(
     request: Request,
     db: Session = Depends(get_db),
 ) -> DayPage:
-    # 진단용 로그 — body 가 lat/lon 을 실제로 담고 들어오는지 확인.
-    # 안정화되면 제거합니다.
+    # 진단용 로그 — 어떤 필드가 들어왔는지 확인. 안정화되면 제거.
     print(
         f"[trip-day PATCH] id={trip_day_id} "
-        f"loc={body.locationSummary!r} lat={body.lat} lon={body.lon} "
+        f"loc={body.locationSummary!r} content_len={len(body.content) if body.content is not None else None} "
+        f"lat={body.lat} lon={body.lon} "
         f"country={body.countryName!r} city={body.cityName!r}"
     )
     trip_day = _get_trip_day_or_404(db, trip_day_id)
-    trip_day.location_summary = body.locationSummary
+    # 부분 업데이트: None 이 아닌 필드만 반영.
+    if body.locationSummary is not None:
+        trip_day.location_summary = body.locationSummary
+    if body.content is not None:
+        # 사용자가 본문을 직접 편집한 경우. 글자 수도 함께 갱신.
+        trip_day.content = body.content
+        trip_day.word_count = len(body.content)
     if body.lat is not None and body.lon is not None:
-        # Decimal 컬럼에 float 직접 대입이 일부 환경에서 누락되는 사례 방어:
-        # upload 라우터와 동일하게 명시적으로 Decimal 로 변환해 저장합니다.
+        # Decimal 컬럼에 float 직접 대입이 일부 환경에서 누락되는 사례 방어.
         trip_day.representative_lat = Decimal(str(round(body.lat, 8)))
         trip_day.representative_lon = Decimal(str(round(body.lon, 8)))
-    # picker 가 알려준 국가/도시로 trip.destination 자동 보강.
-    # 자동 검출(upload 시점) 또는 사용자가 다른 곳에서 직접 입력한 값이 있으면 보존.
+    # picker 가 알려준 국가/도시로 trip.destination 자동 보강(비어있을 때만).
     if body.countryName and body.cityName:
         trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
         if trip and not trip.destination:
