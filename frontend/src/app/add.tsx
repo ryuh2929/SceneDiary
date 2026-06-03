@@ -41,7 +41,6 @@ type LoadingPhotoParam = Pick<
 const MAX_IMAGE_SIZE = 1024;
 const THUMBNAIL_SIZE = 256;
 const MAX_PHOTOS_PER_DAY = 8;
-const MAX_PHOTO_SELECTION_BATCH = 80;
 const PHOTO_PROCESSING_CONCURRENCY = 2;
 
 // 원본 비율을 유지하면서 긴 변만 기준 크기 이하로 줄입니다.
@@ -332,7 +331,7 @@ export default function AddScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
-      selectionLimit: MAX_PHOTO_SELECTION_BATCH,
+      selectionLimit: 0,
       quality: 1,
       exif: true,
       // Android 기본 Photo Picker는 GPS EXIF를 0으로 마스킹하는 경우가 있어 legacy picker를 사용합니다.
@@ -346,7 +345,7 @@ export default function AddScreen() {
     setIsPreparing(true);
     try {
       const startOrder = pendingPhotos.length;
-      const selectedAssets = result.assets.slice(0, MAX_PHOTO_SELECTION_BATCH);
+      const selectedAssets = result.assets;
       const processedPhotos = await mapWithConcurrency(
         selectedAssets,
         PHOTO_PROCESSING_CONCURRENCY,
@@ -376,8 +375,6 @@ export default function AddScreen() {
           `일차별 사진은 최대 ${MAX_PHOTOS_PER_DAY}장까지 가능해요`,
           `${rejectedCount}장은 같은 날짜 사진이 너무 많아서 추가하지 않았어요.`,
         );
-      } else if (result.assets.length > MAX_PHOTO_SELECTION_BATCH) {
-        Alert.alert('사진을 일부만 추가했어요', `이번에는 ${MAX_PHOTO_SELECTION_BATCH}장만 추가했어요.`);
       }
     } catch {
       Alert.alert('사진을 준비하지 못했어요', '다시 선택해 주세요.');
