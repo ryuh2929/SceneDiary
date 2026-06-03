@@ -3,7 +3,7 @@ import { Image, Platform, View, useWindowDimensions } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import SimpleView from "./simpleView";
 import { getTripDays } from "@/api/map";
-import { Days } from "@/types/api";
+import { Days, Trip } from "@/types/api";
 import { useFocusEffect } from "expo-router"; // 또는 @react-navigation/native
 
 type PhotoMarkerProps = {
@@ -118,7 +118,7 @@ function PhotoMarker({ item, photoUrl, onPress }: PhotoMarkerProps) {
 
 export default function MapScreen() {
   const mapRef = useRef<MapView | null>(null);
-
+  const [dayTripMarkers, setTripDayMarkers] = useState<Trip[]>([]);
   const [dayMarkers, setDayMarkers] = useState<Days[]>([]);
   const [selectedItem, setSelectedItem] = useState<Days | null>(null);
 
@@ -126,8 +126,9 @@ export default function MapScreen() {
   const fetchData = async () => {
     try {
       const data = await getTripDays();
-      // console.log("API 응답: ", JSON.stringify(data, null, 2));
-      setDayMarkers(data);
+      console.log("API 응답: ", JSON.stringify(data, null, 2));
+      const allDays = data.flatMap((trip) => trip.tripDays);
+      setDayMarkers(allDays);
     } catch (error) {
       console.error("데이터 불러오기 에러:", error);
     }
