@@ -3,7 +3,6 @@ import { View, Text, Image, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronRight, ChevronDown, MapPin, Plus } from 'lucide-react-native';
 import Twemoji from 'react-native-twemoji';
-import BottomNav from '@/components/bottom-nav';
 import { DarkModeBackground } from '@/components/dark-mode-background';
 import { getTrips } from '@/api/home';
 import { Trip } from '@/types/api';
@@ -449,7 +448,6 @@ export default function HomeScreen() {
       {/* ── 섹션 4. 하단 네비게이션 바 ─────────────────────
           - 홈 / 지도 / 설정 탭 이동
       ──────────────────────────────────────────────── */}
-      <BottomNav />
     </View>
   );
 }
