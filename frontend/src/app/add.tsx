@@ -363,7 +363,7 @@ export default function AddScreen() {
         displayOrder: photo.displayOrder,
       }));
 
-      router.push({
+      router.replace({
         pathname: '/loading',
         params: {
           photos: encodeURIComponent(JSON.stringify(photos)),
@@ -486,6 +486,8 @@ export default function AddScreen() {
               shadowRadius: 16,
               elevation: pendingPhotos.length === 0 || isPreparing || isUploading ? 0 : 4,
             }}>
+
+              
             <LinearGradient
               colors={[colors.primary, colors.primaryLight, colors.accent]}
               start={{ x: 0, y: 0 }}
