@@ -85,6 +85,8 @@ class SettingsToggle(BaseModel):
 
 
 class SettingsProfile(BaseModel):
+    # users 테이블의 내부 PK입니다. 앱 시작 시 현재 사용자의 DB id가 필요한 화면/요청에서 재사용합니다.
+    userId: int
     nickname: str
     profileImageUrl: str | None = None
     persona: Persona

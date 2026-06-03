@@ -210,6 +210,7 @@ def to_settings_profile(user: User, request: Request) -> SettingsProfile:
 
     # 아이콘은 프론트에서 lucide-react-native 컴포넌트로 매핑할 수 있는 키만 내려줍니다.
     return SettingsProfile(
+        userId=user.id,
         nickname=clean(user.nickname) or "오늘의 여행자",
         profileImageUrl=public_image_url(request, user.profile_image_url),
         persona={

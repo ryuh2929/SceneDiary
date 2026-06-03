@@ -74,6 +74,7 @@ export type SettingsToggle = {
 };
 
 export type SettingsProfile = {
+  userId: number;
   nickname: string;
   profileImageUrl?: string | null;
   persona: {

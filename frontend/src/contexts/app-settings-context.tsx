@@ -13,6 +13,7 @@ import { getStoredDarkMode, saveStoredDarkMode } from '@/services/app-settings-s
 import { fetchSettingsProfile } from '@/services/settings-api';
 
 type AppSettingsState = {
+  userId: number | null;
   nickname: string;
   profileImageUrl: string | null;
   writingPersona: string;
@@ -30,6 +31,7 @@ type AppSettingsContextValue = AppSettingsState & {
 };
 
 const defaultSettingsState: AppSettingsState = {
+  userId: null,
   nickname: '',
   profileImageUrl: null,
   writingPersona: 'daily',
@@ -67,6 +69,7 @@ export function AppSettingsProvider({ children }: React.PropsWithChildren) {
 
     // settings API 응답에서 여러 화면이 함께 써야 하는 최소 설정만 전역 상태로 저장합니다.
     setSettings({
+      userId: profile.userId,
       nickname: profile.nickname,
       profileImageUrl: profile.profileImageUrl ?? null,
       writingPersona: getSelectedWritingPersona(profile),
