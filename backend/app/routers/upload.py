@@ -31,7 +31,7 @@ _THUMBNAIL_PUBLIC_ROOT = "test_images/test_images_korea_thumbs"
 _ANALYSIS_ROOT = _TEST_IMAGES_ROOT / "test_images_korea"
 _THUMBNAIL_ROOT = _TEST_IMAGES_ROOT / "test_images_korea_thumbs"
 _MODEL_NAME = os.getenv("DIARY_MODEL", "gemma4:e4b")
-MAX_UPLOAD_PHOTOS = 8
+MAX_UPLOAD_PHOTOS_PER_DAY = 8
 MAX_UPLOAD_BYTES = 12 * 1024 * 1024
 IMAGE_PROCESSING_CONCURRENCY = 3
 
@@ -298,8 +298,6 @@ async def upload_first_day_photos(
     # GPS는 프론트가 리사이즈 전에 추출해서 form으로 보낸 값을 우선 사용하고, 없으면 raw_bytes에서 fallback합니다.
     if not files:
         raise HTTPException(status_code=400, detail="At least one photo is required")
-    if len(files) > MAX_UPLOAD_PHOTOS:
-        raise HTTPException(status_code=400, detail=f"Photos are limited to {MAX_UPLOAD_PHOTOS}")
     if day_number < 1:
         raise HTTPException(status_code=400, detail="day_number must be greater than 0")
 
@@ -390,8 +388,12 @@ async def upload_first_day_photos(
             .filter(Photo.trip_day_id == trip_day.id, Photo.deleted_at.is_(None))
             .count()
         )
-        if existing_count + len(grouped_drafts) > MAX_UPLOAD_PHOTOS:
-            raise HTTPException(status_code=400, detail=f"Photos are limited to {MAX_UPLOAD_PHOTOS} per day")
+        # 업로드 요청 전체가 아니라 촬영일로 나뉜 일차별 사진 수만 제한합니다.
+        if existing_count + len(grouped_drafts) > MAX_UPLOAD_PHOTOS_PER_DAY:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Photos are limited to {MAX_UPLOAD_PHOTOS_PER_DAY} per day",
+            )
 
         uploaded_by_day_id[trip_day.id] = []
         processing_items = [
@@ -399,6 +401,7 @@ async def upload_first_day_photos(
             for index, draft in enumerate(grouped_drafts)
         ]
 
+        # 이미지 파일 저장/리사이즈만 3장씩 병렬 처리하고, DB 저장은 아래에서 순서대로 진행합니다.
         for batch_start in range(0, len(processing_items), IMAGE_PROCESSING_CONCURRENCY):
             batch = processing_items[batch_start:batch_start + IMAGE_PROCESSING_CONCURRENCY]
             try:

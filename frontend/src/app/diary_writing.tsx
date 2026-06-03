@@ -279,9 +279,9 @@ export default function DiaryWritingScreen() {
       setActionError("저장하지 못했어요. 잠시 후 다시 시도해주세요.");
     }
   };
-  // 최종 저장 → trips.status='completed' → 성공해야 Detail로 이동.
-  // detail 화면은 useLocalSearchParams 로 id 를 받아 그 여행을 조회하므로
-  // 반드시 id 를 함께 넘겨야 합니다. (전엔 누락되어 어떤 여행을 보일지 모름)
+  // 최종 저장 → trips.status='completed' → 성공하면 메인(홈 탭)으로 이동.
+  // replace 를 쓰는 이유: 작성 흐름(add → loading → diary_writing)을 스택에서 비워,
+  // 사용자가 뒤로 가기로 작성 화면에 다시 들어오는 것을 막습니다.
   const handleSave = async () => {
     setActionError(null);
     try {

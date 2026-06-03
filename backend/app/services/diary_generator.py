@@ -55,6 +55,21 @@ _WRITE_PROMPT = """당신은 여행 사진 분석 결과를 보고 감성적인 
   "emotion": "그 날의 감정을 나타내는 이모지 1개"
 }"""
 
+# [3단계 · LLM] 모든 일차가 완료되면, 전체 여행을 아우르는 짧은 제목 한 줄을 만듭니다.
+# write_diary 와 동일한 모델·호출 패턴을 쓰지만 입력은 "여러 날의 subtitle/본문 발췌".
+_TITLE_PROMPT = """당신은 여행 일기 모음을 보고 그 여행 전체의 제목을 짓는 작가입니다.
+여러 일차의 분위기·장소·감정을 종합해 짧고 인상적인 한국어 제목 한 줄을 만드세요.
+반드시 아래 JSON 형식으로만, 다른 말 없이 답하세요.
+
+{
+  "title": "16자 이내의 한국어 제목"
+}
+
+지침:
+- "새 여행", "여행 일기", "○○ 여행" 같은 평범한 제목은 피하세요.
+- 구체적인 장소·계절·감정·이미지를 한 단서로 담으세요.
+- 예: "신시모도의 봄", "도쿄, 늦은 밤의 등불", "제주 푸른 바람" """
+
 
 def _encode_image(path: Path) -> str:
     """이미지 파일 → data URI(base64). 멀티모달 모델 입력용."""
@@ -165,6 +180,44 @@ def write_diary(
         "weather": _emoji_to_codepoint(parsed.get("weather", "")),
         "emotion": _emoji_to_codepoint(parsed.get("emotion", "")),
     }
+
+
+def write_trip_title(
+    days: list[dict], *, destination: str = ""
+) -> str:
+    """[3단계 · LLM] 모든 일차의 (subtitle, content 요약) 을 보고 여행 제목 한 줄을 만듭니다.
+
+    days : [{"subtitle": str, "content_excerpt": str}, ...] (일차 순서대로)
+    destination : trips.destination (예: "일본/도쿄"). 비어있어도 됨.
+    반환 : 제목 문자열. 모델 실패 시 빈 문자열.
+    """
+    if not days:
+        return ""
+
+    # 일차별 한 줄 요약을 만들어 모델 입력으로 합칩니다.
+    lines = []
+    for i, d in enumerate(days, 1):
+        sub = (d.get("subtitle") or "").strip()
+        excerpt = (d.get("content_excerpt") or "").strip()
+        lines.append(f"{i}일차 [{sub}]: {excerpt}")
+    joined = "\n".join(lines)
+    hint = f"\n참고: 여행지='{destination}'." if destination else ""
+    user_text = (
+        f"다음은 한 여행의 일차별 일기입니다.\n{joined}{hint}\n"
+        "이 여행 전체를 아우르는 짧은 제목을 한 줄로 지어 주세요."
+    )
+
+    resp = _client.chat.completions.create(
+        model=DIARY_MODEL,
+        messages=[
+            {"role": "system", "content": _TITLE_PROMPT},
+            {"role": "user", "content": user_text},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.8,
+    )
+    parsed = _parse_json(resp.choices[0].message.content)
+    return (parsed.get("title") or "").strip()
 
 
 def generate_day_diary(
