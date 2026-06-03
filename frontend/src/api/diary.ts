@@ -17,6 +17,7 @@ import type {
   GenerationResponse,
 } from '@/types/api';
 
+import { useUserStore } from '@/data/userStore';
 // 백엔드 주소를 알아냅니다. (settings-api.ts 와 동일)
 //   1) 환경변수 EXPO_PUBLIC_API_BASE_URL 이 있으면 그걸 사용
 //   2) 실기기/Expo 실행 중이면 개발 PC의 IP:8000
@@ -74,6 +75,8 @@ export async function uploadFirstDayPhotos(photos: {
   }
 
   for (const photo of photos) {
+    console.log("upload 할려는 User ID:", useUserStore.getState().userProfile?.userId);
+    formData.append('user_id',String(useUserStore.getState().userProfile?.userId));
     formData.append('photo_dates', photo.takenDate ?? '');
     // 리사이즈 후 EXIF가 사라지므로 리사이즈 전에 추출한 GPS를 별도 form 필드로 전송합니다.
     formData.append('photo_gps_latitudes', photo.gpsLatitude != null ? String(photo.gpsLatitude) : '');

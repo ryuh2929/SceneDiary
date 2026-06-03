@@ -170,6 +170,10 @@ export default function TravelDetailUI() {
         setIsLoading(true);
         setError(null);
         const data = await getDetailPage(tripId);
+<<<<<<< HEAD
+=======
+        // console.log("🔥 백엔드가 준 진짜 데이터 구조:", JSON.stringify(data, null, 2));
+>>>>>>> d7b3d704bff523b768a5919ce92e31d14e254c08
         setTrip(data);
 
         // 홈에서 특정 day를 선택하지 않고 진입한 경우 → 첫 번째 일차로 자동 선택
@@ -381,9 +385,7 @@ export default function TravelDetailUI() {
         {/* 일차 추가 버튼: 현재 일차가 7개 미만일 때만 표시 */}
         {dayTabs.length < 7 && (
           <Pressable
-            onPress={() =>
-              router.push({ pathname: "/add", params: { trip_id: tripId } })
-            }
+            onPress={() => router.replace({ pathname: '/add', params: { trip_id: tripId,path: "detail"} })}
             className="rounded-t-lg h-[30px] bg-muted min-w-[36px] items-center justify-center shadow-sm dark:bg-dark-muted"
           >
             <Plus size={16} color={colors.textSecondary} strokeWidth={3} />
