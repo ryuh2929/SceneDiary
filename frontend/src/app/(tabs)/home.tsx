@@ -1,14 +1,27 @@
-import React, { useState } from 'react';
-import { View, Text, Image, FlatList, Pressable, ActivityIndicator } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronLeft, ChevronRight, ChevronDown, MapPin, Plus } from 'lucide-react-native';
-import Twemoji from 'react-native-twemoji';
-import { DarkModeBackground } from '@/components/dark-mode-background';
-import { getTrips } from '@/api/home';
-import { Trip } from '@/types/api';
-import { useAppThemeColors } from '@/constants/app-colors';
-import { useAppSettings } from '@/contexts/app-settings-context';
-import { useUserStore } from '@/data/userStore';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  FlatList,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  MapPin,
+  Plus,
+} from "lucide-react-native";
+import Twemoji from "react-native-twemoji";
+import { DarkModeBackground } from "@/components/dark-mode-background";
+import { getTrips } from "@/api/home";
+import { Trip } from "@/types/api";
+import { useAppThemeColors } from "@/constants/app-colors";
+import { useAppSettings } from "@/contexts/app-settings-context";
+import { useUserStore } from "@/data/userStore";
 
 // ─────────────────────────────────────────────
 // 🔧 유틸 함수 섹션
@@ -20,9 +33,9 @@ import { useUserStore } from '@/data/userStore';
  */
 function codepointToEmoji(codepoint: string): string {
   return codepoint
-    .split('-')
+    .split("-")
     .map((cp) => String.fromCodePoint(parseInt(cp, 16)))
-    .join('');
+    .join("");
 }
 
 /**
@@ -47,7 +60,9 @@ function EmojiIcon({ codepoint, size }: { codepoint: string; size: number }) {
  */
 export function getMainImage(item: Trip) {
   const allPhotos = item.tripDays.flatMap((day) => day.photos || []);
-  const coverPhoto = allPhotos.find((photo) => photo.id === item.cover_photo_id);
+  const coverPhoto = allPhotos.find(
+    (photo) => photo.id === item.cover_photo_id,
+  );
 
   if (!coverPhoto?.image_url) return null;
 
@@ -83,43 +98,39 @@ export default function HomeScreen() {
   const userProfile = useUserStore((state) => state.userProfile);
   const loadTripData = async () => {
     // 🌟 [안전장치] 혹시라도 userId가 없으면 즉시 종료
-      if (!userProfile?.userId) return;
-      try {
-        setIsLoading(true); // 로딩 시작
-        setError(null); // 이전 에러 초기화
-        setTripData([]); // 이전 데이터 초기화
+    if (!userProfile?.userId) return;
+    try {
+      setIsLoading(true); // 로딩 시작
+      setError(null); // 이전 에러 초기화
+      setTripData([]); // 이전 데이터 초기화
 
-        const data = await getTrips(currentYear,userProfile?.userId);
-        // console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
-        console.log("데이터 불러옴");
-        setTripData(data); // 받아온 데이터 저장
-      } catch (err: any) {
-        setTripData([]);
-        console.log("API 에러 전체:", err);
-        console.log("API 에러 메시지:", err?.message);
-        console.log(
-          "API 에러 응답:",
-          err?.response?.status,
-          err?.response?.data,
-        );
-        setError("여행 정보를 불러오는 중 오류가 발생했습니다.");
-      } finally {
-        setIsLoading(false); // 성공/실패 관계없이 로딩 종료
+      const data = await getTrips(currentYear, userProfile?.userId);
+      // console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+      console.log("데이터 불러옴");
+      setTripData(data); // 받아온 데이터 저장
+    } catch (err: any) {
+      setTripData([]);
+      console.log("API 에러 전체:", err);
+      console.log("API 에러 메시지:", err?.message);
+      console.log("API 에러 응답:", err?.response?.status, err?.response?.data);
+      setError("여행 정보를 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false); // 성공/실패 관계없이 로딩 종료
+    }
+  };
+
+  // 2. 화면에 들어올 때마다(Focus) 데이터 갱신
+  useFocusEffect(
+    React.useCallback(() => {
+      //userProfile과 userId가 확실히 존재할 때만 API 호출
+      if (userProfile?.userId) {
+        loadTripData(); // 데이터 새로고침
       }
-    };
-
-    // 2. 화면에 들어올 때마다(Focus) 데이터 갱신
-    useFocusEffect(
-      React.useCallback(() => {
-        //userProfile과 userId가 확실히 존재할 때만 API 호출
-        if (userProfile?.userId) {
-          loadTripData(); // 데이터 새로고침
-        }
-        return () => {
-          /* 필요 시 정리 작업 */
-        };
-      }, [currentYear,userProfile]), //의존성 배열에 userProfile을 반드시 추가해야 값이 들어온 순간 반응
-    );
+      return () => {
+        /* 필요 시 정리 작업 */
+      };
+    }, [currentYear, userProfile]), //의존성 배열에 userProfile을 반드시 추가해야 값이 들어온 순간 반응
+  );
   // ─────────────────────────────────────────────
   // 🔀 아코디언 토글 핸들러
   // ─────────────────────────────────────────────
@@ -135,10 +146,10 @@ export default function HomeScreen() {
   // ─────────────────────────────────────────────
   // 🖥️ UI 렌더링
   // ─────────────────────────────────────────────
-// 🌟 4. [기다리기 처리] 유저 ID가 아직 안 들어왔다면 화면 자체를 홀딩합니다.
+  // 🌟 4. [기다리기 처리] 유저 ID가 아직 안 들어왔다면 화면 자체를 홀딩합니다.
   if (!userProfile?.userId) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#0000ff" />
         <Text style={{ marginTop: 10 }}>유저 정보를 불러오는 중...</Text>
       </View>
@@ -191,7 +202,8 @@ export default function HomeScreen() {
               </Text>
 
               <Text className="mt-xs text-sm text-textSecondary dark:text-dark-textSecondary text-center leading-5">
-                오른쪽 아래 '+' 버튼을 눌러{'\n'}새로운 여행의 추억을 기록해 보세요!
+                오른쪽 아래 '+' 버튼을 눌러{"\n"}새로운 여행의 추억을 기록해
+                보세요!
               </Text>
             </View>
           ) : null
@@ -215,7 +227,7 @@ export default function HomeScreen() {
                 className="relative h-60 w-full"
                 onPress={() =>
                   router.push({
-                    pathname: '/detail',
+                    pathname: "/detail",
                     params: {
                       id: item.id,
                       title: item.title,
@@ -237,7 +249,7 @@ export default function HomeScreen() {
                 </View>
 
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  <EmojiIcon codepoint={item.flag || '1f1f0-1f1f7'} size={26} />
+                  <EmojiIcon codepoint={item.flag || "1f1f0-1f1f7"} size={26} />
                 </View>
               </Pressable>
 
@@ -258,21 +270,23 @@ export default function HomeScreen() {
                 <Pressable
                   onPress={() => toggleExpand(item.id)}
                   className={
-                    'w-full flex-row items-center justify-center py-sm gap-xs border-t border-border dark:border-dark-border ' +
+                    "w-full flex-row items-center justify-center py-sm gap-xs border-t border-border dark:border-dark-border " +
                     (isExpanded
-                      ? 'bg-muted dark:bg-dark-muted'
-                      : 'bg-surface dark:bg-dark-surface')
+                      ? "bg-muted dark:bg-dark-muted"
+                      : "bg-surface dark:bg-dark-surface")
                   }
                 >
                   <Text className="text-sm text-primary font-sans">
-                    {isExpanded ? '접기' : `여행 상세 (${item.tripDays.length}일)`}
+                    {isExpanded
+                      ? "접기"
+                      : `여행 상세 (${item.tripDays.length}일)`}
                   </Text>
 
                   <ChevronDown
                     size={14}
                     color={colors.primary}
                     style={{
-                      transform: [{ rotate: isExpanded ? '180deg' : '0deg' }],
+                      transform: [{ rotate: isExpanded ? "180deg" : "0deg" }],
                       marginLeft: 2,
                     }}
                   />
@@ -287,7 +301,7 @@ export default function HomeScreen() {
                       className="flex-row items-center bg-surface p-sm rounded-md shadow-sm dark:bg-dark-surface"
                       onPress={() =>
                         router.push({
-                          pathname: '/detail',
+                          pathname: "/detail",
                           params: {
                             id: item.id,
                             title: detail.subtitle,
@@ -321,9 +335,9 @@ export default function HomeScreen() {
                             style={{
                               width: 28,
                               height: 28,
-                              flexDirection: 'row',
-                              justifyContent: 'center',
-                              alignItems: 'center',
+                              flexDirection: "row",
+                              justifyContent: "center",
+                              alignItems: "center",
                             }}
                           >
                             {detail.emotion && (
@@ -356,7 +370,9 @@ export default function HomeScreen() {
       />
 
       <Pressable
-        onPress={() => router.push({pathname:'/add', params:{path:"home"}})}
+        onPress={() =>
+          router.push({ pathname: "/add", params: { path: "home" } })
+        }
         className="absolute right-md bg-fab w-14 h-14 rounded-full items-center justify-center shadow-lg"
         style={{ zIndex: 99, bottom: 125 }}
       >
