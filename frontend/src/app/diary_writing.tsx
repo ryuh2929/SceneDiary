@@ -74,7 +74,8 @@ export default function DiaryWritingScreen() {
 
   // 어떤 여행을 불러올지: 앞 화면(loading)이 router.replace 로 넘겨준 tripId 를 사용합니다.
   // 직접 진입처럼 tripId 가 없거나 숫자로 못 바꾸면 NaN → loadTrip 가드에서 에러 화면으로.
-  const routeParams = useLocalSearchParams<{tripId?: string | string[]}>();
+  const routeParams = useLocalSearchParams<{tripId?: string | string[], path?:string }>();
+  console.log("누가 다이어리로 왔는가", routeParams.path)
   const tripIdRaw = Array.isArray(routeParams.tripId)
     ? routeParams.tripId[0]
     : routeParams.tripId;
@@ -285,7 +286,11 @@ export default function DiaryWritingScreen() {
     setActionError(null);
     try {
       await completeTrip(TRIP_ID); // PATCH /trips/{id}  { status: 'completed' }
-      router.replace({pathname: "/detail", params: {id: String(TRIP_ID)}});
+      if (routeParams.path === "detail")
+        router.replace({pathname: "/detail", params: {id: String(TRIP_ID)}});
+      else{
+        router.replace({pathname: "/home"});
+      }
     } catch (e) {
       console.error(e);
       setActionError("최종 저장에 실패했어요. 다시 시도해주세요.");

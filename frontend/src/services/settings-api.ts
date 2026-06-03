@@ -2,6 +2,7 @@ import type { SettingsProfile, SettingsToggle, TravelTypeIconName } from '@/data
 import { Platform } from 'react-native';
 import { getApiBaseUrl } from '@/services/api-base-url';
 import { ensureCurrentUser } from '@/services/user-api';
+import { useUserStore } from '@/data/userStore'; // 👈 Zustand 스토어 임포트
 
 export type TravelStyleAnalysisStatus = {
   status: 'idle' | 'running' | 'success' | 'failed';
@@ -31,12 +32,14 @@ export async function fetchSettingsProfile() {
   const userUuid = await ensureCurrentUser();
   const query = new URLSearchParams({ user_uuid: userUuid });
   const response = await fetch(`${getApiBaseUrl()}/settings/profile?${query.toString()}`);
-
   if (!response.ok) {
     throw new Error('Failed to load settings profile.');
   }
 
   const profile = (await response.json()) as SettingsProfile;
+  // 🚀 [핵심 수정] 리액트 밖에서 Zustand에 직접 값을 세팅하는 정석 방법!
+  console.log("profile API user id: ", profile.userId)
+  useUserStore.getState().setUserProfile(profile);
 
   return normalizeSettingsProfile(profile);
 }

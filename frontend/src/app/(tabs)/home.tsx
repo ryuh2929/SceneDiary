@@ -1,5 +1,5 @@
 import React, { useState,useEffect } from 'react';
-import { View, Text, Image, ScrollView, Pressable } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronRight, ChevronDown, MapPin, Plus } from 'lucide-react-native';
 import Twemoji from 'react-native-twemoji';
@@ -10,6 +10,7 @@ import { Trip } from '@/types/api';
 import { useAppThemeColors } from '@/constants/app-colors';
 import {useFocusEffect} from "expo-router";
 import { useAppSettings } from '@/contexts/app-settings-context';
+import { useUserStore } from '@/data/userStore';
 
 // ─────────────────────────────────────────────
 // 🔧 유틸 함수 섹션
@@ -124,13 +125,17 @@ export default function HomeScreen() {
    * - currentYear가 바뀔 때마다 자동 실행
    * - 로딩/에러 상태 관리 포함
    */
+  //1. Zustand 스토어에서 userProfile의 변경 사항을 실시간으로 감시
+  const userProfile = useUserStore((state) => state.userProfile);
   const loadTripData = async () => {
+    // 🌟 [안전장치] 혹시라도 userId가 없으면 즉시 종료
+      if (!userProfile?.userId) return;
       try {
         setIsLoading(true); // 로딩 시작
         setError(null); // 이전 에러 초기화
         setTripData([]); // 이전 데이터 초기화
 
-        const data = await getTrips(currentYear);
+        const data = await getTrips(currentYear,userProfile?.userId);
         // console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
         console.log("데이터 불러옴");
         setTripData(data); // 받아온 데이터 저장
@@ -152,11 +157,14 @@ export default function HomeScreen() {
     // 2. 화면에 들어올 때마다(Focus) 데이터 갱신
     useFocusEffect(
       React.useCallback(() => {
-        loadTripData(); // 데이터 새로고침
+        //userProfile과 userId가 확실히 존재할 때만 API 호출
+        if (userProfile?.userId) {
+          loadTripData(); // 데이터 새로고침
+        }
         return () => {
           /* 필요 시 정리 작업 */
         };
-      }, [currentYear]),
+      }, [currentYear,userProfile]), //의존성 배열에 userProfile을 반드시 추가해야 값이 들어온 순간 반응
     );
   // ─────────────────────────────────────────────
   // 🔀 아코디언 토글 핸들러
@@ -175,7 +183,15 @@ export default function HomeScreen() {
   // ─────────────────────────────────────────────
   // 🖥️ UI 렌더링
   // ─────────────────────────────────────────────
-
+// 🌟 4. [기다리기 처리] 유저 ID가 아직 안 들어왔다면 화면 자체를 홀딩합니다.
+  if (!userProfile?.userId) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={{ marginTop: 10 }}>유저 정보를 불러오는 중...</Text>
+      </View>
+    );
+  }
   return (
     <View className="flex-1 bg-background dark:bg-dark-background">
       {isDarkMode ? <DarkModeBackground /> : null}
@@ -434,7 +450,7 @@ export default function HomeScreen() {
           - 클릭 시 새 여행 추가 페이지(/add)로 이동
       ──────────────────────────────────────────────── */}
       <Pressable
-        onPress={() => router.push("/add")}
+        onPress={() => router.push({pathname:'/add', params:{path:"home"}})}
         className="absolute right-md bg-fab w-14 h-14 rounded-full items-center justify-center shadow-lg"
         style={{ zIndex: 99, bottom: 125 }}
       >

@@ -275,7 +275,7 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
 export default function AddScreen() {
   const router = useRouter();
   const colors = useAppThemeColors();
-  const params = useLocalSearchParams<{ trip_id?: string; day_number?: string }>();
+  const params = useLocalSearchParams<{ trip_id?: string; day_number?: string, path?:string }>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
@@ -390,6 +390,7 @@ export default function AddScreen() {
       router.replace({
         pathname: '/loading',
         params: {
+          path:params.path,
           photos: encodeURIComponent(JSON.stringify(photos)),
           tripId: String(uploadResponse.tripId),
           tripDayId: String(uploadResponse.tripDayId),
@@ -417,7 +418,13 @@ export default function AddScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="이전 화면으로 돌아가기"
-            onPress={() => router.back()}
+            onPress={() =>{
+              if (params.path === "home"){
+                router.back()
+              }else{
+                router.replace({pathname:'/detail', params:{day:params.day_number, id:params.trip_id}})
+              }
+            }}
             className="h-10 w-10 items-center justify-center rounded-full">
             <ChevronLeft size={24} color={colors.textSecondary} />
           </Pressable>
