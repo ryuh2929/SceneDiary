@@ -40,7 +40,8 @@ type LoadingPhotoParam = Pick<
 
 const MAX_IMAGE_SIZE = 1024;
 const THUMBNAIL_SIZE = 256;
-const MAX_PHOTO_COUNT = 8;
+const MAX_PHOTOS_PER_DAY = 8;
+const MAX_PHOTO_SELECTION_BATCH = 80;
 const PHOTO_PROCESSING_CONCURRENCY = 2;
 
 // 원본 비율을 유지하면서 긴 변만 기준 크기 이하로 줄입니다.
@@ -168,6 +169,18 @@ function getSelectedDates(photos: PendingPhoto[]) {
   return Array.from(new Set(photos.map((photo) => photo.takenDate).filter(Boolean) as string[])).sort();
 }
 
+function getPhotoDateKey(photo: PendingPhoto) {
+  return photo.takenDate ?? '__unknown_date__';
+}
+
+function getDailyPhotoCounts(photos: PendingPhoto[]) {
+  return photos.reduce<Record<string, number>>((counts, photo) => {
+    const key = getPhotoDateKey(photo);
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
 function formatDisplayDate(dateValue: string) {
   const [year, month, day] = dateValue.split('-');
   return `${year}.${month}.${day}`;
@@ -191,10 +204,10 @@ function getPhotoHeading(selectedDates: string[], targetDayNumber?: number) {
 
 function getPhotoDescription(selectedDates: string[]) {
   if (selectedDates.length <= 1) {
-    return `최대 ${MAX_PHOTO_COUNT}장까지 선택할 수 있고, 글 작성 화면용 썸네일을 따로 준비해요.`;
+    return `하루에 최대 ${MAX_PHOTOS_PER_DAY}장까지 선택할 수 있고, 글 작성 화면용 썸네일을 따로 준비해요.`;
   }
 
-  return '선택한 사진은 촬영일 기준으로 나뉘어 각 날짜의 일기로 준비돼요.';
+  return `선택한 사진은 촬영일 기준으로 나뉘고, 일차별 최대 ${MAX_PHOTOS_PER_DAY}장까지 준비돼요.`;
 }
 
 function getPhotoDayLabel(photo: PendingPhoto, selectedDates: string[]) {
@@ -285,7 +298,6 @@ export default function AddScreen() {
   const columnCount = contentWidth >= 700 ? 4 : 3;
   const tileSize = Math.max(88, Math.floor((contentWidth - 48 - (columnCount - 1) * 16) / columnCount));
   const bottomInset = Math.max(insets.bottom, 16);
-  const isPhotoLimitReached = pendingPhotos.length >= MAX_PHOTO_COUNT;
   const targetTripId = typeof params.trip_id === 'string' ? params.trip_id : undefined;
   const targetDayNumber = Number(params.day_number);
   const displayDayNumber = Number.isFinite(targetDayNumber) && targetDayNumber > 0 ? targetDayNumber : undefined;
@@ -295,12 +307,6 @@ export default function AddScreen() {
 
   const pickPhotos = async () => {
     if (isPreparing || isUploading) {
-      return;
-    }
-
-    const remainingSlots = MAX_PHOTO_COUNT - pendingPhotos.length;
-    if (remainingSlots <= 0) {
-      Alert.alert(`사진은 최대 ${MAX_PHOTO_COUNT}장까지 가능해요`, '선택한 사진을 삭제한 뒤 다시 추가해 주세요.');
       return;
     }
 
@@ -326,7 +332,7 @@ export default function AddScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
-      selectionLimit: remainingSlots,
+      selectionLimit: MAX_PHOTO_SELECTION_BATCH,
       quality: 1,
       exif: true,
       // Android 기본 Photo Picker는 GPS EXIF를 0으로 마스킹하는 경우가 있어 legacy picker를 사용합니다.
@@ -340,15 +346,38 @@ export default function AddScreen() {
     setIsPreparing(true);
     try {
       const startOrder = pendingPhotos.length;
-      const selectedAssets = result.assets.slice(0, remainingSlots);
+      const selectedAssets = result.assets.slice(0, MAX_PHOTO_SELECTION_BATCH);
       const processedPhotos = await mapWithConcurrency(
         selectedAssets,
         PHOTO_PROCESSING_CONCURRENCY,
         (asset, index) => buildPendingPhoto(asset, startOrder + index),
       );
-      setPendingPhotos((current) => [...current, ...processedPhotos]);
-      if (result.assets.length > remainingSlots) {
-        Alert.alert(`사진은 최대 ${MAX_PHOTO_COUNT}장까지 가능해요`, `이번에는 ${remainingSlots}장만 추가했어요.`);
+      const dailyCounts = getDailyPhotoCounts(pendingPhotos);
+      const acceptedPhotos: PendingPhoto[] = [];
+      let rejectedCount = 0;
+
+      for (const photo of processedPhotos) {
+        const key = getPhotoDateKey(photo);
+        const currentCount = dailyCounts[key] ?? 0;
+        if (currentCount >= MAX_PHOTOS_PER_DAY) {
+          rejectedCount += 1;
+          continue;
+        }
+        dailyCounts[key] = currentCount + 1;
+        acceptedPhotos.push(photo);
+      }
+
+      setPendingPhotos((current) =>
+        [...current, ...acceptedPhotos].map((photo, index) => ({ ...photo, displayOrder: index })),
+      );
+
+      if (rejectedCount > 0) {
+        Alert.alert(
+          `일차별 사진은 최대 ${MAX_PHOTOS_PER_DAY}장까지 가능해요`,
+          `${rejectedCount}장은 같은 날짜 사진이 너무 많아서 추가하지 않았어요.`,
+        );
+      } else if (result.assets.length > MAX_PHOTO_SELECTION_BATCH) {
+        Alert.alert('사진을 일부만 추가했어요', `이번에는 ${MAX_PHOTO_SELECTION_BATCH}장만 추가했어요.`);
       }
     } catch {
       Alert.alert('사진을 준비하지 못했어요', '다시 선택해 주세요.');
@@ -444,9 +473,9 @@ export default function AddScreen() {
               accessibilityRole="button"
               accessibilityLabel="사진 추가"
               onPress={pickPhotos}
-              disabled={isPreparing || isUploading || isPhotoLimitReached}
+              disabled={isPreparing || isUploading}
               className={`items-center justify-center rounded-lg border-2 border-dashed ${
-                isPreparing || isUploading || isPhotoLimitReached
+                isPreparing || isUploading
                   ? 'border-muted bg-muted dark:border-dark-muted dark:bg-dark-muted'
                   : 'border-border bg-surface dark:border-dark-border dark:bg-dark-surface'
               }`}
@@ -454,10 +483,10 @@ export default function AddScreen() {
               {isPreparing ? (
                 <Loader2 size={24} color={colors.border} />
               ) : (
-                <Camera size={24} color={isPhotoLimitReached ? colors.border : colors.primaryLight} />
+                <Camera size={24} color={colors.primaryLight} />
               )}
               <Text className="mt-xs text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
-                {isPreparing ? '준비 중' : isPhotoLimitReached ? `최대 ${MAX_PHOTO_COUNT}장` : '사진 추가'}
+                {isPreparing ? '준비 중' : '사진 추가'}
               </Text>
             </Pressable>
 
@@ -490,7 +519,7 @@ export default function AddScreen() {
             </View>
           ) : (
             <Text className="mt-lg text-center text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
-              {pendingPhotos.length}/{MAX_PHOTO_COUNT}장 선택됨
+              {pendingPhotos.length}장 선택됨 · 일차별 최대 {MAX_PHOTOS_PER_DAY}장
             </Text>
           )}
         </ScrollView>
