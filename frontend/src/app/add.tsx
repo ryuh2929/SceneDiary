@@ -69,6 +69,7 @@ async function mapWithConcurrency<T, R>(
 ) {
   const results: R[] = [];
 
+  // 큰 사진 여러 장을 한 번에 리사이즈하면 기기 메모리와 UI 응답성이 흔들릴 수 있어 작은 묶음으로 처리합니다.
   for (let start = 0; start < items.length; start += concurrency) {
     const batch = items.slice(start, start + concurrency);
     const batchResults = await Promise.all(batch.map((item, index) => mapper(item, start + index)));
@@ -331,6 +332,7 @@ export default function AddScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
+      // 0은 ImagePicker의 "시스템 기본 최대치"를 뜻합니다. 전체 제한은 두지 않고 아래에서 일차별 8장만 걸러냅니다.
       selectionLimit: 0,
       quality: 1,
       exif: true,
@@ -355,6 +357,7 @@ export default function AddScreen() {
       const acceptedPhotos: PendingPhoto[] = [];
       let rejectedCount = 0;
 
+      // 전체 업로드 수는 제한하지 않고, 촬영일 기준 같은 일차 사진만 최대 8장으로 제한합니다.
       for (const photo of processedPhotos) {
         const key = getPhotoDateKey(photo);
         const currentCount = dailyCounts[key] ?? 0;
