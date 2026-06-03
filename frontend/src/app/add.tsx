@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import Constants from 'expo-constants';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -42,6 +43,7 @@ const MAX_IMAGE_SIZE = 1024;
 const THUMBNAIL_SIZE = 256;
 const MAX_PHOTOS_PER_DAY = 8;
 const PHOTO_PROCESSING_CONCURRENCY = 2;
+const IS_EXPO_GO = Constants.appOwnership === 'expo';
 
 // 원본 비율을 유지하면서 긴 변만 기준 크기 이하로 줄입니다.
 function resizeAction(width: number, height: number, maxSize: number) {
@@ -319,7 +321,8 @@ export default function AddScreen() {
     // Android 14+ 에서 사진 EXIF GPS 를 노출 받으려면 ACCESS_MEDIA_LOCATION 권한이 필수.
     // ImagePicker 의 요청은 일반 사진 접근만 다루므로 별도로 요청해야 합니다.
     // (manifest 선언은 app.config.js 의 expo-media-library 플러그인이 담당)
-    if (Platform.OS === 'android') {
+    // Expo Go는 미디어 권한/manifest 제약이 있어 이 보조 권한 요청을 건너뛰고 사진 선택만 확인합니다.
+    if (Platform.OS === 'android' && !IS_EXPO_GO) {
       await PermissionsAndroid.request('android.permission.ACCESS_MEDIA_LOCATION' as never);
       try {
         // 인자 없이 호출하면 Android 13+에서 audio/video 권한까지 요청해 Expo Go에서 실패할 수 있습니다.
@@ -341,8 +344,8 @@ export default function AddScreen() {
       selectionLimit: 0,
       quality: 1,
       exif: true,
-      // Android 기본 Photo Picker는 GPS EXIF를 0으로 마스킹하는 경우가 있어 legacy picker를 사용합니다.
-      legacy: Platform.OS === 'android',
+      // Expo Go에서는 legacy picker/전체 미디어 권한 제약이 있어 기본 picker를 사용합니다.
+      legacy: Platform.OS === 'android' && !IS_EXPO_GO,
     });
 
     if (result.canceled) {
