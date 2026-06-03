@@ -1,19 +1,15 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, Image, ScrollView, Pressable } from "react-native";
-import { useRouter } from "expo-router";
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  MapPin,
-  Plus,
-} from "lucide-react-native";
-import Twemoji from "react-native-twemoji";
-import BottomNav from "@/components/bottom-nav";
-import { getTrips } from "@/api/home";
-import { Trip } from "@/types/api";
-import { useAppThemeColors } from "@/constants/app-colors";
+import React, { useState,useEffect } from 'react';
+import { View, Text, Image, ScrollView, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
+import { ChevronLeft, ChevronRight, ChevronDown, MapPin, Plus } from 'lucide-react-native';
+import Twemoji from 'react-native-twemoji';
+import BottomNav from '@/components/bottom-nav';
+import { DarkModeBackground } from '@/components/dark-mode-background';
+import { getTrips } from '@/api/home';
+import { Trip } from '@/types/api';
+import { useAppThemeColors } from '@/constants/app-colors';
 import {useFocusEffect} from "expo-router";
+import { useAppSettings } from '@/contexts/app-settings-context';
 
 // ─────────────────────────────────────────────
 // 🔧 유틸 함수 섹션
@@ -102,6 +98,7 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const colors = useAppThemeColors();
+  const { isDarkMode } = useAppSettings();
 
   // 현재 선택된 연도 (연도별 여행 필터링에 사용)
   const [currentYear, setCurrentYear] = useState<number>(2026);
@@ -181,6 +178,8 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-background dark:bg-dark-background">
+      {isDarkMode ? <DarkModeBackground /> : null}
+
       {/* ── 섹션 1. 상단 헤더 ────────────────────────────────
           - 앱 로고 (SceneDiary)
           - 연도 변경: ← 이전 연도 / 현재 연도 / 다음 연도 →
