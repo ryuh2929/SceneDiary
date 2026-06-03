@@ -1,11 +1,10 @@
-import React, {useState, useRef} from "react";
-import {Image, Platform, View, useWindowDimensions} from "react-native";
-import MapView, {Marker, PROVIDER_GOOGLE} from "react-native-maps";
+import React, { useState, useRef } from "react";
+import { Image, Platform, View, useWindowDimensions } from "react-native";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import SimpleView from "./simpleView";
-import {getTripDays} from "@/api/map";
-import {Days} from "@/types/api";
-import {useFocusEffect} from "expo-router"; // 또는 @react-navigation/native
-
+import { getTripDays } from "@/api/map";
+import { Days } from "@/types/api";
+import { useFocusEffect } from "expo-router"; // 또는 @react-navigation/native
 
 type PhotoMarkerProps = {
   item: Days;
@@ -13,24 +12,21 @@ type PhotoMarkerProps = {
   onPress: () => void;
 };
 
-function PhotoMarker({item, photoUrl, onPress}: PhotoMarkerProps) {
+function PhotoMarker({ item, photoUrl, onPress }: PhotoMarkerProps) {
   const coordinate = {
     latitude: item.representative_lat || 0,
     longitude: item.representative_lon || 0,
   };
-  const {width, height} = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const imageSize = Math.min(width * 0.2, 88);
 
   const [isLoaded, setIsLoaded] = useState(false);
 
-  
-
-
   if (Platform.OS === "android") {
     // android버전
     return (
-      <Marker coordinate={coordinate} pinColor="#5B7DBB" onPress={onPress} />    
-      
+      <Marker coordinate={coordinate} pinColor="#5B7DBB" onPress={onPress} />
+
       // <Marker
       //   // 1. [핵심] 커스텀 뷰(자식 컴포넌트)를 모두 제거합니다.
       //   coordinate={coordinate}
@@ -50,7 +46,7 @@ function PhotoMarker({item, photoUrl, onPress}: PhotoMarkerProps) {
     return (
       <Marker
         coordinate={coordinate}
-        anchor={{x: 0.5, y: 1}}
+        anchor={{ x: 0.5, y: 1 }}
         tracksViewChanges={!isLoaded}
         onPress={onPress}
       >
@@ -75,12 +71,12 @@ function PhotoMarker({item, photoUrl, onPress}: PhotoMarkerProps) {
               shadowColor: "#000000",
               shadowOpacity: 0.22,
               shadowRadius: 4,
-              shadowOffset: {width: 0, height: 2},
+              shadowOffset: { width: 0, height: 2 },
             }}
           >
             {photoUrl ? (
               <Image
-                source={{uri: photoUrl}}
+                source={{ uri: photoUrl }}
                 style={{
                   width: 52,
                   height: 52,
@@ -130,7 +126,7 @@ export default function MapScreen() {
   const fetchData = async () => {
     try {
       const data = await getTripDays();
-      console.log("API 응답: ", JSON.stringify(data, null, 2));
+      // console.log("API 응답: ", JSON.stringify(data, null, 2));
       setDayMarkers(data);
     } catch (error) {
       console.error("데이터 불러오기 에러:", error);
@@ -160,7 +156,7 @@ export default function MapScreen() {
           longitude,
         },
       },
-      {duration: 200}, // duration은 두 번째 인자로 넘겨야 합니다
+      { duration: 200 }, // duration은 두 번째 인자로 넘겨야 합니다
     );
   };
 
@@ -169,7 +165,7 @@ export default function MapScreen() {
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
-        style={{flex: 1}}
+        style={{ flex: 1 }}
         initialRegion={{
           latitude: 37.5665,
           longitude: 126.978,

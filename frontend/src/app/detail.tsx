@@ -1,12 +1,21 @@
-import React, { useState,useEffect,useRef } from 'react';
-import { View, Text, Image, ScrollView, Pressable,useWindowDimensions, FlatList} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { X, MapPin, Calendar, Plus } from 'lucide-react-native';
-import Twemoji from 'react-native-twemoji';
-import { getDetailPage } from '@/api/detail';
-import { DetailPage, Days } from '@/types/api';
-import { useAppThemeColors } from '@/constants/app-colors';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  Image,
+  ScrollView,
+  Pressable,
+  useWindowDimensions,
+  FlatList,
+  Platform,
+} from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { X, MapPin, Calendar, Plus } from "lucide-react-native";
+import Twemoji from "react-native-twemoji";
+import { getDetailPage } from "@/api/detail";
+import { DetailPage, Days } from "@/types/api";
+import { useAppThemeColors } from "@/constants/app-colors";
 
 // ─────────────────────────────────────────────
 // 🔧 유틸 함수 섹션
@@ -40,13 +49,13 @@ function codepointToEmoji(codepoint: string): string {
  * @param codepoint - 이모지 코드포인트 (hex 문자열)
  * @param size - 이모지 크기 (px)
  */
-function EmojiIcon({codepoint, size}: {codepoint: string; size: number}) {
+function EmojiIcon({ codepoint, size }: { codepoint: string; size: number }) {
   if (!codepoint) return null;
   const char = codepointToEmoji(codepoint);
   if (Twemoji.supportedEmojis.includes(char)) {
-    return <Twemoji style={{width: size, height: size}}>{char}</Twemoji>;
+    return <Twemoji style={{ width: size, height: size }}>{char}</Twemoji>;
   }
-  return <Text style={{fontSize: size}}>{char}</Text>;
+  return <Text style={{ fontSize: size }}>{char}</Text>;
 }
 
 // ─────────────────────────────────────────────
@@ -62,16 +71,16 @@ function EmojiIcon({codepoint, size}: {codepoint: string; size: number}) {
  */
 const WEATHER_MAP: Record<string, { codepoint: string; label: string }> = {
   // 한글 텍스트 키
-  "맑음":      { codepoint: "2600",  label: "맑음" },
-  "흐림":      { codepoint: "2601",  label: "흐림" },
-  "비":        { codepoint: "1f327", label: "비" },
-  "눈":        { codepoint: "2744",  label: "눈" },
+  맑음: { codepoint: "2600", label: "맑음" },
+  흐림: { codepoint: "2601", label: "흐림" },
+  비: { codepoint: "1f327", label: "비" },
+  눈: { codepoint: "2744", label: "눈" },
   // codepoint 키
-  "2600":      { codepoint: "2600",  label: "맑음" },
-  "2600-fe0f": { codepoint: "2600",  label: "맑음" },
-  "2601":      { codepoint: "2601",  label: "흐림" },
-  "1f327":     { codepoint: "1f327", label: "비" },
-  "2744":      { codepoint: "2744",  label: "눈" },
+  "2600": { codepoint: "2600", label: "맑음" },
+  "2600-fe0f": { codepoint: "2600", label: "맑음" },
+  "2601": { codepoint: "2601", label: "흐림" },
+  "1f327": { codepoint: "1f327", label: "비" },
+  "2744": { codepoint: "2744", label: "눈" },
 };
 
 // ─────────────────────────────────────────────
@@ -87,7 +96,9 @@ const WEATHER_MAP: Record<string, { codepoint: string; label: string }> = {
  */
 export function getMainImage(item: DetailPage) {
   const allPhotos = item.tripDetail.flatMap((day) => day.photos || []);
-  const coverPhoto = allPhotos.find((photo) => photo.id === item.cover_photo_id);
+  const coverPhoto = allPhotos.find(
+    (photo) => photo.id === item.cover_photo_id,
+  );
 
   if (coverPhoto && coverPhoto.image_url) {
     return (
@@ -111,7 +122,6 @@ export function getMainImage(item: DetailPage) {
  * - 사진 슬라이더, 날씨, 감정 이모지, 일기 텍스트 표시
  */
 export default function TravelDetailUI() {
-
   // ─────────────────────────────────────────────
   // 📐 레이아웃 & 라우터 설정
   // ─────────────────────────────────────────────
@@ -127,7 +137,7 @@ export default function TravelDetailUI() {
   // 화면 이동 라우터
   const router = useRouter();
   // 홈에서 전달받은 여행 id와 day 파라미터
-  const {id, day} = useLocalSearchParams();
+  const { id, day } = useLocalSearchParams();
   const tripId = Number(id);
 
   // ─────────────────────────────────────────────
@@ -160,12 +170,13 @@ export default function TravelDetailUI() {
         setIsLoading(true);
         setError(null);
         const data = await getDetailPage(tripId);
-        console.log("🔥 백엔드가 준 진짜 데이터 구조:", JSON.stringify(data, null, 2));
         setTrip(data);
 
         // 홈에서 특정 day를 선택하지 않고 진입한 경우 → 첫 번째 일차로 자동 선택
         if (!day && data.tripDetail?.length > 0) {
-          const sortedDays = [...data.tripDetail].sort((a, b) => a.day_number - b.day_number);
+          const sortedDays = [...data.tripDetail].sort(
+            (a, b) => a.day_number - b.day_number,
+          );
           setActiveDay(sortedDays[0].day_number);
         }
       } catch (err) {
@@ -201,7 +212,9 @@ export default function TravelDetailUI() {
   if (error) {
     return (
       <View className="flex-1 justify-center items-center bg-background px-lg dark:bg-dark-background">
-        <Text className="text-textSecondary font-sans text-center dark:text-dark-textSecondary">{error}</Text>
+        <Text className="text-textSecondary font-sans text-center dark:text-dark-textSecondary">
+          {error}
+        </Text>
       </View>
     );
   }
@@ -210,7 +223,9 @@ export default function TravelDetailUI() {
   if (isLoading || !trip) {
     return (
       <View className="flex-1 justify-center items-center bg-background dark:bg-dark-background">
-        <Text className="text-textSecondary font-sans mt-sm dark:text-dark-textSecondary">기록을 불러오는 중...</Text>
+        <Text className="text-textSecondary font-sans mt-sm dark:text-dark-textSecondary">
+          기록을 불러오는 중...
+        </Text>
       </View>
     );
   }
@@ -220,19 +235,34 @@ export default function TravelDetailUI() {
   // ─────────────────────────────────────────────
 
   // 여행 기본 정보 구조분해
-  const { title, destination, start_date, end_date, tripDetail} = trip as any;
+  const { title, destination, start_date, end_date, tripDetail } = trip as any;
 
   // 현재 선택된 Day 탭에 해당하는 상세 데이터만 추출
-  const currentDayData = tripDetail?.find((d: Days) => Number(d.day_number) === activeDay);
+  const currentDayData = tripDetail?.find(
+    (d: Days) => Number(d.day_number) === activeDay,
+  );
 
   // 날씨 값(한글 또는 codepoint)을 WEATHER_MAP에서 조회 → 없으면 null (날씨 UI 숨김)
-  const weatherInfo = currentDayData?.weather ? WEATHER_MAP[currentDayData.weather] : null;
+  const weatherInfo = currentDayData?.weather
+    ? WEATHER_MAP[currentDayData.weather]
+    : null;
 
   // Day 탭 목록 자동 생성 (예: tripDetail이 3개면 [1, 2, 3])
   const dayTabs = tripDetail
-    ? tripDetail.map((d: Days) => Number(d.day_number)).sort((a: number, b: number) => a - b)
+    ? tripDetail
+        .map((d: Days) => Number(d.day_number))
+        .sort((a: number, b: number) => a - b)
     : [];
 
+  const overlayOpacity = Platform.select({
+    ios: 0.1,
+    android: 0.2,
+    web: 0.15, // 웹 환경 대응 추가
+    default: 0.2, // 정의되지 않은 환경은 0.2 사용
+  });
+  const midColor = colors.background
+    .replace(")", ", 0)")
+    .replace("rgb", "rgba");
   // ─────────────────────────────────────────────
   // 🖥️ UI 렌더링
   // ─────────────────────────────────────────────
@@ -244,7 +274,6 @@ export default function TravelDetailUI() {
       bounces={false}
       contentContainerStyle={{ paddingBottom: 50 }}
     >
-
       {/* ── 섹션 1. 상단 히어로 이미지 영역 ─────────────────
           - 여행 대표 이미지 전체 너비로 표시
           - 그라데이션 오버레이로 텍스트 가독성 확보
@@ -257,13 +286,17 @@ export default function TravelDetailUI() {
 
         {/* 그라데이션 오버레이: 상단 어둡게 → 중간 투명 → 하단 배경색으로 자연스럽게 이어짐 */}
         <LinearGradient
-          colors={['rgba(0,0,0,0.2)', 'transparent', colors.background]}
+          colors={[
+            `rgba(0,0,0,${overlayOpacity})`,
+            `rgba(255,255,255,0)`,
+            colors.background,
+          ]}
           locations={[0, 0.5, 1]}
-          style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
+          style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }}
           className="absolute inset-0 p-md"
         >
           {/* 닫기 버튼: 이전 화면(홈)으로 돌아가기 
-              pt-safe를 빼고 고정 패딩으로 바꾼 닫기 버튼 (아이폰 쏠림 방지) */}          
+              pt-safe를 빼고 고정 패딩으로 바꾼 닫기 버튼 (아이폰 쏠림 방지) */}
           <View className="flex-row justify-end pt-10 pr-4">
             <Pressable
               onPress={() => router.back()}
@@ -276,15 +309,14 @@ export default function TravelDetailUI() {
           {/* 여행 기본 정보: 제목 / 위치 / 날짜 */}
           <View className="absolute bottom-lg left-md w-full pr-md">
             <Text className="text-xl font-sans-bold text-textPrimary mb-sm dark:text-dark-textPrimary">
-              {title || '여행 정보'}
+              {title || "여행 정보"}
             </Text>
             <View className="flex-row items-center justify-between w-full">
-
               {/* 위치 아이콘 + 목적지 텍스트 */}
               <View className="flex-row items-center gap-xs">
                 <MapPin size={14} color={colors.textSecondary} />
                 <Text className="text-sm font-sans text-textSecondary dark:text-dark-textSecondary mr-2">
-                  {destination || '위치 미정'}
+                  {destination || "위치 미정"}
                 </Text>
               </View>
 
@@ -294,10 +326,10 @@ export default function TravelDetailUI() {
                   <Calendar size={14} color={colors.textSecondary} />
                   <Text className="text-sm font-sans text-textSecondary dark:text-dark-textSecondary">
                     {(() => {
-                      if (!start_date || !end_date) return '날짜 미정';
+                      if (!start_date || !end_date) return "날짜 미정";
                       const format = (dateStr: string) => {
-                        const clean = dateStr.replaceAll('-', '.');
-                        return clean.startsWith('20') ? clean.slice(2) : clean;
+                        const clean = dateStr.replaceAll("-", ".");
+                        return clean.startsWith("20") ? clean.slice(2) : clean;
                       };
                       return `${format(start_date)} ~ ${format(end_date)}`;
                     })()}
@@ -324,18 +356,21 @@ export default function TravelDetailUI() {
         {(dayTabs?.length > 0 ? dayTabs : [1]).map((d: number) => (
           <Pressable
             key={d}
-            onPress={() => { setActiveDay(d); setActivePhotoIndex(0); }}
+            onPress={() => {
+              setActiveDay(d);
+              setActivePhotoIndex(0);
+            }}
             className={`py-xs rounded-t-lg mr-0 shadow-sm ${
               activeDay === d
-                ? 'px-lg bg-primary min-w-[70px] items-center'  // 활성 탭
-                : 'px-sm bg-muted min-w-[36px] items-center dark:bg-dark-muted'    // 비활성 탭
+                ? "px-lg bg-primary min-w-[70px] items-center" // 활성 탭
+                : "px-sm bg-muted min-w-[36px] items-center dark:bg-dark-muted" // 비활성 탭
             }`}
           >
             <Text
               className={`${
                 activeDay === d
-                  ? 'font-logo text-xl text-white'                      // 활성: 필기체 큰 글씨
-                  : 'font-sans-bold text-base  text-textSecondary dark:text-dark-textSecondary'  // 비활성: 고딕 숫자
+                  ? "font-logo text-xl text-white" // 활성: 필기체 큰 글씨
+                  : "font-sans-bold text-base  text-textSecondary dark:text-dark-textSecondary" // 비활성: 고딕 숫자
               }`}
             >
               {activeDay === d ? `Day ${d}` : d}
@@ -346,7 +381,9 @@ export default function TravelDetailUI() {
         {/* 일차 추가 버튼: 현재 일차가 7개 미만일 때만 표시 */}
         {dayTabs.length < 7 && (
           <Pressable
-            onPress={() => router.push({ pathname: '/add', params: { trip_id: tripId } })}
+            onPress={() =>
+              router.push({ pathname: "/add", params: { trip_id: tripId } })
+            }
             className="rounded-t-lg h-[30px] bg-muted min-w-[36px] items-center justify-center shadow-sm dark:bg-dark-muted"
           >
             <Plus size={16} color={colors.textSecondary} strokeWidth={3} />
@@ -363,16 +400,24 @@ export default function TravelDetailUI() {
       ──────────────────────────────────────────────── */}
       <View className="px-md pb-xl pt-sm -mt-[8px]">
         <View className="bg-surface rounded-lg p-md shadow-sm border border-border dark:border-dark-border dark:bg-dark-surface">
-
           {/* ── 3-1. 소제목 & 감정 이모지 ── */}
           <View className="flex-row justify-between items-end mb-md w-full">
             <View className="flex-1 mr-xs">
               <Text className="text-lg text-textPrimary font-sans-bold dark:text-dark-textPrimary">
-                {currentDayData?.subtitle || '상세 일정이 없습니다.'}
+                {currentDayData?.subtitle || "상세 일정이 없습니다."}
               </Text>
             </View>
             {/* 감정 이모지: currentDayData.emotion이 있을 때만 표시 */}
-            <View style={{ width: 44, height: 44, flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 2 }}>
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                flexDirection: "row",
+                justifyContent: "center",
+                alignItems: "center",
+                marginTop: 2,
+              }}
+            >
               {currentDayData?.emotion && (
                 <EmojiIcon codepoint={currentDayData.emotion} size={28} />
               )}
@@ -384,15 +429,15 @@ export default function TravelDetailUI() {
             {/* 세부 위치 */}
             <MapPin size={10} color={colors.textSecondary} />
             <Text className="text-sm text-textSecondary font-sans mr-1 dark:text-dark-textSecondary">
-              {currentDayData?.location_summary || '위치 정보 없음'}
+              {currentDayData?.location_summary || "위치 정보 없음"}
             </Text>
 
             {/* 날짜: "월.일" 형식으로 표시 (예: 04.01) */}
             <Text className="text-sm text-textSecondary font-sans mr-2 dark:text-dark-textSecondary">
               {(() => {
                 const targetDate = currentDayData?.date || start_date;
-                if (!targetDate) return '날짜 미정';
-                const clean = targetDate.replaceAll('-', '.');
+                if (!targetDate) return "날짜 미정";
+                const clean = targetDate.replaceAll("-", ".");
                 return clean.length >= 5 ? clean.slice(-5) : clean;
               })()}
             </Text>
@@ -416,7 +461,10 @@ export default function TravelDetailUI() {
               - 하단 도트 인디케이터로 현재 사진 위치 표시
           ── */}
           {currentDayData?.photos && currentDayData.photos.length > 0 && (
-            <View style={{ width: cardWidth }} className="rounded-lg mb-md mt-md overflow-hidden">
+            <View
+              style={{ width: cardWidth }}
+              className="rounded-lg mb-md mt-md overflow-hidden"
+            >
               <FlatList
                 ref={flatListRef}
                 key={activeDay}
@@ -424,10 +472,13 @@ export default function TravelDetailUI() {
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                keyExtractor={(item: any, index: number) => item.id?.toString() || index.toString()}
+                keyExtractor={(item: any, index: number) =>
+                  item.id?.toString() || index.toString()
+                }
                 // 현재 화면에 보이는 사진 인덱스 추적 → 도트 인디케이터 업데이트
                 onViewableItemsChanged={({ viewableItems }) => {
-                  if (viewableItems.length > 0) setActivePhotoIndex(viewableItems[0].index ?? 0);
+                  if (viewableItems.length > 0)
+                    setActivePhotoIndex(viewableItems[0].index ?? 0);
                 }}
                 viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
                 renderItem={({ item }) => (
@@ -451,7 +502,10 @@ export default function TravelDetailUI() {
                         width: activePhotoIndex === i ? 8 : 6,
                         height: activePhotoIndex === i ? 8 : 6,
                         borderRadius: 4,
-                        backgroundColor: activePhotoIndex === i ? colors.textSecondary : colors.border,
+                        backgroundColor:
+                          activePhotoIndex === i
+                            ? colors.textSecondary
+                            : colors.border,
                       }}
                     />
                   ))}
@@ -463,13 +517,11 @@ export default function TravelDetailUI() {
           {/* ── 3-4. 일기 본문 텍스트 ── */}
           <View className="bg-muted p-md rounded-md border border-border dark:border-dark-border dark:bg-dark-muted">
             <Text className="text-textSecondary text-md font-sans dark:text-dark-textSecondary">
-              {currentDayData?.content || '이날의 일기 기록이 비어있습니다.'}
+              {currentDayData?.content || "이날의 일기 기록이 비어있습니다."}
             </Text>
           </View>
-
         </View>
       </View>
-
     </ScrollView>
   );
 }

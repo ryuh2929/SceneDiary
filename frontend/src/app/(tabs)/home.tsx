@@ -134,7 +134,7 @@ export default function HomeScreen() {
         setTripData([]); // 이전 데이터 초기화
 
         const data = await getTrips(currentYear);
-        console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+        // console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
         setTripData(data); // 받아온 데이터 저장
       } catch (err: any) {
         setTripData([]);
