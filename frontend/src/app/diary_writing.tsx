@@ -9,6 +9,7 @@ import {
   ChevronRight,
   FileText,
   MapPin,
+  Pencil,
   RotateCcw,
 } from "lucide-react-native";
 import React, {useCallback, useEffect, useRef, useState} from "react";
@@ -17,6 +18,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
@@ -28,6 +30,7 @@ import {
   fetchTripDay,
   fetchTripDiary,
   regenerateDay,
+  saveDayContent,
   saveDayLocation,
 } from "@/api/diary";
 import LocationPicker from "@/components/ui/GoogleMap/LocationPicker";
@@ -105,6 +108,11 @@ export default function DiaryWritingScreen() {
   // fillContent 가 진행 중인 tripDayId 모음. 같은 날 본문을 두 번 fetch 하지 않게 막습니다.
   // (폴링 응답으로 days 가 자주 갱신되어 [days] effect 가 자주 재실행되는 환경 대응)
   const inflightFillRef = useRef<Set<number>>(new Set());
+
+  // 본문(일기) 편집 상태. 연필 아이콘으로 진입 → 저장/취소로 종료.
+  // 편집 중에는 "다음날로"/"저장하기" 가 잠겨 사용자가 의도치 않게 진행하지 않게 합니다.
+  const [isEditingContent, setIsEditingContent] = useState(false);
+  const [draftContent, setDraftContent] = useState("");
 
   // 여행 전체를 불러옵니다. (화면 진입 시 + 에러 후 "다시 시도"에서 재호출)
   const loadTrip = useCallback(async () => {
@@ -277,7 +285,7 @@ export default function DiaryWritingScreen() {
     setActionError(null);
     try {
       await completeTrip(TRIP_ID); // PATCH /trips/{id}  { status: 'completed' }
-      router.push({pathname: "/detail", params: {id: String(TRIP_ID)}});
+      router.replace({pathname: "/detail", params: {id: String(TRIP_ID)}});
     } catch (e) {
       console.error(e);
       setActionError("최종 저장에 실패했어요. 다시 시도해주세요.");
@@ -300,6 +308,36 @@ export default function DiaryWritingScreen() {
   };
   // 여행지 편집: 지도 피커를 엽니다. (앱 전용 — 웹은 안내 모달)
   const handleEditLocation = () => setPickerOpen(true);
+
+  // 본문 편집 시작: 현재 본문을 draft 로 복사하고 편집 모드 켭니다.
+  const handleStartEditContent = () => {
+    setDraftContent(day.content);
+    setIsEditingContent(true);
+    setActionError(null);
+  };
+  // 본문 편집 취소: 변경 사항 폐기.
+  const handleCancelEditContent = () => {
+    setIsEditingContent(false);
+    setDraftContent("");
+    setActionError(null);
+  };
+  // 본문 저장: PATCH 성공 시 로컬 상태에도 반영하고 편집 모드 종료.
+  const handleSaveEditContent = async () => {
+    setActionError(null);
+    try {
+      await saveDayContent(day.tripDayId, draftContent); // PATCH /trip-days/{id} { content }
+      setDays((prev) =>
+        prev.map((d, i) =>
+          i === dayIndex ? {...d, content: draftContent} : d,
+        ),
+      );
+      setIsEditingContent(false);
+      setDraftContent("");
+    } catch (e) {
+      console.error(e);
+      setActionError("일기 저장에 실패했어요. 잠시 후 다시 시도해주세요.");
+    }
+  };
 
   // 피커에서 위치를 고르면: 지명 + 좌표를 화면에 즉시 반영하고 바로 저장합니다.
   // (마지막 날처럼 "다음날로"를 안 거치는 경우에도 보존되도록 여기서 PATCH)
@@ -493,29 +531,81 @@ export default function DiaryWritingScreen() {
                 </View>
               </View>
 
-              {/* --- 여행 기록(본문, 읽기전용) + 날씨 이모지 --- */}
+              {/* --- 여행 기록(본문) + 날씨 이모지 + 연필(편집 진입) --- */}
               <View className="gap-2">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-lg font-sans-bold text-textPrimary dark:text-dark-textPrimary">
                     여행 기록
                   </Text>
-                  {/* trip_days.weather (Twemoji 코드포인트) */}
-                  <EmojiIcon codepoint={day.weather} size={22} />
+                  <View className="flex-row items-center gap-3">
+                    {/* trip_days.weather (Twemoji 코드포인트) */}
+                    <EmojiIcon codepoint={day.weather} size={22} />
+                    {/* 편집 모드가 아닐 때만 연필 표시. 편집 중엔 하단 저장/취소만 노출. */}
+                    {!isEditingContent && (
+                      <Pressable
+                        onPress={handleStartEditContent}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel="일기 본문 편집"
+                      >
+                        <Pencil size={18} color={colors.primary} />
+                      </Pressable>
+                    )}
+                  </View>
                 </View>
                 <View className="rounded-3xl bg-background p-6 dark:bg-dark-background">
-                  <Text
-                    className="font-sans text-md text-textPrimary dark:text-dark-textPrimary"
-                    style={{lineHeight: 22}}
-                  >
-                    {day.content}
-                  </Text>
-                  {/* 글자 수 표시 (읽기전용이지만 분량 확인용으로 유지) */}
+                  {isEditingContent ? (
+                    <TextInput
+                      multiline
+                      value={draftContent}
+                      onChangeText={setDraftContent}
+                      placeholder="일기를 입력해주세요"
+                      placeholderTextColor={colors.primaryLight}
+                      className="font-sans text-md text-textPrimary dark:text-dark-textPrimary"
+                      style={{
+                        lineHeight: 22,
+                        minHeight: 180,
+                        textAlignVertical: "top",
+                        padding: 0,
+                      }}
+                      autoFocus
+                    />
+                  ) : (
+                    <Text
+                      className="font-sans text-md text-textPrimary dark:text-dark-textPrimary"
+                      style={{lineHeight: 22}}
+                    >
+                      {day.content}
+                    </Text>
+                  )}
+                  {/* 글자 수 — 편집 중엔 draft 길이로 실시간 갱신 */}
                   <View className="mt-2 flex-row justify-end">
                     <Text className="text-[10px] font-sans-bold text-primaryLight">
-                      {day.content.length}자
+                      {(isEditingContent ? draftContent : day.content).length}자
                     </Text>
                   </View>
                 </View>
+                {/* 편집 모드일 때만 저장/취소 버튼 노출 */}
+                {isEditingContent && (
+                  <View className="mt-2 flex-row gap-3">
+                    <Pressable
+                      onPress={handleCancelEditContent}
+                      className="flex-1 items-center justify-center rounded-2xl bg-muted py-3"
+                    >
+                      <Text className="font-sans-bold text-textSecondary">
+                        취소
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleSaveEditContent}
+                      className="flex-1 items-center justify-center rounded-2xl bg-primary py-3"
+                    >
+                      <Text className="font-sans-bold text-textOnPrimary">
+                        저장
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
               </View>
 
               {/* --- 그날 사진 (읽기전용, +버튼 없음) --- */}
@@ -568,19 +658,29 @@ export default function DiaryWritingScreen() {
                 {actionError}
               </Text>
             )}
+            {/* 본문 편집 중에는 진행 불가 안내 */}
+            {isEditingContent && (
+              <Text className="mb-2 text-center text-xs text-textSecondary dark:text-dark-textSecondary">
+                본문 편집 중에는 진행할 수 없어요
+              </Text>
+            )}
             {isLastDay ? (
-              // 마지막 날: 최종 저장
+              // 마지막 날: 최종 저장 (편집 중엔 잠금)
               <Pressable
                 onPress={handleSave}
+                disabled={isEditingContent}
+                style={{opacity: isEditingContent ? 0.4 : 1}}
                 className="flex-row items-center justify-center gap-2 rounded-2xl bg-primary py-4"
               >
                 <Text className="font-sans-bold text-textOnPrimary">저장하기</Text>
                 <FileText size={16} color="#FFFFFF" />
               </Pressable>
             ) : canGoNext ? (
-              // 다음 날 준비됨: 이동 가능
+              // 다음 날 준비됨: 이동 가능 (편집 중엔 잠금)
               <Pressable
                 onPress={handleNext}
+                disabled={isEditingContent}
+                style={{opacity: isEditingContent ? 0.4 : 1}}
                 className="flex-row items-center justify-center gap-2 rounded-2xl bg-primary py-4"
               >
                 <Text className="font-sans-bold text-textOnPrimary">다음날로</Text>

@@ -8,6 +8,7 @@ import { DarkModeBackground } from '@/components/dark-mode-background';
 import { getTrips } from '@/api/home';
 import { Trip } from '@/types/api';
 import { useAppThemeColors } from '@/constants/app-colors';
+import {useFocusEffect} from "expo-router";
 import { useAppSettings } from '@/contexts/app-settings-context';
 
 // ─────────────────────────────────────────────
@@ -38,13 +39,13 @@ function codepointToEmoji(codepoint: string): string {
  * @param codepoint - 이모지 코드포인트 (hex 문자열)
  * @param size - 이모지 크기 (px)
  */
-function EmojiIcon({codepoint, size}: {codepoint: string; size: number}) {
+function EmojiIcon({ codepoint, size }: { codepoint: string; size: number }) {
   if (!codepoint) return null;
   const char = codepointToEmoji(codepoint);
   if (Twemoji.supportedEmojis.includes(char)) {
-    return <Twemoji style={{width: size, height: size}}>{char}</Twemoji>;
+    return <Twemoji style={{ width: size, height: size }}>{char}</Twemoji>;
   }
-  return <Text style={{fontSize: size}}>{char}</Text>;
+  return <Text style={{ fontSize: size }}>{char}</Text>;
 }
 
 // ─────────────────────────────────────────────
@@ -63,7 +64,9 @@ export function getMainImage(item: Trip) {
   const allPhotos = item.tripDays.flatMap((day) => day.photos || []);
 
   // cover_photo_id와 일치하는 사진 찾기
-  const coverPhoto = allPhotos.find((photo) => photo.id === item.cover_photo_id);
+  const coverPhoto = allPhotos.find(
+    (photo) => photo.id === item.cover_photo_id,
+  );
 
   // 매칭된 사진이 있으면 Image 컴포넌트로 렌더링
   if (coverPhoto && coverPhoto.image_url) {
@@ -89,7 +92,6 @@ export function getMainImage(item: Trip) {
  * - 하단 네비게이션 바
  */
 export default function HomeScreen() {
-
   // ─────────────────────────────────────────────
   // 🗃️ 상태(State) 관리
   // ─────────────────────────────────────────────
@@ -102,7 +104,7 @@ export default function HomeScreen() {
   const [currentYear, setCurrentYear] = useState<number>(2026);
 
   // 아코디언 펼침 상태: 현재 펼쳐진 여행 카드의 id (없으면 null)
-  const [expandedId, setExpandedId] = useState<number|null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   // API에서 가져온 여행 목록 데이터
   const [tripData, setTripData] = useState<Trip[]>([]);
@@ -122,30 +124,45 @@ export default function HomeScreen() {
    * - currentYear가 바뀔 때마다 자동 실행
    * - 로딩/에러 상태 관리 포함
    */
-  useEffect(() => {
-    const loadTripData = async () => {
+  // useEffect(() => {
+    
+
+  //   loadTripData();
+  // }, [currentYear]); // currentYear가 바뀔 때만 재실행
+  const loadTripData = async () => {
       try {
-        setIsLoading(true);   // 로딩 시작
-        setError(null);       // 이전 에러 초기화
-        setTripData([]);      // 이전 데이터 초기화
+        setIsLoading(true); // 로딩 시작
+        setError(null); // 이전 에러 초기화
+        setTripData([]); // 이전 데이터 초기화
 
         const data = await getTrips(currentYear);
-        console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
-        setTripData(data);    // 받아온 데이터 저장
+        // console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+        console.log("데이터 불러옴");
+        setTripData(data); // 받아온 데이터 저장
       } catch (err: any) {
         setTripData([]);
         console.log("API 에러 전체:", err);
         console.log("API 에러 메시지:", err?.message);
-        console.log("API 에러 응답:", err?.response?.status, err?.response?.data);
+        console.log(
+          "API 에러 응답:",
+          err?.response?.status,
+          err?.response?.data,
+        );
         setError("여행 정보를 불러오는 중 오류가 발생했습니다.");
       } finally {
-        setIsLoading(false);  // 성공/실패 관계없이 로딩 종료
+        setIsLoading(false); // 성공/실패 관계없이 로딩 종료
       }
     };
 
-    loadTripData();
-  }, [currentYear]); // currentYear가 바뀔 때만 재실행
-
+    // 2. 화면에 들어올 때마다(Focus) 데이터 갱신
+    useFocusEffect(
+      React.useCallback(() => {
+        loadTripData(); // 데이터 새로고침
+        return () => {
+          /* 필요 시 정리 작업 */
+        };
+      }, [currentYear]),
+    );
   // ─────────────────────────────────────────────
   // 🔀 아코디언 토글 핸들러
   // ─────────────────────────────────────────────
@@ -176,13 +193,21 @@ export default function HomeScreen() {
         <Text className="text-xl font-logo text-logo mt-sm">SceneDiary</Text>
         <View className="flex-row items-center justify-center gap-xl mt-md">
           {/* 이전 연도 버튼 */}
-          <Pressable onPress={() => setCurrentYear(prev => prev - 1)} className="p-xs">
+          <Pressable
+            onPress={() => setCurrentYear((prev) => prev - 1)}
+            className="p-xs"
+          >
             <ChevronLeft size={20} color={colors.textSecondary} />
           </Pressable>
           {/* 현재 연도 표시 */}
-          <Text className="text-lg text-textPrimary font-sans-bold dark:text-dark-textPrimary">{currentYear}</Text>
+          <Text className="text-lg text-textPrimary font-sans-bold dark:text-dark-textPrimary">
+            {currentYear}
+          </Text>
           {/* 다음 연도 버튼 */}
-          <Pressable onPress={() => setCurrentYear(prev => prev + 1)} className="p-xs">
+          <Pressable
+            onPress={() => setCurrentYear((prev) => prev + 1)}
+            className="p-xs"
+          >
             <ChevronRight size={20} color={colors.textSecondary} />
           </Pressable>
         </View>
@@ -199,29 +224,60 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 180 }}
       >
         <View className="px-md mt-lg mb-md gap-lg">
-          {tripData.map((item) => {
+          {/* 💡 핵심: tripData가 비어있는지 체크합니다 */}
+          {tripData.length === 0 ? (
+            
+            // ⭕ 1. 데이터가 없을 때 보여줄 예쁜 안내 카드
+            <View className="mt-xl items-center justify-center rounded-2xl bg-surface p-xl border border-border dark:border-dark-border dark:bg-dark-surface shadow-sm">
+              {/* 📝 문구와 잘 어울리는 비행기나 일기장 이모지 하나 얹어주면 훨씬 부드러워집니다 */}
+              <Text style={{ fontSize: 32 }} className="mb-sm">✈️</Text> 
+              
+              <Text className="text-base font-sans-bold text-textPrimary dark:text-dark-textPrimary text-center">
+                작성된 일기가 없습니다
+              </Text>
+              
+              <Text className="mt-xs text-sm text-textSecondary dark:text-dark-textSecondary text-center leading-5">
+                오른쪽 아래 '+' 버튼을 눌러{"\n"}새로운 여행의 추억을 기록해 보세요!
+              </Text>
+            </View>
+
+          ) : (
+          tripData.map((item) => {
             const isExpanded = expandedId === item.id;
             return (
-              <View key={item.id} className="bg-surface rounded-lg overflow-hidden shadow-sm border border-border dark:border-dark-border dark:bg-dark-surface">
-
+              <View 
+                key={item.id} 
+                className="bg-surface rounded-lg overflow-hidden border border-border dark:border-dark-border dark:bg-dark-surface shadow-sm shadow-black/10 dark:shadow-none"
+                style={{
+                  //[안드로이드 치트키] 안드로이드는 클래스명이 아니라 이 elevation 수치가 반드시 수동으로 박혀야 그림자가 나옵니다.
+                  elevation: 3,
+                  // [iOS 치트키 브레이크] 가끔 배경색과 그림자 결합이 깨질 때 인라인으로 슥 잡아주는 밀림 방지용
+                  shadowColor: colors.textPrimary,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 4,
+                }}
+              >
                 {/* ── 2-1. 대표 이미지 영역 ──
                     - 클릭 시 상세 페이지로 이동
                     - 좌상단: 날짜 뱃지 / 우상단: 여행 대표 이모지
                 ── */}
                 <Pressable
                   className="relative h-60 w-full"
-                  onPress={() => router.push({
-                    pathname: '/detail',
-                    params: {
-                      id: item.id,
-                      title: item.title,
-                      location: item.destination,
-                      mainImage: item.cover_photo_id,
-                      startDate: item.start_date,
-                      endDate: item.end_date,
-                      details: JSON.stringify(item.tripDays)
-                    }
-                  })}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/detail",
+                      params: {
+                        id: item.id,
+                        title: item.title,
+                        location: item.destination,
+                        mainImage: item.cover_photo_id,
+                        startDate: item.start_date,
+                        endDate: item.end_date,
+                        details: JSON.stringify(item.tripDays),
+                      },
+                    })
+                  }
                 >
                   {/* 대표 이미지 */}
                   {getMainImage(item)}
@@ -235,8 +291,8 @@ export default function HomeScreen() {
 
                   {/* 여행 대표 이모지: item.flag가 있을 때만 표시 */}
                   <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                    {(item.flag || "1f30f") && (
-                      <EmojiIcon codepoint={item.flag || "1f30f"} size={26} />
+                    {(item.flag || "1f1f0-1f1f7") && (
+                      <EmojiIcon codepoint={item.flag || "1f1f0-1f1f7"} size={26} />
                     )}
                   </View>
                 </Pressable>
@@ -267,17 +323,21 @@ export default function HomeScreen() {
                     onPress={() => toggleExpand(item.id)}
                     className={
                       "w-full flex-row items-center justify-center py-sm gap-xs border-t border-border dark:border-dark-border " +
-                      (isExpanded ? "bg-muted dark:bg-dark-muted" : "bg-surface dark:bg-dark-surface")
+                      (isExpanded
+                        ? "bg-muted dark:bg-dark-muted"
+                        : "bg-surface dark:bg-dark-surface")
                     }
                   >
                     <Text className="text-sm text-primary font-sans">
-                      {isExpanded ? '접기' : `여행 상세 (${item.tripDays?.length}일)`}
+                      {isExpanded
+                        ? "접기"
+                        : `여행 상세 (${item.tripDays?.length}일)`}
                     </Text>
                     <ChevronDown
                       size={14}
                       color={colors.primary}
                       style={{
-                        transform: [{ rotate: isExpanded ? '180deg' : '0deg' }],
+                        transform: [{ rotate: isExpanded ? "180deg" : "0deg" }],
                         marginLeft: 2,
                       }}
                     />
@@ -295,24 +355,28 @@ export default function HomeScreen() {
                       <Pressable
                         key={detail.id}
                         className="flex-row items-center bg-surface p-sm rounded-md shadow-sm dark:bg-dark-surface"
-                        onPress={() => router.push({
-                          pathname: '/detail',
-                          params: {
-                            id: item.id,
-                            title: detail.subtitle,
-                            location: detail.location_summary,
-                            mainImage: detail.represent_image,
-                            startDate: item.start_date,
-                            endDate: item.end_date,
-                            day: detail.day_number,
-                            details: JSON.stringify(item.tripDays) // 상세 일기 배열을 문자열로 변환해서 전달
-                          }
-                        })}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/detail",
+                            params: {
+                              id: item.id,
+                              title: detail.subtitle,
+                              location: detail.location_summary,
+                              mainImage: detail.represent_image,
+                              startDate: item.start_date,
+                              endDate: item.end_date,
+                              day: detail.day_number,
+                              details: JSON.stringify(item.tripDays), // 상세 일기 배열을 문자열로 변환해서 전달
+                            },
+                          })
+                        }
                       >
                         {/* 일차 썸네일: 첫 번째 사진의 썸네일 이미지 */}
                         {detail.photos && detail.photos.length > 0 && (
                           <Image
-                            source={{ uri: detail.photos[0].thumbnail_image_url }}
+                            source={{
+                              uri: detail.photos[0].thumbnail_image_url,
+                            }}
                             className="w-14 h-14 rounded-md mr-md"
                             resizeMode="cover"
                           />
@@ -325,15 +389,29 @@ export default function HomeScreen() {
                               Day {detail.day_number}
                             </Text>
                             {/* 감정 이모지: detail.emotion이 있을 때만 표시 */}
-                            <View style={{ width: 28, height: 28, flexDirection: "row", justifyContent: "center", alignItems: "center" }}>
+                            <View
+                              style={{
+                                width: 28,
+                                height: 28,
+                                flexDirection: "row",
+                                justifyContent: "center",
+                                alignItems: "center",
+                              }}
+                            >
                               {detail.emotion && (
-                                <EmojiIcon codepoint={detail.emotion} size={20} />
+                                <EmojiIcon
+                                  codepoint={detail.emotion}
+                                  size={20}
+                                />
                               )}
                             </View>
                           </View>
 
                           {/* 소제목 (1줄 제한) */}
-                          <Text className="text-md text-textPrimary font-sans-bold mb-xs dark:text-dark-textPrimary" numberOfLines={1}>
+                          <Text
+                            className="text-md text-textPrimary font-sans-bold mb-xs dark:text-dark-textPrimary"
+                            numberOfLines={1}
+                          >
                             {detail.subtitle}
                           </Text>
 
@@ -349,10 +427,10 @@ export default function HomeScreen() {
                     ))}
                   </View>
                 )}
-
               </View>
             );
-          })}
+          })
+        )}
         </View>
       </ScrollView>
 
@@ -361,7 +439,7 @@ export default function HomeScreen() {
           - 클릭 시 새 여행 추가 페이지(/add)로 이동
       ──────────────────────────────────────────────── */}
       <Pressable
-        onPress={() => router.push('/add')}
+        onPress={() => router.push("/add")}
         className="absolute right-md bg-fab w-14 h-14 rounded-full items-center justify-center shadow-lg"
         style={{ zIndex: 99, bottom: 125 }}
       >
@@ -372,7 +450,6 @@ export default function HomeScreen() {
           - 홈 / 지도 / 설정 탭 이동
       ──────────────────────────────────────────────── */}
       <BottomNav />
-
     </View>
   );
 }

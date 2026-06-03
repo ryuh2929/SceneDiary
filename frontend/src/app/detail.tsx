@@ -242,6 +242,7 @@ export default function TravelDetailUI() {
       className="flex-1 bg-background dark:bg-dark-background"
       showsVerticalScrollIndicator={false}
       bounces={false}
+      contentContainerStyle={{ paddingBottom: 50 }}
     >
 
       {/* ── 섹션 1. 상단 히어로 이미지 영역 ─────────────────
@@ -282,7 +283,7 @@ export default function TravelDetailUI() {
               {/* 위치 아이콘 + 목적지 텍스트 */}
               <View className="flex-row items-center gap-xs">
                 <MapPin size={14} color={colors.textSecondary} />
-                <Text className="text-sm font-sans text-textSecondary dark:text-dark-textSecondary">
+                <Text className="text-sm font-sans text-textSecondary dark:text-dark-textSecondary mr-2">
                   {destination || '위치 미정'}
                 </Text>
               </View>
@@ -303,10 +304,10 @@ export default function TravelDetailUI() {
                   </Text>
                 </View>
               </View>
-              {/* 여행 대표 이모지: trip.flag가 있을 때만 표시 (테스트용 폴백: "1f30f" = 🌏) */}
-              {(trip.flag || "1f30f") && (
-                <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  <EmojiIcon codepoint={trip.flag || "1f30f"} size={26} />
+              {/* 여행 대표 이모지: trip.flag가 있을 때만 표시 (테스트용 폴백: "1f1f0-1f1f7" = 한국국기) */}
+              {(trip.flag || "1f1f0-1f1f7") && (
+                <View className="absolute right-3 w-10 h-10 items-center justify-center overflow-hidden">
+                  <EmojiIcon codepoint={trip.flag || "1f1f0-1f1f7"} size={26} />
                 </View>
               )}
             </View>

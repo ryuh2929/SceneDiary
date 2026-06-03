@@ -154,6 +154,16 @@ export function saveDayLocation(
   });
 }
 
+// ④-② 본문 저장 — 사용자가 일기 본문을 직접 편집하고 저장할 때
+// 같은 PATCH 엔드포인트지만 content 만 보냅니다(부분 업데이트).
+export function saveDayContent(tripDayId: number, content: string) {
+  const body: DayUpdate = { content };
+  return request<DayPage>(`/trip-days/${tripDayId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
 // ⑤ 재생성 — 실패한 날 다시 생성 요청
 export function regenerateDay(tripDayId: number) {
   return request<DayStatus>(`/trip-days/${tripDayId}/regenerate`, {

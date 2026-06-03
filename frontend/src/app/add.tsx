@@ -363,7 +363,7 @@ export default function AddScreen() {
         displayOrder: photo.displayOrder,
       }));
 
-      router.push({
+      router.replace({
         pathname: '/loading',
         params: {
           photos: encodeURIComponent(JSON.stringify(photos)),
@@ -458,7 +458,7 @@ export default function AddScreen() {
           </View>
 
           {pendingPhotos.length === 0 ? (
-            <View className="mt-2xl items-center rounded-lg bg-muted px-lg py-xl dark:bg-dark-muted">
+            <View className="mt-sm items-center rounded-lg bg-muted px-lg py-xl dark:bg-dark-muted">
               <ImagePlus size={30} color={colors.primaryLight} />
               <Text className="mt-sm text-center text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
                 사진을 여러 장 선택하면 여기에서 순서대로 확인할 수 있어요.
@@ -486,12 +486,14 @@ export default function AddScreen() {
               shadowRadius: 16,
               elevation: pendingPhotos.length === 0 || isPreparing || isUploading ? 0 : 4,
             }}>
+
+              
             <LinearGradient
               colors={[colors.primary, colors.primaryLight, colors.accent]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               className="h-14 items-center justify-center">
-              <Text className="text-md font-extrabold text-textOnPrimary">
+              <Text className="text-md font-sans-bold text-textOnPrimary">
                 {isUploading
                   ? '사진 업로드 중'
                   : pendingPhotos.length > 0

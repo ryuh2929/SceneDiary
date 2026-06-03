@@ -75,7 +75,11 @@ class DayStatus(BaseModel):
 # 사용자가 지도 피커에서 좌표까지 골랐으면 lat/lon 도 함께 넘어옵니다.
 # 직접 텍스트만 들어오는 케이스가 아직 없어도 옵셔널로 둡니다(과거 호출자 호환).
 class DayUpdate(BaseModel):
-    locationSummary: str  # trip_days.location_summary
+    # 부분 업데이트 지원: 모든 필드가 옵셔널.
+    # 핸들러는 None 이 아닌 필드만 골라서 update 합니다.
+    # 호출자는 자기가 바꾸려는 것만 보내면 됨(위치만 / 본문만 / 둘 다).
+    locationSummary: str | None = None  # trip_days.location_summary
+    content: str | None = None  # trip_days.content — 본문(사용자가 편집한 일기 텍스트)
     lat: float | None = None  # trip_days.representative_lat
     lon: float | None = None  # trip_days.representative_lon
     # 사용자가 picker 로 위치를 골랐을 때, OS reverseGeocode 가 함께 알려준 국가/도시.

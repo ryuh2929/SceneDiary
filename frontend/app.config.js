@@ -38,9 +38,11 @@ export default {
       [
         "expo-media-library",
         {
-          photosPermission: "이 앱은 여행 사진의 위치 정보를 읽기 위해 사진 접근 권한이 필요합니다.",
+          photosPermission:
+            "이 앱은 여행 사진의 위치 정보를 읽기 위해 사진 접근 권한이 필요합니다.",
           savePhotosPermission: "이 앱은 사진 저장 권한이 필요합니다.",
           isAccessMediaLocationEnabled: true,
+          isSilenceAudioSourcePermission: false
         },
       ],
       [
