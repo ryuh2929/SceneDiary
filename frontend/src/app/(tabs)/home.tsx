@@ -13,6 +13,7 @@ import BottomNav from "@/components/bottom-nav";
 import { getTrips } from "@/api/home";
 import { Trip } from "@/types/api";
 import { useAppThemeColors } from "@/constants/app-colors";
+import {useFocusEffect} from "expo-router";
 
 // ─────────────────────────────────────────────
 // 🔧 유틸 함수 섹션
@@ -126,15 +127,20 @@ export default function HomeScreen() {
    * - currentYear가 바뀔 때마다 자동 실행
    * - 로딩/에러 상태 관리 포함
    */
-  useEffect(() => {
-    const loadTripData = async () => {
+  // useEffect(() => {
+    
+
+  //   loadTripData();
+  // }, [currentYear]); // currentYear가 바뀔 때만 재실행
+  const loadTripData = async () => {
       try {
         setIsLoading(true); // 로딩 시작
         setError(null); // 이전 에러 초기화
         setTripData([]); // 이전 데이터 초기화
 
         const data = await getTrips(currentYear);
-        console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+        // console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+        console.log("데이터 불러옴");
         setTripData(data); // 받아온 데이터 저장
       } catch (err: any) {
         setTripData([]);
@@ -151,9 +157,15 @@ export default function HomeScreen() {
       }
     };
 
-    loadTripData();
-  }, [currentYear]); // currentYear가 바뀔 때만 재실행
-
+    // 2. 화면에 들어올 때마다(Focus) 데이터 갱신
+    useFocusEffect(
+      React.useCallback(() => {
+        loadTripData(); // 데이터 새로고침
+        return () => {
+          /* 필요 시 정리 작업 */
+        };
+      }, [currentYear]),
+    );
   // ─────────────────────────────────────────────
   // 🔀 아코디언 토글 핸들러
   // ─────────────────────────────────────────────

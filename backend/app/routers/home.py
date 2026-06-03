@@ -17,6 +17,7 @@ def _get_tripList(db: Session, year: int) -> List[Trip]:
         # start_date에서 연도(year)만 추출
         .filter(extract('year', Trip.start_date) == year, 
         Trip.deleted_at.is_(None))
+        .order_by(Trip.id.desc())
         .all()
     )
     

@@ -285,7 +285,7 @@ export default function DiaryWritingScreen() {
     setActionError(null);
     try {
       await completeTrip(TRIP_ID); // PATCH /trips/{id}  { status: 'completed' }
-      router.push({pathname: "/detail", params: {id: String(TRIP_ID)}});
+      router.replace({pathname: "/detail", params: {id: String(TRIP_ID)}});
     } catch (e) {
       console.error(e);
       setActionError("최종 저장에 실패했어요. 다시 시도해주세요.");
