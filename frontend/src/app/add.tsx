@@ -321,7 +321,12 @@ export default function AddScreen() {
     // (manifest 선언은 app.config.js 의 expo-media-library 플러그인이 담당)
     if (Platform.OS === 'android') {
       await PermissionsAndroid.request('android.permission.ACCESS_MEDIA_LOCATION' as never);
-      await MediaLibrary.requestPermissionsAsync();
+      try {
+        // 인자 없이 호출하면 Android 13+에서 audio/video 권한까지 요청해 Expo Go에서 실패할 수 있습니다.
+        await MediaLibrary.requestPermissionsAsync(false, ['photo']);
+      } catch {
+        // 사진 선택은 ImagePicker 권한으로 진행하고, EXIF GPS가 제한되면 백엔드/수동 입력 흐름으로 보완합니다.
+      }
     }
     // 좌표 → 지명 자동 변환에 필요한 권한.
     // Android: reverseGeocodeAsync 가 위치 권한 필요 — 여기서 미리 요청.
