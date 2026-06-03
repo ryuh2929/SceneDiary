@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Image, FlatList, Pressable } from 'react-native';
+import { View, Text, Image, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ChevronLeft, ChevronRight, ChevronDown, MapPin, Plus } from 'lucide-react-native';
 import Twemoji from 'react-native-twemoji';
@@ -8,6 +8,11 @@ import { getTrips } from '@/api/home';
 import { Trip } from '@/types/api';
 import { useAppThemeColors } from '@/constants/app-colors';
 import { useAppSettings } from '@/contexts/app-settings-context';
+import { useUserStore } from '@/data/userStore';
+
+// ─────────────────────────────────────────────
+// 🔧 유틸 함수 섹션
+// ─────────────────────────────────────────────
 
 /**
  * 이모지 코드포인트(hex 문자열)를 실제 이모지 문자로 변환합니다.
@@ -74,28 +79,50 @@ export default function HomeScreen() {
    * 현재 선택된 연도의 여행 목록을 서버에서 불러옵니다.
    * 화면에 다시 진입하거나 연도가 바뀔 때마다 최신 데이터를 반영합니다.
    */
+  //1. Zustand 스토어에서 userProfile의 변경 사항을 실시간으로 감시
+  const userProfile = useUserStore((state) => state.userProfile);
   const loadTripData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      setTripData([]);
+    // 🌟 [안전장치] 혹시라도 userId가 없으면 즉시 종료
+      if (!userProfile?.userId) return;
+      try {
+        setIsLoading(true); // 로딩 시작
+        setError(null); // 이전 에러 초기화
+        setTripData([]); // 이전 데이터 초기화
 
-      const data = await getTrips(currentYear);
-      setTripData(data);
-    } catch (err: any) {
-      setTripData([]);
-      console.log('여행 데이터 조회 실패:', err);
-      setError('여행 정보를 불러오는 중 오류가 발생했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        const data = await getTrips(currentYear,userProfile?.userId);
+        // console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+        console.log("데이터 불러옴");
+        setTripData(data); // 받아온 데이터 저장
+      } catch (err: any) {
+        setTripData([]);
+        console.log("API 에러 전체:", err);
+        console.log("API 에러 메시지:", err?.message);
+        console.log(
+          "API 에러 응답:",
+          err?.response?.status,
+          err?.response?.data,
+        );
+        setError("여행 정보를 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setIsLoading(false); // 성공/실패 관계없이 로딩 종료
+      }
+    };
 
-  useFocusEffect(
-    React.useCallback(() => {
-      loadTripData();
-    }, [currentYear]),
-  );
+    // 2. 화면에 들어올 때마다(Focus) 데이터 갱신
+    useFocusEffect(
+      React.useCallback(() => {
+        //userProfile과 userId가 확실히 존재할 때만 API 호출
+        if (userProfile?.userId) {
+          loadTripData(); // 데이터 새로고침
+        }
+        return () => {
+          /* 필요 시 정리 작업 */
+        };
+      }, [currentYear,userProfile]), //의존성 배열에 userProfile을 반드시 추가해야 값이 들어온 순간 반응
+    );
+  // ─────────────────────────────────────────────
+  // 🔀 아코디언 토글 핸들러
+  // ─────────────────────────────────────────────
 
   /**
    * 여행 카드 상세 영역을 펼치거나 접습니다.
@@ -105,6 +132,18 @@ export default function HomeScreen() {
     setExpandedId(expandedId === id ? null : id);
   };
 
+  // ─────────────────────────────────────────────
+  // 🖥️ UI 렌더링
+  // ─────────────────────────────────────────────
+// 🌟 4. [기다리기 처리] 유저 ID가 아직 안 들어왔다면 화면 자체를 홀딩합니다.
+  if (!userProfile?.userId) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={{ marginTop: 10 }}>유저 정보를 불러오는 중...</Text>
+      </View>
+    );
+  }
   return (
     <View className="flex-1 bg-background dark:bg-dark-background">
       {isDarkMode ? <DarkModeBackground /> : null}
@@ -317,7 +356,7 @@ export default function HomeScreen() {
       />
 
       <Pressable
-        onPress={() => router.push('/add')}
+        onPress={() => router.push({pathname:'/add', params:{path:"home"}})}
         className="absolute right-md bg-fab w-14 h-14 rounded-full items-center justify-center shadow-lg"
         style={{ zIndex: 99, bottom: 125 }}
       >

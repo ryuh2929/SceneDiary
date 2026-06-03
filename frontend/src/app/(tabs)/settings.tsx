@@ -569,7 +569,6 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     let ignore = false;
-
     fetchSettingsProfile()
       .then((settingsProfile) => {
         if (ignore) {

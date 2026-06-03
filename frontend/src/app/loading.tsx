@@ -97,6 +97,7 @@ export default function LoadingScreen() {
   const router = useRouter();
   const colors = useAppThemeColors();
   const params = useLocalSearchParams<{
+    path?:string,
     photos?: string;
     tripId?: string;
     tripDayId?: string;
@@ -295,7 +296,7 @@ export default function LoadingScreen() {
     const timer = setTimeout(() => {
       router.replace({
         pathname: '/diary_writing',
-        params: { tripId, day, mode },
+        params: { tripId, day, mode ,path:params.path },
       });
     }, COMPLETE_DELAY_MS);
 
