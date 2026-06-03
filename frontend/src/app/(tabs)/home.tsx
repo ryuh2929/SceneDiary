@@ -213,185 +213,219 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 180 }}
       >
         <View className="px-md mt-lg mb-md gap-lg">
-          {tripData.map((item) => {
-            const isExpanded = expandedId === item.id;
-            return (
-              <View
-                key={item.id}
-                className="bg-surface rounded-lg overflow-hidden shadow-sm border border-border dark:border-dark-border dark:bg-dark-surface"
-              >
-                {/* ── 2-1. 대표 이미지 영역 ──
+          {/* 💡 핵심: tripData가 비어있는지 체크합니다 */}
+          {tripData.length === 0 ? (
+            // ⭕ 1. 데이터가 없을 때 보여줄 예쁜 안내 카드
+            <View className="mt-xl items-center justify-center rounded-2xl bg-surface p-xl border border-border dark:border-dark-border dark:bg-dark-surface shadow-sm">
+              {/* 📝 문구와 잘 어울리는 비행기나 일기장 이모지 하나 얹어주면 훨씬 부드러워집니다 */}
+              <Text style={{ fontSize: 32 }} className="mb-sm">
+                ✈️
+              </Text>
+
+              <Text className="text-base font-sans-bold text-textPrimary dark:text-dark-textPrimary text-center">
+                작성된 일기가 없습니다
+              </Text>
+
+              <Text className="mt-xs text-sm text-textSecondary dark:text-dark-textSecondary text-center leading-5">
+                오른쪽 아래 '+' 버튼을 눌러{"\n"}새로운 여행의 추억을 기록해
+                보세요!
+              </Text>
+            </View>
+          ) : (
+            tripData.map((item) => {
+              const isExpanded = expandedId === item.id;
+              return (
+                <View
+                  key={item.id}
+                  className="bg-surface rounded-lg overflow-hidden border border-border dark:border-dark-border dark:bg-dark-surface shadow-sm shadow-black/10 dark:shadow-none"
+                  style={{
+                    //[안드로이드 치트키] 안드로이드는 클래스명이 아니라 이 elevation 수치가 반드시 수동으로 박혀야 그림자가 나옵니다.
+                    elevation: 3,
+                    // [iOS 치트키 브레이크] 가끔 배경색과 그림자 결합이 깨질 때 인라인으로 슥 잡아주는 밀림 방지용
+                    shadowColor: colors.textPrimary,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 4,
+                  }}
+                >
+                  {/* ── 2-1. 대표 이미지 영역 ──
                     - 클릭 시 상세 페이지로 이동
                     - 좌상단: 날짜 뱃지 / 우상단: 여행 대표 이모지
                 ── */}
-                <Pressable
-                  className="relative h-60 w-full"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/detail",
-                      params: {
-                        id: item.id,
-                        title: item.title,
-                        location: item.destination,
-                        mainImage: item.cover_photo_id,
-                        startDate: item.start_date,
-                        endDate: item.end_date,
-                        details: JSON.stringify(item.tripDays),
-                      },
-                    })
-                  }
-                >
-                  {/* 대표 이미지 */}
-                  {getMainImage(item)}
+                  <Pressable
+                    className="relative h-60 w-full"
+                    onPress={() =>
+                      router.push({
+                        pathname: "/detail",
+                        params: {
+                          id: item.id,
+                          title: item.title,
+                          location: item.destination,
+                          mainImage: item.cover_photo_id,
+                          startDate: item.start_date,
+                          endDate: item.end_date,
+                          details: JSON.stringify(item.tripDays),
+                        },
+                      })
+                    }
+                  >
+                    {/* 대표 이미지 */}
+                    {getMainImage(item)}
 
-                  {/* 날짜 뱃지: 여행 시작일 ~ 종료일 */}
-                  <View className="absolute top-md left-md bg-muted rounded-md px-sm py-xs items-center shadow-sm dark:bg-dark-muted">
-                    <Text className="text-sm font-sans text-textPrimary dark:text-dark-textPrimary">
-                      {item.start_date} ~ {item.end_date}
-                    </Text>
-                  </View>
+                    {/* 날짜 뱃지: 여행 시작일 ~ 종료일 */}
+                    <View className="absolute top-md left-md bg-muted rounded-md px-sm py-xs items-center shadow-sm dark:bg-dark-muted">
+                      <Text className="text-sm font-sans text-textPrimary dark:text-dark-textPrimary">
+                        {item.start_date} ~ {item.end_date}
+                      </Text>
+                    </View>
 
-                  {/* 여행 대표 이모지: item.flag가 있을 때만 표시 */}
-                  <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                    {(item.flag || "1f30f") && (
-                      <EmojiIcon codepoint={item.flag || "1f30f"} size={26} />
-                    )}
-                  </View>
-                </Pressable>
+                    {/* 여행 대표 이모지: item.flag가 있을 때만 표시 */}
+                    <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
+                      {(item.flag || "1f1f0-1f1f7") && (
+                        <EmojiIcon
+                          codepoint={item.flag || "1f1f0-1f1f7"}
+                          size={26}
+                        />
+                      )}
+                    </View>
+                  </Pressable>
 
-                {/* ── 2-2. 여행 텍스트 정보 ──
+                  {/* ── 2-2. 여행 텍스트 정보 ──
                     - 여행 제목
                     - 목적지 위치
                 ── */}
-                <View className="p-md">
-                  <Text className="text-lg font-sans-bold text-textPrimary mb-xs dark:text-dark-textPrimary">
-                    {item.title}
-                  </Text>
-                  <View className="flex-row items-center gap-xs">
-                    <MapPin size={12} color={colors.textSecondary} />
-                    <Text className="text-sm text-textSecondary font-sans dark:text-dark-textSecondary">
-                      {item.destination}
+                  <View className="p-md">
+                    <Text className="text-lg font-sans-bold text-textPrimary mb-xs dark:text-dark-textPrimary">
+                      {item.title}
                     </Text>
+                    <View className="flex-row items-center gap-xs">
+                      <MapPin size={12} color={colors.textSecondary} />
+                      <Text className="text-sm text-textSecondary font-sans dark:text-dark-textSecondary">
+                        {item.destination}
+                      </Text>
+                    </View>
                   </View>
-                </View>
 
-                {/* ── 2-3. 아코디언 토글 버튼 ──
+                  {/* ── 2-3. 아코디언 토글 버튼 ──
                     - tripDays가 1개 이상일 때만 표시
                     - 펼침: "접기" / 접힘: "여행 상세 (N일)"
                     - 화살표 아이콘: 펼침 시 180도 회전
                 ── */}
-                {item.tripDays?.length > 0 && (
-                  <Pressable
-                    onPress={() => toggleExpand(item.id)}
-                    className={
-                      "w-full flex-row items-center justify-center py-sm gap-xs border-t border-border dark:border-dark-border " +
-                      (isExpanded
-                        ? "bg-muted dark:bg-dark-muted"
-                        : "bg-surface dark:bg-dark-surface")
-                    }
-                  >
-                    <Text className="text-sm text-primary font-sans">
-                      {isExpanded
-                        ? "접기"
-                        : `여행 상세 (${item.tripDays?.length}일)`}
-                    </Text>
-                    <ChevronDown
-                      size={14}
-                      color={colors.primary}
-                      style={{
-                        transform: [{ rotate: isExpanded ? "180deg" : "0deg" }],
-                        marginLeft: 2,
-                      }}
-                    />
-                  </Pressable>
-                )}
+                  {item.tripDays?.length > 0 && (
+                    <Pressable
+                      onPress={() => toggleExpand(item.id)}
+                      className={
+                        "w-full flex-row items-center justify-center py-sm gap-xs border-t border-border dark:border-dark-border " +
+                        (isExpanded
+                          ? "bg-muted dark:bg-dark-muted"
+                          : "bg-surface dark:bg-dark-surface")
+                      }
+                    >
+                      <Text className="text-sm text-primary font-sans">
+                        {isExpanded
+                          ? "접기"
+                          : `여행 상세 (${item.tripDays?.length}일)`}
+                      </Text>
+                      <ChevronDown
+                        size={14}
+                        color={colors.primary}
+                        style={{
+                          transform: [
+                            { rotate: isExpanded ? "180deg" : "0deg" },
+                          ],
+                          marginLeft: 2,
+                        }}
+                      />
+                    </Pressable>
+                  )}
 
-                {/* ── 2-4. 아코디언 상세 목록 ──
+                  {/* ── 2-4. 아코디언 상세 목록 ──
                     - isExpanded가 true일 때만 렌더링
                     - 일차별 카드: 썸네일 / Day N / 감정 이모지 / 소제목 / 위치
                     - 클릭 시 해당 Day로 상세 페이지 이동
                 ── */}
-                {isExpanded && (
-                  <View className="bg-muted px-md pb-md pt-sm gap-sm dark:bg-dark-muted">
-                    {item.tripDays.map((detail) => (
-                      <Pressable
-                        key={detail.id}
-                        className="flex-row items-center bg-surface p-sm rounded-md shadow-sm dark:bg-dark-surface"
-                        onPress={() =>
-                          router.push({
-                            pathname: "/detail",
-                            params: {
-                              id: item.id,
-                              title: detail.subtitle,
-                              location: detail.location_summary,
-                              mainImage: detail.represent_image,
-                              startDate: item.start_date,
-                              endDate: item.end_date,
-                              day: detail.day_number,
-                              details: JSON.stringify(item.tripDays), // 상세 일기 배열을 문자열로 변환해서 전달
-                            },
-                          })
-                        }
-                      >
-                        {/* 일차 썸네일: 첫 번째 사진의 썸네일 이미지 */}
-                        {detail.photos && detail.photos.length > 0 && (
-                          <Image
-                            source={{
-                              uri: detail.photos[0].thumbnail_image_url,
-                            }}
-                            className="w-14 h-14 rounded-md mr-md"
-                            resizeMode="cover"
-                          />
-                        )}
-
-                        <View className="flex-1">
-                          {/* Day 번호 + 감정 이모지 */}
-                          <View className="flex-row items-center justify-between mb-xs w-full pr-sm">
-                            <Text className="text-sm text-primary font-sans-bold">
-                              Day {detail.day_number}
-                            </Text>
-                            {/* 감정 이모지: detail.emotion이 있을 때만 표시 */}
-                            <View
-                              style={{
-                                width: 28,
-                                height: 28,
-                                flexDirection: "row",
-                                justifyContent: "center",
-                                alignItems: "center",
+                  {isExpanded && (
+                    <View className="bg-muted px-md pb-md pt-sm gap-sm dark:bg-dark-muted">
+                      {item.tripDays.map((detail) => (
+                        <Pressable
+                          key={detail.id}
+                          className="flex-row items-center bg-surface p-sm rounded-md shadow-sm dark:bg-dark-surface"
+                          onPress={() =>
+                            router.push({
+                              pathname: "/detail",
+                              params: {
+                                id: item.id,
+                                title: detail.subtitle,
+                                location: detail.location_summary,
+                                mainImage: detail.represent_image,
+                                startDate: item.start_date,
+                                endDate: item.end_date,
+                                day: detail.day_number,
+                                details: JSON.stringify(item.tripDays), // 상세 일기 배열을 문자열로 변환해서 전달
+                              },
+                            })
+                          }
+                        >
+                          {/* 일차 썸네일: 첫 번째 사진의 썸네일 이미지 */}
+                          {detail.photos && detail.photos.length > 0 && (
+                            <Image
+                              source={{
+                                uri: detail.photos[0].thumbnail_image_url,
                               }}
+                              className="w-14 h-14 rounded-md mr-md"
+                              resizeMode="cover"
+                            />
+                          )}
+
+                          <View className="flex-1">
+                            {/* Day 번호 + 감정 이모지 */}
+                            <View className="flex-row items-center justify-between mb-xs w-full pr-sm">
+                              <Text className="text-sm text-primary font-sans-bold">
+                                Day {detail.day_number}
+                              </Text>
+                              {/* 감정 이모지: detail.emotion이 있을 때만 표시 */}
+                              <View
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  flexDirection: "row",
+                                  justifyContent: "center",
+                                  alignItems: "center",
+                                }}
+                              >
+                                {detail.emotion && (
+                                  <EmojiIcon
+                                    codepoint={detail.emotion}
+                                    size={20}
+                                  />
+                                )}
+                              </View>
+                            </View>
+
+                            {/* 소제목 (1줄 제한) */}
+                            <Text
+                              className="text-md text-textPrimary font-sans-bold mb-xs dark:text-dark-textPrimary"
+                              numberOfLines={1}
                             >
-                              {detail.emotion && (
-                                <EmojiIcon
-                                  codepoint={detail.emotion}
-                                  size={20}
-                                />
-                              )}
+                              {detail.subtitle}
+                            </Text>
+
+                            {/* 세부 위치 */}
+                            <View className="flex-row items-center gap-xs">
+                              <MapPin size={10} color={colors.textSecondary} />
+                              <Text className="text-sm text-textSecondary font-sans dark:text-dark-textSecondary">
+                                {detail.location_summary}
+                              </Text>
                             </View>
                           </View>
-
-                          {/* 소제목 (1줄 제한) */}
-                          <Text
-                            className="text-md text-textPrimary font-sans-bold mb-xs dark:text-dark-textPrimary"
-                            numberOfLines={1}
-                          >
-                            {detail.subtitle}
-                          </Text>
-
-                          {/* 세부 위치 */}
-                          <View className="flex-row items-center gap-xs">
-                            <MapPin size={10} color={colors.textSecondary} />
-                            <Text className="text-sm text-textSecondary font-sans dark:text-dark-textSecondary">
-                              {detail.location_summary}
-                            </Text>
-                          </View>
-                        </View>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-              </View>
-            );
-          })}
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })
+          )}
         </View>
       </ScrollView>
 

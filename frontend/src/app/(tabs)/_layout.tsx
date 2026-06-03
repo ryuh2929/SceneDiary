@@ -5,7 +5,7 @@ import BottomNav from "../../components/bottom-nav";
 
 export default function TabsLayout() {
   return (
-    <View className="flex-1">
+    <View className="flex-1 bg-surface dark:bg-dark-surface">
       {/* 화면 전환은 Expo Router의 Tabs가 처리하도록 둡니다 */}
       <Tabs
         screenOptions={{

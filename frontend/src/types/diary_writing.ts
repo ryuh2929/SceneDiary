@@ -51,14 +51,16 @@ export type DayStatus = {
   genStatus: GenStatus; // ready / generating / failed
 };
 
-// 일차 저장(PATCH) 요청 body. 이 화면의 유일한 편집 대상 = 여행지.
-// 지도 피커에서 좌표까지 골랐으면 lat/lon 도 함께 전송.
-// picker 의 OS reverseGeocode 가 함께 알려준 국가/도시를 보내면
-// 백엔드가 비어있는 trip.destination 을 "국가/도시" 형식으로 자동 채워줍니다.
+// 일차 부분 업데이트(PATCH) 요청 body.
+// 모든 필드 옵셔널 — 호출자는 자기가 바꾸려는 것만 보내면 됩니다.
+//   · 위치만: { locationSummary, lat, lon, countryName, cityName }
+//   · 본문만: { content }
+// 백엔드는 None 이 아닌 필드만 업데이트합니다.
 export type DayUpdate = {
-  locationSummary: string; // trip_days.location_summary
-  lat?: number; // trip_days.representative_lat (옵셔널)
-  lon?: number; // trip_days.representative_lon (옵셔널)
+  locationSummary?: string; // trip_days.location_summary
+  content?: string; // trip_days.content — 본문(사용자가 편집한 일기 텍스트)
+  lat?: number; // trip_days.representative_lat
+  lon?: number; // trip_days.representative_lon
   countryName?: string; // trip.destination 의 "국가" 부분
   cityName?: string; // trip.destination 의 "도시" 부분
 };
