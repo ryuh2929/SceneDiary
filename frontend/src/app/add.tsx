@@ -40,7 +40,8 @@ type LoadingPhotoParam = Pick<
 
 const MAX_IMAGE_SIZE = 1024;
 const THUMBNAIL_SIZE = 256;
-const MAX_PHOTO_COUNT = 10;
+const MAX_PHOTO_COUNT = 8;
+const PHOTO_PROCESSING_CONCURRENCY = 2;
 
 // 원본 비율을 유지하면서 긴 변만 기준 크기 이하로 줄입니다.
 function resizeAction(width: number, height: number, maxSize: number) {
@@ -59,6 +60,22 @@ async function getFileSizeBytes(uri: string) {
   } catch {
     return undefined;
   }
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+) {
+  const results: R[] = [];
+
+  for (let start = 0; start < items.length; start += concurrency) {
+    const batch = items.slice(start, start + concurrency);
+    const batchResults = await Promise.all(batch.map((item, index) => mapper(item, start + index)));
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 function parseExifTakenDate(exif: Record<string, unknown> | null | undefined): string | undefined {
@@ -174,7 +191,7 @@ function getPhotoHeading(selectedDates: string[], targetDayNumber?: number) {
 
 function getPhotoDescription(selectedDates: string[]) {
   if (selectedDates.length <= 1) {
-    return '최대 10장까지 선택할 수 있고, 글 작성 화면용 썸네일을 따로 준비해요.';
+    return `최대 ${MAX_PHOTO_COUNT}장까지 선택할 수 있고, 글 작성 화면용 썸네일을 따로 준비해요.`;
   }
 
   return '선택한 사진은 촬영일 기준으로 나뉘어 각 날짜의 일기로 준비돼요.';
@@ -216,11 +233,16 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
   const gps = parseExifGps(asset.exif);
   // GPS 가 있으면 OS 지오코딩으로 지명도 미리 확보. 백엔드가 그대로 location_summary/destination 으로 사용.
   const geo = gps ? await reverseGeocode(gps.latitude, gps.longitude) : undefined;
-  // 썸네일(화면 미리보기용)만 만들고, 백엔드 업로드용 파일은 원본(asset.uri)을 그대로 씁니다.
-  //   이유: ImageManipulator 로 리사이즈하면 EXIF(GPS/촬영일시)가 모두 날아갑니다.
-  //   프론트 parseExifGps 가 권한·picker 제약으로 GPS 를 못 읽을 때, 백엔드의
-  //   extract_image_gps_coordinates fallback 이 raw_bytes 에서 GPS 를 다시 시도하려면
-  //   원본 파일을 받아야 합니다. (리사이즈는 백엔드 image_processor 가 처리)
+  // 업로드용 1024px 이미지와 화면 미리보기용 256px 썸네일을 따로 만듭니다.
+  // EXIF가 리사이즈 과정에서 사라질 수 있어 촬영일/GPS는 원본 asset에서 먼저 읽어 form 필드로 보냅니다.
+  const uploadImage = await ImageManipulator.manipulateAsync(
+    asset.uri,
+    [resizeAction(asset.width, asset.height, MAX_IMAGE_SIZE)],
+    {
+      compress: 0.86,
+      format: ImageManipulator.SaveFormat.JPEG,
+    },
+  );
   const thumbnail = await ImageManipulator.manipulateAsync(
     asset.uri,
     [resizeAction(asset.width, asset.height, THUMBNAIL_SIZE)],
@@ -229,14 +251,14 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
       format: ImageManipulator.SaveFormat.JPEG,
     },
   );
-  const fileSizeBytes = await getFileSizeBytes(asset.uri);
+  const fileSizeBytes = await getFileSizeBytes(uploadImage.uri);
 
   return {
     id: `${Date.now()}-${displayOrder}-${asset.assetId ?? asset.fileName ?? asset.uri}`,
-    fileUri: asset.uri, // ← 원본. EXIF 보존됨.
+    fileUri: uploadImage.uri,
     thumbnailUri: thumbnail.uri,
     originalFilename: asset.fileName ?? `photo-${displayOrder + 1}.jpg`,
-    mimeType: asset.mimeType ?? 'image/jpeg',
+    mimeType: 'image/jpeg',
     takenDate: parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName),
     gpsLatitude: gps?.latitude,
     gpsLongitude: gps?.longitude,
@@ -244,8 +266,8 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
     countryName: geo?.countryName,
     cityName: geo?.cityName,
     fileSizeBytes,
-    width: asset.width,
-    height: asset.height,
+    width: uploadImage.width,
+    height: uploadImage.height,
     displayOrder,
   };
 }
@@ -278,7 +300,7 @@ export default function AddScreen() {
 
     const remainingSlots = MAX_PHOTO_COUNT - pendingPhotos.length;
     if (remainingSlots <= 0) {
-      Alert.alert('사진은 최대 10장까지 가능해요', '선택한 사진을 삭제한 뒤 다시 추가해 주세요.');
+      Alert.alert(`사진은 최대 ${MAX_PHOTO_COUNT}장까지 가능해요`, '선택한 사진을 삭제한 뒤 다시 추가해 주세요.');
       return;
     }
 
@@ -319,12 +341,14 @@ export default function AddScreen() {
     try {
       const startOrder = pendingPhotos.length;
       const selectedAssets = result.assets.slice(0, remainingSlots);
-      const processedPhotos = await Promise.all(
-        selectedAssets.map((asset, index) => buildPendingPhoto(asset, startOrder + index)),
+      const processedPhotos = await mapWithConcurrency(
+        selectedAssets,
+        PHOTO_PROCESSING_CONCURRENCY,
+        (asset, index) => buildPendingPhoto(asset, startOrder + index),
       );
       setPendingPhotos((current) => [...current, ...processedPhotos]);
       if (result.assets.length > remainingSlots) {
-        Alert.alert('사진은 최대 10장까지 가능해요', `이번에는 ${remainingSlots}장만 추가했어요.`);
+        Alert.alert(`사진은 최대 ${MAX_PHOTO_COUNT}장까지 가능해요`, `이번에는 ${remainingSlots}장만 추가했어요.`);
       }
     } catch {
       Alert.alert('사진을 준비하지 못했어요', '다시 선택해 주세요.');
@@ -433,7 +457,7 @@ export default function AddScreen() {
                 <Camera size={24} color={isPhotoLimitReached ? colors.border : colors.primaryLight} />
               )}
               <Text className="mt-xs text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
-                {isPreparing ? '준비 중' : isPhotoLimitReached ? '최대 10장' : '사진 추가'}
+                {isPreparing ? '준비 중' : isPhotoLimitReached ? `최대 ${MAX_PHOTO_COUNT}장` : '사진 추가'}
               </Text>
             </Pressable>
 
