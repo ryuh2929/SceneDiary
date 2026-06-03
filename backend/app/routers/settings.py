@@ -1,5 +1,6 @@
 import json
-from datetime import datetime, timezone
+import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile
@@ -9,12 +10,17 @@ from app.db.session import get_db
 from app.db.models import User
 from app.schemas.settings import (
     SettingsProfile,
+    TravelStyleAnalysisStatus,
     UpdateNicknameRequest,
     UpdateSettingsToggleRequest,
     UpdateWritingPersonaRequest,
 )
 from app.services.image_processor import save_profile_image
-from app.services.travel_style_analysis import run_travel_style_analysis
+from app.services.travel_style_analysis import (
+    get_travel_style_analysis_status,
+    mark_travel_style_analysis_running,
+    run_travel_style_analysis,
+)
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -23,30 +29,50 @@ _PROFILE_IMAGE_PUBLIC_ROOT = "profile_images"
 _PROFILE_IMAGE_ROOT = _BACKEND_DIR / "test_images" / _PROFILE_IMAGE_PUBLIC_ROOT
 MAX_PROFILE_IMAGE_BYTES = 1 * 1024 * 1024
 
-# DB에는 안정적인 코드값(poetic, daily 등)만 저장하고,
+
+def env_int(name: str, default: int) -> int:
+    # 테스트할 때 .env 값만 바꿔도 쿨다운을 조절할 수 있게 합니다.
+    # 잘못된 값이나 0 이하 값이 들어오면 운영 기본값인 default를 사용합니다.
+    try:
+        value = int(os.getenv(name, str(default)))
+    except ValueError:
+        return default
+
+    return value if value > 0 else default
+
+
+TRAVEL_STYLE_ANALYSIS_COOLDOWN_SECONDS = env_int("EXPO_PUBLIC_TRAVEL_ANALYSIS_COOLDOWN_SECONDS", 60)
+
+# DB에는 안정적인 코드값(daily, playful 등)만 저장하고,
 # 화면에 보여줄 라벨/설명은 API 응답을 만들 때 매핑합니다.
+# dict 순서가 그대로 프런트 버튼 순서가 되므로, 설정 화면에서 보일 순서대로 작성합니다.
 PERSONA_OPTIONS = {
-    "poetic": {
-        "label": "시적인",
-        "description": "감성적이고 문학적인 표현",
-    },
     "daily": {
         "label": "일상적",
         "description": "담백하고 자연스러운 표현",
     },
-    "adventurous": {
-        "label": "모험가",
-        "description": "생동감 있고 활동적인 표현",
+    "playful": {
+        "label": "유쾌한",
+        "description": "가볍고 재치 있는 표현",
+    },
+    "poetic": {
+        "label": "시적인",
+        "description": "감성적이고 문학적인 표현",
     },
     "romantic": {
         "label": "로맨틱",
-        "description": "따뜻하고 감성적인 표현",
+        "description": "따뜻하고 사랑이 넘치는 표현",
     },
+}
+LEGACY_PERSONA_ALIASES = {
+    # 예전에 사용하던 adventurous 값은 새 페르소나 체계에서 playful로 읽히게 합니다.
+    # 기존 테스트 데이터가 남아있어도 버튼 선택 상태가 비어 보이지 않도록 하는 임시 호환 처리입니다.
+    "adventurous": "playful",
 }
 
 DEFAULT_TRAVEL_STYLE_ANALYSIS = {
     "title": "이름 없는 여행자",
-    "description": "아직 분석할 수 있는 여행 데이터가 없습니다",
+    "description": "아직 분석할 수 있는 여행 데이터가 없습니다.",
     "icon": "NotebookPen",
 }
 # DB에 저장된 travel_style_analysis.icon 값이 프런트에서 렌더링 가능한 아이콘인지 검증하는 허용 목록입니다.
@@ -129,8 +155,15 @@ def public_image_url(request: Request, path: str | None) -> str | None:
     return f"{base_url(request)}/test_images/{cleaned_path}"
 
 
+def normalize_persona_id(persona_id: str) -> str:
+    # DB에 예전 코드값이 남아있거나 프런트가 예전 값을 보내도, 현재 사용하는 코드값으로 한 번 정리합니다.
+    normalized = persona_id.strip().lower()
+
+    return LEGACY_PERSONA_ALIASES.get(normalized, normalized)
+
+
 def persona_tags(selected_persona: str) -> list[dict[str, object]]:
-    normalized = selected_persona.strip().lower()
+    normalized = normalize_persona_id(selected_persona)
 
     # 프론트는 tags 배열을 그대로 버튼 목록으로 렌더링합니다.
     # 따라서 항상 전체 페르소나 목록을 내려주고, DB 값과 일치하는 항목만 선택 상태로 표시합니다.
@@ -172,11 +205,12 @@ def travel_style_analysis(user: User) -> dict[str, str]:
 
 
 def to_settings_profile(user: User, request: Request) -> SettingsProfile:
-    writing_persona = clean(user.writing_persona).lower()
+    writing_persona = normalize_persona_id(clean(user.writing_persona))
     selected_persona = PERSONA_OPTIONS.get(writing_persona)
 
     # 아이콘은 프론트에서 lucide-react-native 컴포넌트로 매핑할 수 있는 키만 내려줍니다.
     return SettingsProfile(
+        userId=user.id,
         nickname=clean(user.nickname) or "오늘의 여행자",
         profileImageUrl=public_image_url(request, user.profile_image_url),
         persona={
@@ -218,6 +252,32 @@ def find_user_or_404(db: Session, user_uuid: str | None) -> User:
     return user
 
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def as_utc(value: datetime) -> datetime:
+    # DB 드라이버 설정에 따라 timezone 정보가 빠진 datetime이 올 수 있어서 UTC 기준으로 맞춰 비교합니다.
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+
+    return value.astimezone(timezone.utc)
+
+
+def travel_style_retry_after_seconds(user: User) -> int:
+    # 마지막으로 분석 요청을 "접수한" 시간을 기준으로 1분 이내 재요청이면 남은 대기 시간을 계산합니다.
+    # NULL이면 아직 제한할 이전 요청이 없는 상태이므로 바로 통과시킵니다.
+    requested_at = user.travel_style_analysis_requested_at
+
+    if requested_at is None:
+        return 0
+
+    available_at = as_utc(requested_at) + timedelta(seconds=TRAVEL_STYLE_ANALYSIS_COOLDOWN_SECONDS)
+    remaining = (available_at - utc_now()).total_seconds()
+
+    return max(0, int(remaining + 0.999))
+
+
 @router.get("/profile", response_model=SettingsProfile)
 def get_settings_profile(
     request: Request,
@@ -238,7 +298,7 @@ def update_writing_persona(
 ) -> SettingsProfile:
     # 프런트가 보내는 값은 반드시 PERSONA_OPTIONS에 등록된 id만 허용합니다.
     # 잘못된 값이 DB에 들어가면 이후 버튼 선택 상태를 맞출 수 없어서 여기서 차단합니다.
-    persona_id = payload.persona_id.strip().lower()
+    persona_id = normalize_persona_id(payload.persona_id)
 
     if persona_id not in PERSONA_OPTIONS:
         raise HTTPException(status_code=400, detail="Unknown writing persona")
@@ -350,8 +410,42 @@ def request_travel_style_analysis(
     db: Session = Depends(get_db),
 ) -> SettingsProfile:
     user = find_user_or_404(db, user_uuid)
+    retry_after_seconds = travel_style_retry_after_seconds(user)
+
+    if retry_after_seconds > 0:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "message": "재요청까지 잠시 시간이 필요합니다.",
+                "retry_after_seconds": retry_after_seconds,
+            },
+        )
+
+    # 쿨다운을 통과한 요청만 "접수된 분석 요청"으로 보고 시간을 먼저 기록합니다.
+    # 분석 완료 시점이 아니라 요청 접수 시점을 기록해야, 분석 중 버튼을 다시 눌러도 중복 LLM 호출을 막을 수 있습니다.
+    now = utc_now()
+    user.travel_style_analysis_requested_at = now
+    user.updated_at = now
+    db.commit()
+    db.refresh(user)
 
     # 설정 화면의 분석 버튼은 요청만 빠르게 완료하고, 실제 LLM 분석은 백그라운드 작업에서 처리합니다.
+    mark_travel_style_analysis_running(user.id)
     background_tasks.add_task(run_travel_style_analysis, user.id, force=True)
 
     return to_settings_profile(user, request)
+
+
+@router.get("/travel-style-analysis/status", response_model=TravelStyleAnalysisStatus)
+def get_travel_style_analysis_state(
+    user_uuid: str = Query(...),
+    db: Session = Depends(get_db),
+) -> TravelStyleAnalysisStatus:
+    user = find_user_or_404(db, user_uuid)
+    status = get_travel_style_analysis_status(user.id)
+
+    # 분석 요청은 백그라운드에서 처리되므로, 프론트가 완료/실패 여부를 짧게 확인할 수 있게 별도 상태를 내려줍니다.
+    return TravelStyleAnalysisStatus(
+        status=status["status"],
+        message=status.get("message"),
+    )
