@@ -41,7 +41,6 @@ type LoadingPhotoParam = Pick<
 const MAX_IMAGE_SIZE = 1024;
 const THUMBNAIL_SIZE = 256;
 const MAX_PHOTOS_PER_DAY = 8;
-const MAX_PHOTO_SELECTION_BATCH = 80;
 const PHOTO_PROCESSING_CONCURRENCY = 2;
 
 // 원본 비율을 유지하면서 긴 변만 기준 크기 이하로 줄입니다.
@@ -70,6 +69,7 @@ async function mapWithConcurrency<T, R>(
 ) {
   const results: R[] = [];
 
+  // 큰 사진 여러 장을 한 번에 리사이즈하면 기기 메모리와 UI 응답성이 흔들릴 수 있어 작은 묶음으로 처리합니다.
   for (let start = 0; start < items.length; start += concurrency) {
     const batch = items.slice(start, start + concurrency);
     const batchResults = await Promise.all(batch.map((item, index) => mapper(item, start + index)));
@@ -321,7 +321,12 @@ export default function AddScreen() {
     // (manifest 선언은 app.config.js 의 expo-media-library 플러그인이 담당)
     if (Platform.OS === 'android') {
       await PermissionsAndroid.request('android.permission.ACCESS_MEDIA_LOCATION' as never);
-      await MediaLibrary.requestPermissionsAsync();
+      try {
+        // 인자 없이 호출하면 Android 13+에서 audio/video 권한까지 요청해 Expo Go에서 실패할 수 있습니다.
+        await MediaLibrary.requestPermissionsAsync(false, ['photo']);
+      } catch {
+        // 사진 선택은 ImagePicker 권한으로 진행하고, EXIF GPS가 제한되면 백엔드/수동 입력 흐름으로 보완합니다.
+      }
     }
     // 좌표 → 지명 자동 변환에 필요한 권한.
     // Android: reverseGeocodeAsync 가 위치 권한 필요 — 여기서 미리 요청.
@@ -332,7 +337,8 @@ export default function AddScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
-      selectionLimit: MAX_PHOTO_SELECTION_BATCH,
+      // 0은 ImagePicker의 "시스템 기본 최대치"를 뜻합니다. 전체 제한은 두지 않고 아래에서 일차별 8장만 걸러냅니다.
+      selectionLimit: 0,
       quality: 1,
       exif: true,
       // Android 기본 Photo Picker는 GPS EXIF를 0으로 마스킹하는 경우가 있어 legacy picker를 사용합니다.
@@ -346,7 +352,7 @@ export default function AddScreen() {
     setIsPreparing(true);
     try {
       const startOrder = pendingPhotos.length;
-      const selectedAssets = result.assets.slice(0, MAX_PHOTO_SELECTION_BATCH);
+      const selectedAssets = result.assets;
       const processedPhotos = await mapWithConcurrency(
         selectedAssets,
         PHOTO_PROCESSING_CONCURRENCY,
@@ -356,6 +362,7 @@ export default function AddScreen() {
       const acceptedPhotos: PendingPhoto[] = [];
       let rejectedCount = 0;
 
+      // 전체 업로드 수는 제한하지 않고, 촬영일 기준 같은 일차 사진만 최대 8장으로 제한합니다.
       for (const photo of processedPhotos) {
         const key = getPhotoDateKey(photo);
         const currentCount = dailyCounts[key] ?? 0;
@@ -376,8 +383,6 @@ export default function AddScreen() {
           `일차별 사진은 최대 ${MAX_PHOTOS_PER_DAY}장까지 가능해요`,
           `${rejectedCount}장은 같은 날짜 사진이 너무 많아서 추가하지 않았어요.`,
         );
-      } else if (result.assets.length > MAX_PHOTO_SELECTION_BATCH) {
-        Alert.alert('사진을 일부만 추가했어요', `이번에는 ${MAX_PHOTO_SELECTION_BATCH}장만 추가했어요.`);
       }
     } catch {
       Alert.alert('사진을 준비하지 못했어요', '다시 선택해 주세요.');
