@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 from collections import Counter
@@ -30,8 +31,9 @@ _THUMBNAIL_PUBLIC_ROOT = "test_images/test_images_korea_thumbs"
 _ANALYSIS_ROOT = _TEST_IMAGES_ROOT / "test_images_korea"
 _THUMBNAIL_ROOT = _TEST_IMAGES_ROOT / "test_images_korea_thumbs"
 _MODEL_NAME = os.getenv("DIARY_MODEL", "gemma4:e4b")
-MAX_UPLOAD_PHOTOS = 10
+MAX_UPLOAD_PHOTOS_PER_DAY = 8
 MAX_UPLOAD_BYTES = 12 * 1024 * 1024
+IMAGE_PROCESSING_CONCURRENCY = 3
 
 LoadingStep = Literal[
     "uploading",
@@ -296,8 +298,6 @@ async def upload_first_day_photos(
     # GPS는 프론트가 리사이즈 전에 추출해서 form으로 보낸 값을 우선 사용하고, 없으면 raw_bytes에서 fallback합니다.
     if not files:
         raise HTTPException(status_code=400, detail="At least one photo is required")
-    if len(files) > MAX_UPLOAD_PHOTOS:
-        raise HTTPException(status_code=400, detail=f"Photos are limited to {MAX_UPLOAD_PHOTOS}")
     if day_number < 1:
         raise HTTPException(status_code=400, detail="day_number must be greater than 0")
 
@@ -388,69 +388,87 @@ async def upload_first_day_photos(
             .filter(Photo.trip_day_id == trip_day.id, Photo.deleted_at.is_(None))
             .count()
         )
-        if existing_count + len(grouped_drafts) > MAX_UPLOAD_PHOTOS:
-            raise HTTPException(status_code=400, detail=f"Photos are limited to {MAX_UPLOAD_PHOTOS} per day")
+        # 업로드 요청 전체가 아니라 촬영일로 나뉜 일차별 사진 수만 제한합니다.
+        if existing_count + len(grouped_drafts) > MAX_UPLOAD_PHOTOS_PER_DAY:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Photos are limited to {MAX_UPLOAD_PHOTOS_PER_DAY} per day",
+            )
 
         uploaded_by_day_id[trip_day.id] = []
-        for index, draft in enumerate(grouped_drafts):
-            display_order = existing_count + index
+        processing_items = [
+            (index, draft, existing_count + index)
+            for index, draft in enumerate(grouped_drafts)
+        ]
+
+        # 이미지 파일 저장/리사이즈만 3장씩 병렬 처리하고, DB 저장은 아래에서 순서대로 진행합니다.
+        for batch_start in range(0, len(processing_items), IMAGE_PROCESSING_CONCURRENCY):
+            batch = processing_items[batch_start:batch_start + IMAGE_PROCESSING_CONCURRENCY]
             try:
-                processed = process_upload_image(
-                    raw_bytes=draft.raw_bytes,
-                    original_filename=draft.original_filename,
-                    analysis_root=_ANALYSIS_ROOT,
-                    thumbnail_root=_THUMBNAIL_ROOT,
-                    analysis_public_root=_ANALYSIS_PUBLIC_ROOT,
-                    thumbnail_public_root=_THUMBNAIL_PUBLIC_ROOT,
-                    trip_id=trip.id,
-                    day_number=trip_day.day_number,
-                    trip_date=trip_day.date,
-                    display_order=display_order,
+                processed_batch = await asyncio.gather(
+                    *(
+                        asyncio.to_thread(
+                            process_upload_image,
+                            raw_bytes=draft.raw_bytes,
+                            original_filename=draft.original_filename,
+                            analysis_root=_ANALYSIS_ROOT,
+                            thumbnail_root=_THUMBNAIL_ROOT,
+                            analysis_public_root=_ANALYSIS_PUBLIC_ROOT,
+                            thumbnail_public_root=_THUMBNAIL_PUBLIC_ROOT,
+                            trip_id=trip.id,
+                            day_number=trip_day.day_number,
+                            trip_date=trip_day.date,
+                            display_order=display_order,
+                        )
+                        for _, draft, display_order in batch
+                    )
                 )
             except Exception as exc:
+                failed_filename = next((draft.original_filename for _, draft, _ in batch), None)
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Image processing failed: {draft.original_filename}",
+                    detail=f"Image processing failed: {failed_filename}",
                 ) from exc
 
-            photo = Photo(
-                trip_day_id=trip_day.id,
-                user_id=user_id,
-                file_url=processed.file_url,
-                thumbnail_url=processed.thumbnail_url,
-                original_filename=draft.original_filename,
-                file_size_bytes=processed.file_size_bytes,
-                mime_type=processed.mime_type,
-                width=processed.width,
-                height=processed.height,
-                latitude=draft.latitude,
-                longitude=draft.longitude,
-                # 프론트가 미리 변환해 보낸 지명. 권한 없거나 GPS 없으면 None.
-                location_name=draft.place_name,
-                display_order=display_order,
-                created_at=datetime.now(),
-            )
-            db.add(photo)
-            db.flush()
+            for (_, draft, display_order), processed in zip(batch, processed_batch):
+                photo = Photo(
+                    trip_day_id=trip_day.id,
+                    user_id=user_id,
+                    file_url=processed.file_url,
+                    thumbnail_url=processed.thumbnail_url,
+                    original_filename=draft.original_filename,
+                    file_size_bytes=processed.file_size_bytes,
+                    mime_type=processed.mime_type,
+                    width=processed.width,
+                    height=processed.height,
+                    latitude=draft.latitude,
+                    longitude=draft.longitude,
+                    # 프론트가 미리 변환해 보낸 지명. 권한 없거나 GPS 없으면 None.
+                    location_name=draft.place_name,
+                    display_order=display_order,
+                    created_at=datetime.now(),
+                )
+                db.add(photo)
+                db.flush()
 
-            if trip.cover_photo_id is None:
-                trip.cover_photo_id = photo.id
-            if trip_day.represent_image is None:
-                trip_day.represent_image = photo.id
+                if trip.cover_photo_id is None:
+                    trip.cover_photo_id = photo.id
+                if trip_day.represent_image is None:
+                    trip_day.represent_image = photo.id
 
-            uploaded_photo = UploadedPhoto(
-                id=photo.id,
-                thumbnailUrl=_abs_url(base, photo.thumbnail_url),
-                fileUrl=_abs_url(base, photo.file_url),
-                originalFilename=photo.original_filename,
-                fileSizeBytes=photo.file_size_bytes,
-                mimeType=photo.mime_type,
-                width=photo.width,
-                height=photo.height,
-                displayOrder=photo.display_order,
-            )
-            uploaded.append(uploaded_photo)
-            uploaded_by_day_id[trip_day.id].append(uploaded_photo)
+                uploaded_photo = UploadedPhoto(
+                    id=photo.id,
+                    thumbnailUrl=_abs_url(base, photo.thumbnail_url),
+                    fileUrl=_abs_url(base, photo.file_url),
+                    originalFilename=photo.original_filename,
+                    fileSizeBytes=photo.file_size_bytes,
+                    mimeType=photo.mime_type,
+                    width=photo.width,
+                    height=photo.height,
+                    displayOrder=photo.display_order,
+                )
+                uploaded.append(uploaded_photo)
+                uploaded_by_day_id[trip_day.id].append(uploaded_photo)
 
         _refresh_trip_day_representative_coordinates(db, trip_day)
         # 일차 대표 지명: 그날 사진들의 placeName 중 가장 빈도 높은 값.

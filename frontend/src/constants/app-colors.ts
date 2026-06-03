@@ -24,22 +24,22 @@ export const lightAppColors = {
 
 export const darkAppColors = {
   primary: '#5B7DBB',
-  primaryLight: '#39536B',
-  accent: '#5B7DBB',
-  accentMuted: '#37445A',
-  background: '#152538',
-  surface: '#1C2E43',
+  primaryLight: '#2F4965',
+  accent: '#6F89B8',
+  accentMuted: '#243348',
+  background: '#0B1624', // 앱 전체 배경은 완전 검정 대신 밤하늘 같은 깊은 네이비를 사용합니다.
+  surface: '#121F2F',
   textOnPrimary: '#FFFFFF',
   textPrimary: '#DDE3EE',
   textSecondary: '#A9C3E6',
-  border: '#2A4560',
-  muted: '#1E3A52',
-  input: '#243D52',
+  border: '#26384D',
+  muted: '#172A3E',
+  input: '#182B3F',
   error: '#B91C1C',
   success: '#22c55e',
-  disabled: '#39536B',
+  disabled: '#2F4965',
   toggle: '#5B7DBB',
-  ring: '#2A4560',
+  ring: '#26384D',
 };
 
 export type AppColors = typeof lightAppColors;

@@ -1,4 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
+import Constants from "expo-constants";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
@@ -62,7 +63,9 @@ type LoadingPhotoParam = Pick<
 
 const MAX_IMAGE_SIZE = 1024;
 const THUMBNAIL_SIZE = 256;
-const MAX_PHOTO_COUNT = 10;
+const MAX_PHOTOS_PER_DAY = 8;
+const PHOTO_PROCESSING_CONCURRENCY = 2;
+const IS_EXPO_GO = Constants.appOwnership === "expo";
 
 // 원본 비율을 유지하면서 긴 변만 기준 크기 이하로 줄입니다.
 function resizeAction(width: number, height: number, maxSize: number) {
@@ -81,6 +84,25 @@ async function getFileSizeBytes(uri: string) {
   } catch {
     return undefined;
   }
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+) {
+  const results: R[] = [];
+
+  // 큰 사진 여러 장을 한 번에 리사이즈하면 기기 메모리와 UI 응답성이 흔들릴 수 있어 작은 묶음으로 처리합니다.
+  for (let start = 0; start < items.length; start += concurrency) {
+    const batch = items.slice(start, start + concurrency);
+    const batchResults = await Promise.all(
+      batch.map((item, index) => mapper(item, start + index)),
+    );
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 function parseExifTakenDate(
@@ -197,6 +219,18 @@ function getSelectedDates(photos: PendingPhoto[]) {
   ).sort();
 }
 
+function getPhotoDateKey(photo: PendingPhoto) {
+  return photo.takenDate ?? "__unknown_date__";
+}
+
+function getDailyPhotoCounts(photos: PendingPhoto[]) {
+  return photos.reduce<Record<string, number>>((counts, photo) => {
+    const key = getPhotoDateKey(photo);
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
 function formatDisplayDate(dateValue: string) {
   const [year, month, day] = dateValue.split("-");
   return `${year}.${month}.${day}`;
@@ -220,10 +254,10 @@ function getPhotoHeading(selectedDates: string[], targetDayNumber?: number) {
 
 function getPhotoDescription(selectedDates: string[]) {
   if (selectedDates.length <= 1) {
-    return "최대 10장까지 선택할 수 있고, 글 작성 화면용 썸네일을 따로 준비해요.";
+    return `하루에 최대 ${MAX_PHOTOS_PER_DAY}장까지 선택할 수 있고, 글 작성 화면용 썸네일을 따로 준비해요.`;
   }
 
-  return "선택한 사진은 촬영일 기준으로 나뉘어 각 날짜의 일기로 준비돼요.";
+  return `선택한 사진은 촬영일 기준으로 나뉘고, 일차별 최대 ${MAX_PHOTOS_PER_DAY}장까지 준비돼요.`;
 }
 
 function getPhotoDayLabel(photo: PendingPhoto, selectedDates: string[]) {
@@ -277,11 +311,16 @@ async function buildPendingPhoto(
   const geo = gps
     ? await reverseGeocode(gps.latitude, gps.longitude)
     : undefined;
-  // 썸네일(화면 미리보기용)만 만들고, 백엔드 업로드용 파일은 원본(asset.uri)을 그대로 씁니다.
-  //   이유: ImageManipulator 로 리사이즈하면 EXIF(GPS/촬영일시)가 모두 날아갑니다.
-  //   프론트 parseExifGps 가 권한·picker 제약으로 GPS 를 못 읽을 때, 백엔드의
-  //   extract_image_gps_coordinates fallback 이 raw_bytes 에서 GPS 를 다시 시도하려면
-  //   원본 파일을 받아야 합니다. (리사이즈는 백엔드 image_processor 가 처리)
+  // 업로드용 1024px 이미지와 화면 미리보기용 256px 썸네일을 따로 만듭니다.
+  // EXIF가 리사이즈 과정에서 사라질 수 있어 촬영일/GPS는 원본 asset에서 먼저 읽어 form 필드로 보냅니다.
+  const uploadImage = await ImageManipulator.manipulateAsync(
+    asset.uri,
+    [resizeAction(asset.width, asset.height, MAX_IMAGE_SIZE)],
+    {
+      compress: 0.86,
+      format: ImageManipulator.SaveFormat.JPEG,
+    },
+  );
   const thumbnail = await ImageManipulator.manipulateAsync(
     asset.uri,
     [resizeAction(asset.width, asset.height, THUMBNAIL_SIZE)],
@@ -290,14 +329,14 @@ async function buildPendingPhoto(
       format: ImageManipulator.SaveFormat.JPEG,
     },
   );
-  const fileSizeBytes = await getFileSizeBytes(asset.uri);
+  const fileSizeBytes = await getFileSizeBytes(uploadImage.uri);
 
   return {
     id: `${Date.now()}-${displayOrder}-${asset.assetId ?? asset.fileName ?? asset.uri}`,
-    fileUri: asset.uri, // ← 원본. EXIF 보존됨.
+    fileUri: uploadImage.uri,
     thumbnailUri: thumbnail.uri,
     originalFilename: asset.fileName ?? `photo-${displayOrder + 1}.jpg`,
-    mimeType: asset.mimeType ?? "image/jpeg",
+    mimeType: "image/jpeg",
     takenDate:
       parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName),
     gpsLatitude: gps?.latitude,
@@ -306,8 +345,8 @@ async function buildPendingPhoto(
     countryName: geo?.countryName,
     cityName: geo?.cityName,
     fileSizeBytes,
-    width: asset.width,
-    height: asset.height,
+    width: uploadImage.width,
+    height: uploadImage.height,
     displayOrder,
   };
 }
@@ -331,7 +370,6 @@ export default function AddScreen() {
     Math.floor((contentWidth - 48 - (columnCount - 1) * 16) / columnCount),
   );
   const bottomInset = Math.max(insets.bottom, 16);
-  const isPhotoLimitReached = pendingPhotos.length >= MAX_PHOTO_COUNT;
   const targetTripId =
     typeof params.trip_id === "string" ? params.trip_id : undefined;
   const targetDayNumber = Number(params.day_number);
@@ -348,15 +386,6 @@ export default function AddScreen() {
       return;
     }
 
-    const remainingSlots = MAX_PHOTO_COUNT - pendingPhotos.length;
-    if (remainingSlots <= 0) {
-      Alert.alert(
-        "사진은 최대 10장까지 가능해요",
-        "선택한 사진을 삭제한 뒤 다시 추가해 주세요.",
-      );
-      return;
-    }
-
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert(
@@ -369,11 +398,17 @@ export default function AddScreen() {
     // Android 14+ 에서 사진 EXIF GPS 를 노출 받으려면 ACCESS_MEDIA_LOCATION 권한이 필수.
     // ImagePicker 의 요청은 일반 사진 접근만 다루므로 별도로 요청해야 합니다.
     // (manifest 선언은 app.config.js 의 expo-media-library 플러그인이 담당)
-    if (Platform.OS === "android") {
+    // Expo Go는 미디어 권한/manifest 제약이 있어 이 보조 권한 요청을 건너뛰고 사진 선택만 확인합니다.
+    if (Platform.OS === "android" && !IS_EXPO_GO) {
       await PermissionsAndroid.request(
         "android.permission.ACCESS_MEDIA_LOCATION" as never,
       );
-      await MediaLibrary.requestPermissionsAsync();
+      try {
+        // 인자 없이 호출하면 Android 13+에서 audio/video 권한까지 요청해 Expo Go에서 실패할 수 있습니다.
+        await MediaLibrary.requestPermissionsAsync(false, ["photo"]);
+      } catch {
+        // 사진 선택은 ImagePicker 권한으로 진행하고, EXIF GPS가 제한되면 백엔드/수동 입력 흐름으로 보완합니다.
+      }
     }
     // 좌표 → 지명 자동 변환에 필요한 권한.
     // Android: reverseGeocodeAsync 가 위치 권한 필요 — 여기서 미리 요청.
@@ -384,11 +419,12 @@ export default function AddScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsMultipleSelection: true,
-      selectionLimit: remainingSlots,
+      // 0은 ImagePicker의 "시스템 기본 최대치"를 뜻합니다. 전체 제한은 두지 않고 아래에서 일차별 8장만 걸러냅니다.
+      selectionLimit: 0,
       quality: 1,
       exif: true,
-      // Android 기본 Photo Picker는 GPS EXIF를 0으로 마스킹하는 경우가 있어 legacy picker를 사용합니다.
-      legacy: Platform.OS === "android",
+      // Expo Go에서는 legacy picker/전체 미디어 권한 제약이 있어 기본 picker를 사용합니다.
+      legacy: Platform.OS === "android" && !IS_EXPO_GO,
     });
 
     if (result.canceled) {
@@ -398,17 +434,39 @@ export default function AddScreen() {
     setIsPreparing(true);
     try {
       const startOrder = pendingPhotos.length;
-      const selectedAssets = result.assets.slice(0, remainingSlots);
-      const processedPhotos = await Promise.all(
-        selectedAssets.map((asset, index) =>
-          buildPendingPhoto(asset, startOrder + index),
-        ),
+      const selectedAssets = result.assets;
+      const processedPhotos = await mapWithConcurrency(
+        selectedAssets,
+        PHOTO_PROCESSING_CONCURRENCY,
+        (asset, index) => buildPendingPhoto(asset, startOrder + index),
       );
-      setPendingPhotos((current) => [...current, ...processedPhotos]);
-      if (result.assets.length > remainingSlots) {
+      const dailyCounts = getDailyPhotoCounts(pendingPhotos);
+      const acceptedPhotos: PendingPhoto[] = [];
+      let rejectedCount = 0;
+
+      // 전체 업로드 수는 제한하지 않고, 촬영일 기준 같은 일차 사진만 최대 8장으로 제한합니다.
+      for (const photo of processedPhotos) {
+        const key = getPhotoDateKey(photo);
+        const currentCount = dailyCounts[key] ?? 0;
+        if (currentCount >= MAX_PHOTOS_PER_DAY) {
+          rejectedCount += 1;
+          continue;
+        }
+        dailyCounts[key] = currentCount + 1;
+        acceptedPhotos.push(photo);
+      }
+
+      setPendingPhotos((current) =>
+        [...current, ...acceptedPhotos].map((photo, index) => ({
+          ...photo,
+          displayOrder: index,
+        })),
+      );
+
+      if (rejectedCount > 0) {
         Alert.alert(
-          "사진은 최대 10장까지 가능해요",
-          `이번에는 ${remainingSlots}장만 추가했어요.`,
+          `일차별 사진은 최대 ${MAX_PHOTOS_PER_DAY}장까지 가능해요`,
+          `${rejectedCount}장은 같은 날짜 사진이 너무 많아서 추가하지 않았어요.`,
         );
       }
     } catch {
@@ -449,7 +507,8 @@ export default function AddScreen() {
           displayOrder: photo.displayOrder,
         }),
       );
-      router.push({
+
+      router.replace({
         pathname: "/loading",
         params: {
           photos: encodeURIComponent(JSON.stringify(photos)),
@@ -512,9 +571,9 @@ export default function AddScreen() {
               accessibilityRole="button"
               accessibilityLabel="사진 추가"
               onPress={pickPhotos}
-              disabled={isPreparing || isUploading || isPhotoLimitReached}
+              disabled={isPreparing || isUploading}
               className={`items-center justify-center rounded-lg border-2 border-dashed ${
-                isPreparing || isUploading || isPhotoLimitReached
+                isPreparing || isUploading
                   ? "border-muted bg-muted dark:border-dark-muted dark:bg-dark-muted"
                   : "border-border bg-surface dark:border-dark-border dark:bg-dark-surface"
               }`}
@@ -523,19 +582,10 @@ export default function AddScreen() {
               {isPreparing ? (
                 <Loader2 size={24} color={colors.border} />
               ) : (
-                <Camera
-                  size={24}
-                  color={
-                    isPhotoLimitReached ? colors.border : colors.primaryLight
-                  }
-                />
+                <Camera size={24} color={colors.primaryLight} />
               )}
               <Text className="mt-xs text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
-                {isPreparing
-                  ? "준비 중"
-                  : isPhotoLimitReached
-                    ? "최대 10장"
-                    : "사진 추가"}
+                {isPreparing ? "준비 중" : "사진 추가"}
               </Text>
             </Pressable>
 
@@ -576,7 +626,8 @@ export default function AddScreen() {
             </View>
           ) : (
             <Text className="mt-lg text-center text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
-              {pendingPhotos.length}/{MAX_PHOTO_COUNT}장 선택됨
+              {pendingPhotos.length}장 선택됨 · 일차별 최대 {MAX_PHOTOS_PER_DAY}
+              장
             </Text>
           )}
         </ScrollView>

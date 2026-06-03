@@ -25,6 +25,11 @@ export default {
     },
     android: {
       package: "com.aura.scenediary",
+      adaptiveIcon: {
+        foregroundImage: "./assets/images/android-icon-foreground.png",
+        backgroundImage: "./assets/images/android-icon-background.png",
+        monochromeImage: "./assets/images/android-icon-monochrome.png",
+      },
       config: {
         googleMaps: {
           apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
@@ -42,6 +47,7 @@ export default {
             "이 앱은 여행 사진의 위치 정보를 읽기 위해 사진 접근 권한이 필요합니다.",
           savePhotosPermission: "이 앱은 사진 저장 권한이 필요합니다.",
           isAccessMediaLocationEnabled: true,
+          isSilenceAudioSourcePermission: false
         },
       ],
       [
@@ -55,6 +61,8 @@ export default {
         "expo-splash-screen",
         {
           backgroundColor: "#208AEF",
+          image: "./assets/images/splash-icon.png",
+          imageWidth: 76,
           android: {
             image: "./assets/images/splash-icon.png",
             imageWidth: 76,

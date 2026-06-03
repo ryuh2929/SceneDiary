@@ -85,6 +85,8 @@ class SettingsToggle(BaseModel):
 
 
 class SettingsProfile(BaseModel):
+    # users 테이블의 내부 PK입니다. 앱 시작 시 현재 사용자의 DB id가 필요한 화면/요청에서 재사용합니다.
+    userId: int
     nickname: str
     profileImageUrl: str | None = None
     persona: Persona
@@ -92,9 +94,18 @@ class SettingsProfile(BaseModel):
     toggles: list[SettingsToggle]
 
 
+TravelStyleAnalysisStatusValue = Literal["idle", "running", "success", "failed"]
+
+
+class TravelStyleAnalysisStatus(BaseModel):
+    # 여행 유형 분석은 백그라운드에서 실행되므로, 프론트가 실제 완료/실패 여부를 따로 확인할 때 사용합니다.
+    status: TravelStyleAnalysisStatusValue
+    message: str | None = None
+
+
 class UpdateWritingPersonaRequest(BaseModel):
     # 사용자가 선택한 글 작성 페르소나 id입니다.
-    # 실제 DB에는 label이 아니라 poetic, daily 같은 안정적인 코드값만 저장합니다.
+    # 실제 DB에는 label이 아니라 daily, playful 같은 안정적인 코드값만 저장합니다.
     persona_id: str
 
 

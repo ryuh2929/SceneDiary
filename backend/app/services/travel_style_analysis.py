@@ -18,6 +18,31 @@ from app.db.models import Photo, PhotoGeneration, Trip, User
 from app.db.session import SessionLocal
 
 TRAVEL_STYLE_MODEL = os.getenv("TRAVEL_STYLE_MODEL", "gpt-4.1-mini")
+_TRAVEL_STYLE_ANALYSIS_STATUS: dict[int, dict[str, str | None]] = {}
+
+
+def _set_analysis_status(user_id: int, status: str, message: str | None = None) -> None:
+    # 현재는 DB 컬럼을 늘리지 않고, 서버 프로세스 메모리에 최근 분석 상태만 보관합니다.
+    # 운영 단계에서 여러 서버 프로세스를 쓰게 되면 DB 컬럼이나 작업 큐 상태 저장소로 옮기는 것이 안전합니다.
+    _TRAVEL_STYLE_ANALYSIS_STATUS[user_id] = {
+        "status": status,
+        "message": message,
+    }
+
+
+def get_travel_style_analysis_status(user_id: int) -> dict[str, str | None]:
+    return _TRAVEL_STYLE_ANALYSIS_STATUS.get(
+        user_id,
+        {
+            "status": "idle",
+            "message": None,
+        },
+    )
+
+
+def mark_travel_style_analysis_running(user_id: int) -> None:
+    # 새 분석 요청을 받는 즉시 이전 실패/성공 상태를 running으로 덮어써서 프론트가 낡은 상태를 읽지 않게 합니다.
+    _set_analysis_status(user_id, "running", None)
 
 # 설정 화면에서 렌더링할 수 있는 lucide-react-native 아이콘 이름만 허용합니다.
 TRAVEL_STYLE_ICON_NAMES = {
@@ -76,6 +101,23 @@ TRAVEL_STYLE_ICON_NAMES = {
 }
 
 SYSTEM_PROMPT = """당신은 여행 사진 분석 결과만 보고 사용자의 여행 성향을 짧게 정의하는 분석가입니다.
+
+입력 데이터는 사용자가 작성한 기록이 아니라, 촬영한 여행 사진에서 추출한 관찰 정보입니다.
+사용자가 직접 작성한 기록이 아니므로 기록의 문체나 형식은 판단 근거로 사용하지 마세요.
+
+trips: 최근 완료된 여행 목록입니다.
+photos: 각 여행에 포함된 사진 목록입니다.
+location_name: 사진이 촬영된 장소명입니다.
+taken_at_utc: 사진 촬영 시각입니다.
+analysis_text: 사진 속 장면, 분위기, 활동을 VLM이 설명한 텍스트입니다.
+analysis_json: 사진 속 장소, 사물, 분위기, 활동 등을 구조화한 분석 결과입니다.
+allowed_icons: icon으로 선택할 수 있는 lucide 아이콘 이름 목록입니다.
+
+trip_id, photo_id는 식별자일 뿐이며 사용자의 성향 판단 근거로 사용하지 마세요.
+사용자가 앱에 기록을 많이 했는지, 글을 성실히 작성했는지 같은 앱 사용 태도는 판단하지 마세요.
+analysis_text와 analysis_json을 주요 판단 근거로 사용하세요.
+결과에 정보 수집과 기록 같은 표현을 넣지 마세요. 여행 스타일은 사진 속 장면과 활동을 바탕으로 정의되는 것이지, 사용자의 기록 습관과는 무관하기 때문입니다.
+
 반드시 JSON만 반환하세요.
 출력 형식:
 {
@@ -196,7 +238,7 @@ def _normalize_result(result: dict[str, Any]) -> dict[str, str]:
     if not title:
         title = "이름 없는 여행자"
     if not description:
-        description = "아직 여행 기록이 많지 않아 가능성을 넓게 품고 있는 타입입니다."
+        description = "아직 분석할 수 있는 여행 데이터가 없습니다."
     if icon not in TRAVEL_STYLE_ICON_NAMES:
         icon = "NotebookPen"
 
@@ -208,6 +250,9 @@ def _normalize_result(result: dict[str, Any]) -> dict[str, str]:
 
 
 def _analyze_with_llm(payload: dict[str, Any]) -> dict[str, str]:
+    if not os.getenv("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is not configured")
+
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     response = client.chat.completions.create(
         model=TRAVEL_STYLE_MODEL,
@@ -235,26 +280,32 @@ def run_travel_style_analysis(user_id: int, *, force: bool = False) -> None:
     """
     db = SessionLocal()
     started = datetime.now(timezone.utc)
+    _set_analysis_status(user_id, "running", None)
 
     try:
         user = db.query(User).filter(User.id == user_id).first()
         if user is None:
+            _set_analysis_status(user_id, "failed", "사용자 정보를 찾을 수 없어 여행 유형 분석을 진행하지 못했어요.")
             return
 
         if user.travel_style_analysis and not force:
+            _set_analysis_status(user_id, "success", None)
             return
 
         payload = _collect_analysis_payload(db, user)
         if not payload["trips"]:
+            _set_analysis_status(user_id, "failed", "분석할 여행 사진 데이터가 아직 없습니다.")
             return
 
         result = _analyze_with_llm(payload)
         user.travel_style_analysis = json.dumps(result, ensure_ascii=False)
         user.updated_at = started
         db.commit()
+        _set_analysis_status(user_id, "success", None)
         print(f"[travel-style] done: user_id={user_id}, result={result['title']}")
     except Exception as exc:
         db.rollback()
+        _set_analysis_status(user_id, "failed", "여행 유형 분석 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.")
         print(f"[travel-style] FAILED: user_id={user_id}: {exc}")
         import traceback
 

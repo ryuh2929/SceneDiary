@@ -3,6 +3,30 @@ import { Platform } from 'react-native';
 import { getApiBaseUrl } from '@/services/api-base-url';
 import { ensureCurrentUser } from '@/services/user-api';
 
+export type TravelStyleAnalysisStatus = {
+  status: 'idle' | 'running' | 'success' | 'failed';
+  message?: string | null;
+};
+
+export class TravelStyleAnalysisCooldownError extends Error {
+  retryAfterSeconds: number;
+
+  constructor(retryAfterSeconds: number) {
+    super('Travel style analysis is cooling down.');
+    this.name = 'TravelStyleAnalysisCooldownError';
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+type TravelStyleAnalysisErrorBody = {
+  detail?:
+    | string
+    | {
+        message?: string;
+        retry_after_seconds?: number;
+      };
+};
+
 export async function fetchSettingsProfile() {
   const userUuid = await ensureCurrentUser();
   const query = new URLSearchParams({ user_uuid: userUuid });
@@ -130,12 +154,38 @@ export async function requestTravelStyleAnalysis() {
   });
 
   if (!response.ok) {
+    if (response.status === 429) {
+      const errorBody = (await response.json().catch(() => null)) as TravelStyleAnalysisErrorBody | null;
+      const retryAfterSeconds =
+        typeof errorBody?.detail === 'object' &&
+        typeof errorBody.detail.retry_after_seconds === 'number'
+          ? errorBody.detail.retry_after_seconds
+          : 60;
+
+      // 백엔드 쿨다운에 걸린 경우는 일반 실패와 구분해서 남은 시간을 화면에서 안내할 수 있게 전용 에러로 전달합니다.
+      throw new TravelStyleAnalysisCooldownError(retryAfterSeconds);
+    }
+
     throw new Error('Failed to request travel style analysis.');
   }
 
   const profile = (await response.json()) as SettingsProfile;
 
   return normalizeSettingsProfile(profile);
+}
+
+export async function fetchTravelStyleAnalysisStatus() {
+  const userUuid = await ensureCurrentUser();
+  const query = new URLSearchParams({ user_uuid: userUuid });
+
+  // 분석 요청 자체는 바로 성공할 수 있지만, 실제 LLM 작업은 백그라운드에서 실패할 수 있어서 상태를 따로 확인합니다.
+  const response = await fetch(`${getApiBaseUrl()}/settings/travel-style-analysis/status?${query.toString()}`);
+
+  if (!response.ok) {
+    throw new Error('Failed to load travel style analysis status.');
+  }
+
+  return (await response.json()) as TravelStyleAnalysisStatus;
 }
 
 function normalizeTravelTypeIcon(icon: unknown): TravelTypeIconName {

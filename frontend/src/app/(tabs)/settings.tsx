@@ -72,16 +72,20 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DarkModeBackground } from '@/components/dark-mode-background';
 import { NicknameModal } from '@/components/nickname-modal';
 import { useAppSettings } from '@/contexts/app-settings-context';
 import {
-  dummySettingsProfile,
+  SettingsProfile,
   SettingsToggle,
+  TravelType,
   TravelTypeIconName,
 } from '@/data/settings';
 import {
   fetchSettingsProfile,
+  fetchTravelStyleAnalysisStatus,
   requestTravelStyleAnalysis,
+  TravelStyleAnalysisCooldownError,
   updateNickname,
   updateSettingsToggle,
   updateWritingPersona,
@@ -105,22 +109,31 @@ const lightColors = {
 
 const darkColors = {
   primary: '#5B7DBB',
-  primaryLight: '#39536B',
-  accent: '#5B7DBB',
-  accentMuted: '#37445A',
-  background: '#152538',
-  surface: '#1C2E43',
+  primaryLight: '#2F4965',
+  accent: '#6F89B8',
+  accentMuted: '#243348',
+  background: '#0B1624',
+  surface: '#121F2F',
   textOnPrimary: '#FFFFFF',
   textPrimary: '#DDE3EE',
   textSecondary: '#A9C3E6',
-  border: '#2A4560',
-  muted: '#1E3A52',
+  border: '#26384D',
+  muted: '#172A3E',
   toggle: '#5B7DBB',
 };
 
 type SettingsThemeColors = typeof lightColors;
 
-const TRAVEL_ANALYSIS_COOLDOWN_MS = 60 * 1000;
+function envPositiveNumber(value: string | undefined, defaultValue: number) {
+  // Expo 프런트 환경변수는 문자열로 들어오므로 숫자로 바꾼 뒤 검증합니다.
+  // 테스트 중 잘못된 값이 들어가도 화면이 망가지지 않도록 기본값을 유지합니다.
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+}
+
+const TRAVEL_ANALYSIS_COOLDOWN_MS =
+  envPositiveNumber(process.env.EXPO_PUBLIC_TRAVEL_ANALYSIS_COOLDOWN_SECONDS, 60) * 1000;
 const TRAVEL_ANALYSIS_FAST_POLL_COUNT = 5;
 const TRAVEL_ANALYSIS_FAST_POLL_INTERVAL_MS = 1000;
 const TRAVEL_ANALYSIS_SLOW_POLL_COUNT = 5;
@@ -208,8 +221,8 @@ function wait(ms: number) {
 }
 
 function isSameTravelType(
-  previous: typeof dummySettingsProfile.travelType,
-  next: typeof dummySettingsProfile.travelType,
+  previous: TravelType,
+  next: TravelType,
 ) {
   return (
     previous.title === next.title &&
@@ -459,7 +472,9 @@ export default function SettingsScreen() {
     setIsDarkMode: setGlobalIsDarkMode,
     setIsPushEnabled: setGlobalIsPushEnabled,
   } = useAppSettings();
-  const [profile, setProfile] = useState(dummySettingsProfile);
+  // 실제 설정 정보는 서버 응답이 성공한 뒤에만 채웁니다.
+  // DB/API가 끊겼을 때 더미 닉네임이나 여행 유형이 실제 데이터처럼 보이지 않게 null로 시작합니다.
+  const [profile, setProfile] = useState<SettingsProfile | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isSavingPersona, setIsSavingPersona] = useState(false);
@@ -473,18 +488,10 @@ export default function SettingsScreen() {
 
   // 설정 페이지 첫 진입 시 더미 데이터의 라이트모드 값이 잠깐 보이지 않도록,
   // 이미 앱 전역 상태에 저장된 최신 설정값을 초기 토글값으로 우선 사용합니다.
-  const initialToggles = useMemo(
-    () => ({
-      ...(Object.fromEntries(profile.toggles.map((toggle) => [toggle.id, toggle.enabled])) as Record<
-        SettingsToggle['id'],
-        boolean
-      >),
-      darkMode: globalIsDarkMode,
-      pushNotification: globalIsPushEnabled,
-    }),
-    [globalIsDarkMode, globalIsPushEnabled, profile.toggles],
-  );
-  const [toggles, setToggles] = useState(initialToggles);
+  const [toggles, setToggles] = useState<Record<SettingsToggle['id'], boolean>>({
+    darkMode: globalIsDarkMode,
+    pushNotification: globalIsPushEnabled,
+  });
   useEffect(() => {
     if (isLoaded) {
       return;
@@ -498,21 +505,34 @@ export default function SettingsScreen() {
     }));
   }, [globalIsDarkMode, globalIsPushEnabled, isLoaded]);
 
-  const isDarkMode = toggles.darkMode;
+  useEffect(() => {
+    if (savingToggleId) {
+      return;
+    }
+
+    // 전역 설정이 DB 재조회나 다른 화면의 업데이트로 바뀌면 설정 화면의 토글 표시도 같은 값으로 맞춥니다.
+    setToggles((current) => ({
+      ...current,
+      darkMode: globalIsDarkMode,
+      pushNotification: globalIsPushEnabled,
+    }));
+  }, [globalIsDarkMode, globalIsPushEnabled, savingToggleId]);
+
+  // 다크모드는 네비바와 같은 전역 설정값을 기준으로 사용합니다.
+  // 설정 화면만 별도 toggles 상태를 기준으로 보면, DB 재조회나 다른 화면의 동기화 이후 네비바와 색상 전환 타이밍이 어긋날 수 있습니다.
+  const isDarkMode = globalIsDarkMode;
   const isPushEnabled = toggles.pushNotification;
   const settingToggleValues: Record<SettingsToggle['id'], boolean> = {
-    darkMode: isDarkMode,
+    darkMode: globalIsDarkMode,
     pushNotification: isPushEnabled,
   };
   const colors = isDarkMode ? darkColors : lightColors;
 
   // 페르소나는 하나만 선택되도록 선택된 id만 저장합니다.
-  const [writingPersona, setWritingPersona] = useState(
-    globalWritingPersona || (profile.persona.tags.find((tag) => tag.selected)?.id ?? profile.persona.tags[0]?.id),
-  );
+  const [writingPersona, setWritingPersona] = useState(globalWritingPersona || 'daily');
   const selectedPersona = useMemo(
-    () => profile.persona.tags.find((tag) => tag.id === writingPersona),
-    [profile.persona.tags, writingPersona],
+    () => profile?.persona.tags.find((tag) => tag.id === writingPersona),
+    [profile?.persona.tags, writingPersona],
   );
   const noticeProgress = useDerivedValue(
     () => withTiming(profileNotice ? 1 : 0, { duration: 180 }),
@@ -623,7 +643,7 @@ export default function SettingsScreen() {
   }, [travelAnalysisCooldownUntil]);
 
   const handleSelectPersona = async (personaId: string) => {
-    if (personaId === writingPersona || isSavingPersona) {
+    if (!profile || personaId === writingPersona || isSavingPersona) {
       return;
     }
 
@@ -632,7 +652,7 @@ export default function SettingsScreen() {
     // 버튼을 누른 즉시 화면을 바꾸고, 서버 저장이 끝나면 응답값으로 한 번 더 동기화합니다.
     setWritingPersona(personaId);
     setGlobalWritingPersona(personaId);
-    setProfile((currentProfile) => ({
+    setProfile((currentProfile) => currentProfile ? ({
       ...currentProfile,
       persona: {
         ...currentProfile.persona,
@@ -641,7 +661,7 @@ export default function SettingsScreen() {
           selected: tag.id === personaId,
         })),
       },
-    }));
+    }) : currentProfile);
     setIsSavingPersona(true);
     setProfileError(null);
     setProfileNotice(null);
@@ -658,7 +678,7 @@ export default function SettingsScreen() {
     } catch (error) {
       setWritingPersona(previousPersona);
       setGlobalWritingPersona(previousPersona);
-      setProfile((currentProfile) => ({
+      setProfile((currentProfile) => currentProfile ? ({
         ...currentProfile,
         persona: {
           ...currentProfile.persona,
@@ -667,7 +687,7 @@ export default function SettingsScreen() {
             selected: tag.id === previousPersona,
           })),
         },
-      }));
+      }) : currentProfile);
       setProfileError(error instanceof Error ? error.message : 'Failed to update writing persona.');
     } finally {
       setIsSavingPersona(false);
@@ -679,7 +699,7 @@ export default function SettingsScreen() {
       return;
     }
 
-    const previousValue = toggles[toggleId];
+    const previousValue = toggleId === 'darkMode' ? globalIsDarkMode : toggles[toggleId];
 
     // 토글은 손맛이 중요하므로 먼저 화면을 바꾸고, 저장 실패 시 이전 값으로 되돌립니다.
     setToggles((current) => ({ ...current, [toggleId]: enabled }));
@@ -779,7 +799,7 @@ export default function SettingsScreen() {
     }
   };
 
-  const pollTravelStyleAnalysisResult = async (previousTravelType: typeof profile.travelType) => {
+  const pollTravelStyleAnalysisResult = async (previousTravelType: TravelType) => {
     const pollIntervals = [
       ...Array(TRAVEL_ANALYSIS_FAST_POLL_COUNT).fill(TRAVEL_ANALYSIS_FAST_POLL_INTERVAL_MS),
       ...Array(TRAVEL_ANALYSIS_SLOW_POLL_COUNT).fill(TRAVEL_ANALYSIS_SLOW_POLL_INTERVAL_MS),
@@ -788,6 +808,12 @@ export default function SettingsScreen() {
     // LLM 분석은 백그라운드에서 끝나므로, 분석 요청 후 잠깐 설정 프로필을 다시 조회해 최신 결과를 화면에 반영합니다.
     for (const interval of pollIntervals) {
       await wait(interval);
+
+      const latestStatus = await fetchTravelStyleAnalysisStatus();
+
+      if (latestStatus.status === 'failed') {
+        throw new Error(latestStatus.message ?? '여행 유형 분석에 실패했어요. 잠시 후 다시 시도해주세요.');
+      }
 
       const latestProfile = await fetchSettingsProfile();
 
@@ -800,7 +826,7 @@ export default function SettingsScreen() {
   };
 
   const startTravelStyleAnalysis = async () => {
-    if (isRequestingTravelAnalysis) {
+    if (!profile || isRequestingTravelAnalysis) {
       return;
     }
 
@@ -829,10 +855,28 @@ export default function SettingsScreen() {
       });
       try {
         await pollTravelStyleAnalysisResult(previousTravelType);
-      } catch {
-        // polling은 화면 자동 갱신을 위한 보조 동작입니다. 요청 자체는 성공했으므로 실패 토스트로 덮어쓰지 않습니다.
+      } catch (error) {
+        // 백그라운드 분석 실패는 실제 분석 실패이므로 쿨다운을 해제해 바로 재시도할 수 있게 합니다.
+        setTravelAnalysisCooldownUntil(null);
+        setProfileNotice({
+          message:
+            error instanceof Error
+              ? error.message
+              : '여행 유형 분석에 실패했어요. 잠시 후 다시 시도해주세요.',
+          type: 'error',
+        });
       }
     } catch (error) {
+      if (error instanceof TravelStyleAnalysisCooldownError) {
+        // 프론트 상태가 초기화되어 요청이 서버까지 갔더라도, 백엔드 쿨다운 응답의 남은 시간을 그대로 안내합니다.
+        setTravelAnalysisCooldownUntil(Date.now() + error.retryAfterSeconds * 1000);
+        setProfileNotice({
+          message: `재요청까지 잠시 시간이 필요합니다. ${error.retryAfterSeconds}초 후 다시 시도해주세요.`,
+          type: 'error',
+        });
+        return;
+      }
+
       setProfileNotice({
         message: '여행 유형 분석 요청에 실패했어요. 잠시 후 다시 시도해주세요.',
         type: 'error',
@@ -850,9 +894,11 @@ export default function SettingsScreen() {
   });
 
   return (
-    <>
+    <View className={`flex-1 ${isDarkMode ? 'bg-dark-background' : 'bg-background'}`}>
+      {isDarkMode ? <DarkModeBackground /> : null}
+
       <ScrollView
-        className={`flex-1 ${isDarkMode ? 'bg-dark-background' : 'bg-background'}`}
+        className="flex-1"
         contentContainerClassName="min-h-full px-md"
         contentContainerStyle={contentInset}
         showsVerticalScrollIndicator={false}>
@@ -881,6 +927,8 @@ export default function SettingsScreen() {
           </View>
         ) : null}
 
+        {profile ? (
+          <>
         <View className="items-center">
           <View className="relative h-[82px] w-[82px] items-center justify-center">
             <View className={`h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full ${isDarkMode ? 'bg-dark-primaryLight' : 'bg-primaryLight'}`}>
@@ -1006,6 +1054,28 @@ export default function SettingsScreen() {
             />
           ))}
         </View>
+          </>
+        ) : (
+          <View
+            className="rounded-lg border px-md py-lg"
+            style={{
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            }}>
+            <Text
+              className={`text-center text-md font-sans-real-bold ${
+                isDarkMode ? 'text-dark-textPrimary' : 'text-textPrimary'
+              }`}>
+              {isLoaded ? '설정 정보를 불러오지 못했어요' : '설정 정보를 불러오는 중이에요'}
+            </Text>
+            <Text
+              className={`mt-sm text-center text-sm font-sans-medium ${
+                isDarkMode ? 'text-dark-textSecondary' : 'text-textSecondary'
+              }`}>
+              {isLoaded ? '서버 연결을 확인한 뒤 다시 열어주세요.' : '잠시만 기다려주세요.'}
+            </Text>
+          </View>
+        )}
       </View>
 
       </ScrollView>
@@ -1036,10 +1106,10 @@ export default function SettingsScreen() {
 
       <NicknameModal
         visible={isNicknameModalVisible}
-        currentNickname={profile.nickname}
+        currentNickname={profile?.nickname ?? ''}
         onClose={closeNicknameModal}
         onSave={handleSaveNickname}
       />
-    </>
+    </View>
   );
 }
