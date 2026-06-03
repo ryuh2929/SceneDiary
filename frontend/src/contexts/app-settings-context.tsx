@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import Constants from 'expo-constants';
 import { useColorScheme } from 'nativewind';
 import { Platform } from 'react-native';
 
@@ -60,9 +61,9 @@ function NativeWindThemeSync({ isDarkMode }: { isDarkMode: boolean }) {
     // 전역 설정의 다크모드 값을 NativeWind에 알려서 dark: 클래스가 모든 화면에서 동작하게 합니다.
     setColorScheme(isDarkMode ? 'dark' : 'light');
 
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'android' && Constants.appOwnership !== 'expo') {
       // 패키지 루트 import가 Expo Go의 Metro 해석 과정에서 타입 파일을 잘못 따라가는 경우가 있어,
-      // Android에서 실제로 필요할 때만 빌드된 런타임 파일을 불러옵니다.
+      // Expo Go에서는 건너뛰고, 별도 APK/개발 빌드에서 실제로 필요할 때만 런타임 파일을 불러옵니다.
       import('expo-navigation-bar/build/NavigationBar.android')
         .then((NavigationBar) => {
           if (!isMounted) return;
