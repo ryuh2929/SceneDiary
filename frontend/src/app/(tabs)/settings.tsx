@@ -124,7 +124,16 @@ const darkColors = {
 
 type SettingsThemeColors = typeof lightColors;
 
-const TRAVEL_ANALYSIS_COOLDOWN_MS = 60 * 1000;
+function envPositiveNumber(value: string | undefined, defaultValue: number) {
+  // Expo 프런트 환경변수는 문자열로 들어오므로 숫자로 바꾼 뒤 검증합니다.
+  // 테스트 중 잘못된 값이 들어가도 화면이 망가지지 않도록 기본값을 유지합니다.
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+}
+
+const TRAVEL_ANALYSIS_COOLDOWN_MS =
+  envPositiveNumber(process.env.EXPO_PUBLIC_TRAVEL_ANALYSIS_COOLDOWN_SECONDS, 60) * 1000;
 const TRAVEL_ANALYSIS_FAST_POLL_COUNT = 5;
 const TRAVEL_ANALYSIS_FAST_POLL_INTERVAL_MS = 1000;
 const TRAVEL_ANALYSIS_SLOW_POLL_COUNT = 5;
@@ -496,10 +505,25 @@ export default function SettingsScreen() {
     }));
   }, [globalIsDarkMode, globalIsPushEnabled, isLoaded]);
 
-  const isDarkMode = toggles.darkMode;
+  useEffect(() => {
+    if (savingToggleId) {
+      return;
+    }
+
+    // 전역 설정이 DB 재조회나 다른 화면의 업데이트로 바뀌면 설정 화면의 토글 표시도 같은 값으로 맞춥니다.
+    setToggles((current) => ({
+      ...current,
+      darkMode: globalIsDarkMode,
+      pushNotification: globalIsPushEnabled,
+    }));
+  }, [globalIsDarkMode, globalIsPushEnabled, savingToggleId]);
+
+  // 다크모드는 네비바와 같은 전역 설정값을 기준으로 사용합니다.
+  // 설정 화면만 별도 toggles 상태를 기준으로 보면, DB 재조회나 다른 화면의 동기화 이후 네비바와 색상 전환 타이밍이 어긋날 수 있습니다.
+  const isDarkMode = globalIsDarkMode;
   const isPushEnabled = toggles.pushNotification;
   const settingToggleValues: Record<SettingsToggle['id'], boolean> = {
-    darkMode: isDarkMode,
+    darkMode: globalIsDarkMode,
     pushNotification: isPushEnabled,
   };
   const colors = isDarkMode ? darkColors : lightColors;
@@ -675,7 +699,7 @@ export default function SettingsScreen() {
       return;
     }
 
-    const previousValue = toggles[toggleId];
+    const previousValue = toggleId === 'darkMode' ? globalIsDarkMode : toggles[toggleId];
 
     // 토글은 손맛이 중요하므로 먼저 화면을 바꾸고, 저장 실패 시 이전 값으로 되돌립니다.
     setToggles((current) => ({ ...current, [toggleId]: enabled }));

@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -27,7 +28,20 @@ _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 _PROFILE_IMAGE_PUBLIC_ROOT = "profile_images"
 _PROFILE_IMAGE_ROOT = _BACKEND_DIR / "test_images" / _PROFILE_IMAGE_PUBLIC_ROOT
 MAX_PROFILE_IMAGE_BYTES = 1 * 1024 * 1024
-TRAVEL_STYLE_ANALYSIS_COOLDOWN_SECONDS = 60
+
+
+def env_int(name: str, default: int) -> int:
+    # 테스트할 때 .env 값만 바꿔도 쿨다운을 조절할 수 있게 합니다.
+    # 잘못된 값이나 0 이하 값이 들어오면 운영 기본값인 default를 사용합니다.
+    try:
+        value = int(os.getenv(name, str(default)))
+    except ValueError:
+        return default
+
+    return value if value > 0 else default
+
+
+TRAVEL_STYLE_ANALYSIS_COOLDOWN_SECONDS = env_int("EXPO_PUBLIC_TRAVEL_ANALYSIS_COOLDOWN_SECONDS", 60)
 
 # DB에는 안정적인 코드값(daily, playful 등)만 저장하고,
 # 화면에 보여줄 라벨/설명은 API 응답을 만들 때 매핑합니다.

@@ -69,7 +69,7 @@ export default {
       EXPO_PUBLIC_GOOGLE_MAPS_API_KEY:
         process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       eas: {
-        projectId: "07c41b84-fd51-441c-aa40-1234523b4f74",
+        // projectId: "07c41b84-fd51-441c-aa40-1234523b4f74",
       },
     },
   },
