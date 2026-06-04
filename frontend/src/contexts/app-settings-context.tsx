@@ -55,6 +55,7 @@ function NativeWindThemeSync({ isDarkMode }: { isDarkMode: boolean }) {
 
   useEffect(() => {
     // 전역 설정의 다크모드 값을 NativeWind에 알려서 dark: 클래스가 모든 화면에서 동작하게 합니다.
+    // Android 시스템 내비게이션 바 색상은 Expo Go/기존 APK에서 네이티브 모듈 누락 오류가 생길 수 있어 여기서 건드리지 않습니다.
     setColorScheme(isDarkMode ? 'dark' : 'light');
   }, [isDarkMode, setColorScheme]);
 
