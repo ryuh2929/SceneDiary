@@ -5,7 +5,7 @@ import os
 import re
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Literal
@@ -133,6 +133,13 @@ def _parse_filename_date(filename: str | None) -> date | None:
         )
     except ValueError:
         return None
+
+
+def _inclusive_date_range(start: date, end: date) -> list[date]:
+    return [
+        start + timedelta(days=offset)
+        for offset in range((end - start).days + 1)
+    ]
 
 
 def _get_or_create_trip(
@@ -347,9 +354,10 @@ async def upload_first_day_photos(
             )
         )
 
-    sorted_dates = sorted({draft.photo_date for draft in drafts})
-    effective_start = sorted_dates[0]
-    effective_end = sorted_dates[-1]
+    photo_taken_dates = sorted({draft.photo_date for draft in drafts})
+    effective_start = photo_taken_dates[0]
+    effective_end = photo_taken_dates[-1]
+    trip_dates = _inclusive_date_range(effective_start, effective_end)
     trip = _get_or_create_trip(
         db,
         trip_id=trip_id,
@@ -370,7 +378,7 @@ async def upload_first_day_photos(
             trip_date=grouped_date,
             preferred_day_number=day_number + index,
         )
-        for index, grouped_date in enumerate(sorted_dates)
+        for index, grouped_date in enumerate(trip_dates)
     }
 
     base = _base_url(request)
@@ -378,7 +386,7 @@ async def upload_first_day_photos(
     uploaded_by_day_id: dict[int, list[UploadedPhoto]] = {}
     drafts_by_date = {
         grouped_date: [draft for draft in drafts if draft.photo_date == grouped_date]
-        for grouped_date in sorted_dates
+        for grouped_date in photo_taken_dates
     }
 
     for grouped_date, grouped_drafts in drafts_by_date.items():
@@ -480,6 +488,7 @@ async def upload_first_day_photos(
 
     generation_jobs: list[tuple[int, int]] = []
     for trip_day in trip_days_by_date.values():
+        uploaded_by_day_id.setdefault(trip_day.id, [])
         running = (
             db.query(DiaryGeneration)
             .filter(DiaryGeneration.trip_day_id == trip_day.id, DiaryGeneration.status == "running")
@@ -513,7 +522,7 @@ async def upload_first_day_photos(
     for trip_day_id, gen_id in generation_jobs:
         background_tasks.add_task(_run_generation, trip_day_id, gen_id)
 
-    first_trip_day = trip_days_by_date[sorted_dates[0]]
+    first_trip_day = trip_days_by_date[trip_dates[0]]
     return FirstDayUploadResponse(
         tripId=trip.id,
         tripDayId=first_trip_day.id,
@@ -527,7 +536,7 @@ async def upload_first_day_photos(
                 date=grouped_date.isoformat(),
                 photos=uploaded_by_day_id[trip_days_by_date[grouped_date].id],
             )
-            for grouped_date in sorted_dates
+            for grouped_date in trip_dates
         ],
     )
 

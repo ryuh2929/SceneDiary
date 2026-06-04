@@ -538,7 +538,7 @@ export default function AddScreen() {
             accessibilityLabel="AI로 일기 작성하기"
             disabled={pendingPhotos.length === 0 || isPreparing || isUploading}
             onPress={moveToAnalysis}
-            className="w-full max-w-[360px] overflow-hidden rounded-lg"
+            className="w-full max-w-[420px] overflow-hidden rounded-lg"
             style={{
               opacity: pendingPhotos.length === 0 || isPreparing || isUploading ? 0.55 : 1,
               shadowColor: colors.primary,

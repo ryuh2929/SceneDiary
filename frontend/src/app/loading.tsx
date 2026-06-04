@@ -489,7 +489,7 @@ export default function LoadingScreen() {
               params: { tripId, day, mode },
             });
           }}
-          className="absolute bottom-md w-full max-w-[360px] overflow-hidden rounded-lg"
+          className="absolute bottom-md w-full max-w-[420px] overflow-hidden rounded-lg"
           style={{ opacity: progress >= 100 || loadingStep === 'failed' ? 1 : 0.58 }}>
           <LinearGradient
             colors={[colors.primary, colors.primaryLight, colors.accent]}
