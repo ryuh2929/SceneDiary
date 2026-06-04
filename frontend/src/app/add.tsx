@@ -167,6 +167,14 @@ function parseFilenameDate(filename: string | null | undefined): string | undefi
   return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
+function getLocalTodayDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getSelectedDates(photos: PendingPhoto[]) {
   return Array.from(new Set(photos.map((photo) => photo.takenDate).filter(Boolean) as string[])).sort();
 }
@@ -287,7 +295,7 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
     thumbnailUri: thumbnail.uri,
     originalFilename: asset.fileName ?? `photo-${displayOrder + 1}.jpg`,
     mimeType: 'image/jpeg',
-    takenDate: parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName),
+    takenDate: parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName) ?? getLocalTodayDate(),
     gpsLatitude: gps?.latitude,
     gpsLongitude: gps?.longitude,
     placeName: geo?.placeName,
