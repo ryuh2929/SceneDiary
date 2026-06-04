@@ -363,7 +363,7 @@ export default function LoadingScreen() {
                   width: 142,
                   height: 116,
                   borderRadius: 999,
-                  backgroundColor: 'rgba(169,195,230,0.26)',
+                  backgroundColor: `${colors.primaryLight}42`,
                 },
                 softBlobStyle,
               ]}
@@ -375,7 +375,7 @@ export default function LoadingScreen() {
                   width: 124,
                   height: 134,
                   borderRadius: 999,
-                  backgroundColor: 'rgba(214,226,242,0.34)',
+                  backgroundColor: `${colors.ring}57`,
                 },
                 paleBlobStyle,
               ]}
@@ -387,7 +387,7 @@ export default function LoadingScreen() {
                   width: 88,
                   height: 82,
                   borderRadius: 999,
-                  backgroundColor: 'rgba(169,195,230,0.18)',
+                  backgroundColor: `${colors.primaryLight}2E`,
                 },
                 lightBlobStyle,
               ]}
@@ -396,16 +396,12 @@ export default function LoadingScreen() {
               className="absolute h-28 w-28 rounded-full"
               style={[
                 {
-                  backgroundColor: 'rgba(169,195,230,0.08)',
+                  backgroundColor: `${colors.primaryLight}14`,
                 },
                 pulseStyle,
               ]}
             />
 
-            <View
-              className="absolute h-28 w-28 rounded-full border"
-              style={{ borderColor: 'rgba(216,227,241,0.78)', zIndex: 4 }}
-            />
             <Animated.View
               className="absolute h-28 w-28 rounded-full border-[2px]"
               style={[
@@ -413,7 +409,7 @@ export default function LoadingScreen() {
                   borderColor: 'transparent',
                   borderTopColor: colors.primary,
                   borderRightColor: colors.primaryLight,
-                  borderBottomColor: 'rgba(91,125,187,0.2)',
+                  borderBottomColor: `${colors.primary}33`,
                   zIndex: 5,
                 },
                 spinnerStyle,
@@ -425,9 +421,10 @@ export default function LoadingScreen() {
                 {previewPhotos.slice(0, 3).map((photo, index) => (
                   <View
                     key={`${photo.thumbnailUri}-${photo.displayOrder}`}
-                    className="absolute h-16 w-16 overflow-hidden rounded-lg border-2 border-white bg-muted dark:bg-dark-muted"
+                    className="absolute h-16 w-16 overflow-hidden rounded-lg border-2 bg-muted dark:bg-dark-muted"
                     style={{
                       left: 20 + index * 12,
+                      borderColor: colors.surface,
                       transform: [{ rotate: `${(index - 1) * 7}deg` }],
                       shadowColor: colors.textPrimary,
                       shadowOffset: { width: 0, height: 4 },
@@ -446,10 +443,10 @@ export default function LoadingScreen() {
             )}
           </View>
 
-          <Text className="mt-md text-center text-2xl font-extrabold text-textPrimary dark:text-dark-textPrimary">
+          <Text className="mt-md text-center text-2xl font-sans-real-bold text-textPrimary dark:text-dark-textPrimary">
             {displayStep}
           </Text>
-          <Text className="mt-xs text-center text-md font-semibold text-textSecondary dark:text-dark-textSecondary">
+          <Text className="mt-xs text-center text-md font-sans-semibold text-textSecondary dark:text-dark-textSecondary">
             {displayHelperText}
           </Text>
 
@@ -496,7 +493,7 @@ export default function LoadingScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             className="h-14 items-center justify-center">
-            <Text className="text-md font-extrabold text-textOnPrimary">{buttonLabel}</Text>
+            <Text className="text-md font-sans-bold text-textOnPrimary">{buttonLabel}</Text>
           </LinearGradient>
         </Pressable>
       </View>

@@ -471,7 +471,7 @@ export default function AddScreen() {
             <Text className="text-xl font-sans-bold leading-8 text-textPrimary dark:text-dark-textPrimary">
               {photoHeading}
             </Text>
-            <Text className="mt-sm text-md leading-6 text-textSecondary dark:text-dark-textSecondary">
+            <Text className="mt-sm text-md font-sans leading-6 text-textSecondary dark:text-dark-textSecondary">
               {photoDescription}
             </Text>
           </View>
