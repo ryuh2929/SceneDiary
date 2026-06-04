@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Image as ImageIcon } from 'lucide-react-native';
+import { Check, Circle, Image as ImageIcon, Loader2 } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import Animated, {
@@ -55,6 +55,13 @@ const nextDaySteps = [
 ];
 
 const COMPLETE_DELAY_MS = 650;
+
+const backendSteps = [
+  { key: 'upload', label: '사진 업로드 및 이미지 정리' },
+  { key: 'metadata', label: '촬영 날짜와 위치 정보 분류' },
+  { key: 'diary', label: '사진을 분석해 일기 초안 생성' },
+  { key: 'ready', label: '여행 기록 준비 완료' },
+] as const;
 
 function getFirstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -126,8 +133,9 @@ export default function LoadingScreen() {
   const hasApiLoading = Boolean(tripDayId) && !isNextDayMode;
   // 다중 일차 추적: 각 일차의 완료 여부를 id → boolean 맵으로 관리합니다.
   const [completedDayIds, setCompletedDayIds] = useState<Set<number>>(new Set());
-  const totalDayCount = allDays.length > 1 ? allDays.length : 0;
+  const totalDayCount = allDays.length || (tripDayId ? 1 : 0);
   const completedDayCount = completedDayIds.size;
+  const allDaysCompleted = totalDayCount > 0 && completedDayCount === totalDayCount;
 
   // 같은 로딩 화면을 상황별로 재사용하기 위해 모드에 따라 문구 묶음만 바꿉니다.
   const steps = isNextDayMode ? nextDaySteps : analysisSteps;
@@ -154,6 +162,18 @@ export default function LoadingScreen() {
       : progress >= 100
         ? '작업 준비가 끝났어요'
         : helperText;
+
+  const currentDay = allDays.find((item) => !completedDayIds.has(item.tripDayId));
+  const generationLabel =
+    totalDayCount > 1 && currentDay
+      ? `${currentDay.day}일차 일기를 만들고 있어요`
+      : '사진을 분석해 일기 초안을 만들고 있어요';
+  const getBackendStepState = (key: typeof backendSteps[number]['key']) => {
+    if (loadingStep === 'failed' && (key === 'diary' || key === 'ready')) return 'failed';
+    if (key === 'upload' || key === 'metadata') return 'completed';
+    if (key === 'diary') return allDaysCompleted ? 'completed' : 'active';
+    return allDaysCompleted ? 'completed' : 'pending';
+  };
 
   useEffect(() => {
     rotation.value = withRepeat(
@@ -200,14 +220,33 @@ export default function LoadingScreen() {
     const dayIdsToTrack = allDays.length > 1
       ? allDays.map((d) => d.tripDayId)
       : [firstDayId];
+    const doneIds = new Set<number>();
 
     async function pollInitialStatus() {
       try {
-        const firstStatus = await fetchTripDayGenerationStatus(firstDayId);
+        const statuses = await Promise.all(
+          dayIdsToTrack.map((id) => fetchTripDayGenerationStatus(id)),
+        );
         if (!isMounted) return;
-        setLoadingStep(firstStatus.status);
-        setProgress(firstStatus.progress);
-        setErrorMessage(firstStatus.errorMessage ?? null);
+        statuses.forEach((status) => {
+          if (status.status === 'completed') doneIds.add(status.tripDayId);
+        });
+        setCompletedDayIds(new Set(doneIds));
+        const failedStatus = statuses.find((status) => status.status === 'failed');
+        const completedCount = statuses.filter((status) => status.status === 'completed').length;
+        if (failedStatus) {
+          setLoadingStep('failed');
+          setProgress(100);
+          setErrorMessage(failedStatus.errorMessage ?? '일기 생성에 실패했어요.');
+        } else if (completedCount === statuses.length) {
+          setLoadingStep('completed');
+          setProgress(100);
+          setErrorMessage(null);
+        } else {
+          setLoadingStep('generating_diary');
+          setProgress(Math.round(58 + (completedCount / statuses.length) * 40));
+          setErrorMessage(null);
+        }
       } catch {
         if (!isMounted) return;
         setLoadingStep('failed');
@@ -217,42 +256,41 @@ export default function LoadingScreen() {
 
     pollInitialStatus();
 
-    const doneIds = new Set<number>();
-
     const pollTimer = setInterval(async () => {
       try {
-        // 첫 번째 일차 상태는 메인 UI(progress/loadingStep)에 반영합니다.
-        const firstStatus = await fetchTripDayGenerationStatus(firstDayId);
+        // 모든 일차의 실제 생성 상태를 함께 조회해 화면 진행 상태에 반영합니다.
+        const statuses = await Promise.all(
+          dayIdsToTrack.map((id) => fetchTripDayGenerationStatus(id)),
+        );
         if (!isMounted) return;
-        setLoadingStep(firstStatus.status);
-        setProgress(firstStatus.progress);
-        setErrorMessage(firstStatus.errorMessage ?? null);
+        statuses.forEach((status) => {
+          if (status.status === 'completed') doneIds.add(status.tripDayId);
+        });
+        setCompletedDayIds(new Set(doneIds));
 
-        if (firstStatus.status === 'completed' || firstStatus.status === 'failed') {
-          doneIds.add(firstDayId);
-          setCompletedDayIds(new Set(doneIds));
-        }
-
-        // 나머지 일차들은 완료 여부만 추적합니다 (병렬 요청).
-        if (dayIdsToTrack.length > 1) {
-          const otherIds = dayIdsToTrack.filter((id) => id !== firstDayId && !doneIds.has(id));
-          await Promise.allSettled(
-            otherIds.map(async (id) => {
-              const s = await fetchTripDayGenerationStatus(id);
-              if (s.status === 'completed' || s.status === 'failed') {
-                doneIds.add(id);
-                if (isMounted) {
-                  setCompletedDayIds(new Set(doneIds));
-                }
-              }
-            }),
-          );
-        }
-
-        // 첫 날 완료되면 폴링 중단 (나머지는 백그라운드에서 계속 진행됨).
-        if (firstStatus.status === 'completed' || firstStatus.status === 'failed') {
+        const failedStatus = statuses.find((status) => status.status === 'failed');
+        if (failedStatus) {
+          setLoadingStep('failed');
+          setProgress(100);
+          setErrorMessage(failedStatus.errorMessage ?? '일기 생성에 실패했어요.');
           clearInterval(pollTimer);
+          return;
         }
+
+        // 전체 일차 중 완료된 비율을 진행률에 반영합니다.
+        const completedCount = statuses.filter((status) => status.status === 'completed').length;
+
+        // 모든 일차가 완료되어야 작성 화면으로 이동합니다.
+        if (completedCount === statuses.length) {
+          setLoadingStep('completed');
+          setProgress(100);
+          setErrorMessage(null);
+          clearInterval(pollTimer);
+          return;
+        }
+        setLoadingStep('generating_diary');
+        setProgress(Math.round(58 + (completedCount / statuses.length) * 40));
+        setErrorMessage(null);
       } catch {
         if (!isMounted) return;
         setLoadingStep('failed');
@@ -347,7 +385,7 @@ export default function LoadingScreen() {
           </View>
 
           <Text className="mt-md text-center text-2xl font-sans-real-bold text-textPrimary dark:text-dark-textPrimary">
-            {displayStep}
+            {hasApiLoading && loadingStep !== 'failed' && !allDaysCompleted ? generationLabel : displayStep}
           </Text>
           <Text className="mt-xs text-center text-md font-sans-semibold text-textSecondary dark:text-dark-textSecondary">
             {displayHelperText}
@@ -359,10 +397,42 @@ export default function LoadingScreen() {
             </Text>
           ) : null}
 
-          <View className="mt-xl w-[280px] max-w-full">
-            <View className="h-[5px] overflow-hidden rounded-full bg-muted dark:bg-dark-muted">
+          {hasApiLoading ? (
+            <View
+              className="mt-lg w-full max-w-[360px] rounded-lg px-md py-md"
+              style={{ backgroundColor: colors.muted, borderColor: colors.border, borderWidth: 1 }}>
+              {backendSteps.map((step, index) => {
+                const state = getBackendStepState(step.key);
+                return (
+                  <View key={step.key} className={`flex-row items-center ${index > 0 ? 'mt-sm' : ''}`}>
+                    <View
+                      className="h-6 w-6 items-center justify-center rounded-full"
+                      style={{ backgroundColor: state === 'completed' ? colors.primary : colors.surface }}>
+                      {state === 'completed' ? (
+                        <Check size={14} color={colors.textOnPrimary} strokeWidth={3} />
+                      ) : state === 'active' ? (
+                        <Loader2 size={15} color={colors.primary} />
+                      ) : (
+                        <Circle size={12} color={state === 'failed' ? colors.error : colors.textSecondary} />
+                      )}
+                    </View>
+                    <Text
+                      className="ml-sm flex-1 text-sm font-sans-semibold"
+                      style={{ color: state === 'active' ? colors.textPrimary : colors.textSecondary }}>
+                      {step.label}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+
+          <View className="mt-lg w-[320px] max-w-full">
+            <View
+              className="h-[10px] overflow-hidden rounded-full"
+              style={{ backgroundColor: colors.ring, borderColor: colors.border, borderWidth: 1 }}>
               <LinearGradient
-                colors={[colors.primary, colors.primaryLight, colors.accent]}
+                colors={[colors.primary, colors.accent]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 className="h-full rounded-full"
