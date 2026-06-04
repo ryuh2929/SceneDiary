@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -90,6 +90,10 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 🎯 핵심 꼼수: 데이터가 존재한다고 '확인된' 연도들을 기록해둘 상자입니다.
+  // 진입할 때의 2026년은 기본적으로 포함해 둡니다
+  const [hasDataYears, setHasDataYears] = useState<number[]>([2026]);
+
   /**
    * 현재 선택된 연도의 여행 목록을 서버에서 불러옵니다.
    * 화면에 다시 진입하거나 연도가 바뀔 때마다 최신 데이터를 반영합니다.
@@ -98,7 +102,7 @@ export default function HomeScreen() {
   const userProfile = useUserStore((state) => state.userProfile);
   const loadTripData = async () => {
     // 🌟 [안전장치] 혹시라도 userId가 없으면 즉시 종료
-    if (!userProfile?.userId) return;
+    if (!userProfile?.userId || currentYear === null) return;
     try {
       setIsLoading(true); // 로딩 시작
       setError(null); // 이전 에러 초기화
@@ -107,7 +111,21 @@ export default function HomeScreen() {
       const data = await getTrips(currentYear, userProfile?.userId);
       // console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
       console.log("데이터 불러옴");
-      setTripData(data); // 받아온 데이터 저장
+
+      //받아온 전체 데이터 중, 실제 start_date의 연도가 currentYear와 일치하는 것만
+      const filteredData = data.filter((item) => {
+        return new Date(item.start_date).getFullYear() === currentYear;
+      });
+      setTripData(filteredData); // 필터링된 진짜 해당 연도 데이터만 화면 리스트에 세팅
+
+      // [화살표 잠금 연동]: 데이터가 '진짜로 존재하는 연도들'을 수집할 때도
+      // filteredData가 아니라 원본 data(전체 데이터)를 활용하면 유저가 작성한 모든 연도가 자동으로 수집
+      if (data && data.length > 0) {
+        const allYears = data.map((item) =>
+          new Date(item.start_date).getFullYear(),
+        );
+        setHasDataYears(Array.from(new Set(allYears))); // ex) [2025, 2026]이 자동으로 들어감!
+      }
     } catch (err: any) {
       setTripData([]);
       console.log("API 에러 전체:", err);
@@ -131,6 +149,29 @@ export default function HomeScreen() {
       };
     }, [currentYear, userProfile]), //의존성 배열에 userProfile을 반드시 추가해야 값이 들어온 순간 반응
   );
+
+  // ─────────────────────────────────────────────
+  // ⚙️ 화살표 비활성화 (락) 조건 계산 구역
+  // ─────────────────────────────────────────────
+
+  // 🎯 전체 연도 배열을 API로 안 받아왔기 때문에,
+  // '현재 데이터가 있는 것으로 확인된 연도 범위' 안에서만 움직이도록 가둡니다!
+  const minYear = Math.min(...hasDataYears);
+  const maxYear = Math.max(...hasDataYears);
+
+  // 현재 데이터 상태에 맞춰 실시간으로 화살표 제어
+  // 오직 내가 탐색한 범위의 최소/최대 연도만 비교하여 칼같이 잠급니다.
+  const isLeftDisabled = currentYear <= minYear;
+  const isRightDisabled = currentYear >= maxYear;
+
+  if (!userProfile?.userId) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={{ marginTop: 10 }}>유저 정보를 불러오는 중...</Text>
+      </View>
+    );
+  }
   // ─────────────────────────────────────────────
   // 🔀 아코디언 토글 핸들러
   // ─────────────────────────────────────────────
@@ -143,9 +184,6 @@ export default function HomeScreen() {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  // ─────────────────────────────────────────────
-  // 🖥️ UI 렌더링
-  // ─────────────────────────────────────────────
   // 🌟 4. [기다리기 처리] 유저 ID가 아직 안 들어왔다면 화면 자체를 홀딩합니다.
   if (!userProfile?.userId) {
     return (
@@ -155,6 +193,10 @@ export default function HomeScreen() {
       </View>
     );
   }
+
+  // ─────────────────────────────────────────────
+  // 🖥️ UI 렌더링
+  // ─────────────────────────────────────────────
   return (
     <View className="flex-1 bg-background dark:bg-dark-background">
       {isDarkMode ? <DarkModeBackground /> : null}
@@ -166,6 +208,11 @@ export default function HomeScreen() {
           <Pressable
             onPress={() => setCurrentYear((prev) => prev - 1)}
             className="p-xs"
+            disabled={isLeftDisabled}
+            style={{
+              // 잠겼을 때는 25% 투명도로 흐리게 만들고, 누를 수 있을 때는 100%(1) 쨍하게 만듭니다.
+              opacity: isLeftDisabled ? 0.25 : 1,
+            }}
           >
             <ChevronLeft size={20} color={colors.textSecondary} />
           </Pressable>
@@ -177,6 +224,11 @@ export default function HomeScreen() {
           <Pressable
             onPress={() => setCurrentYear((prev) => prev + 1)}
             className="p-xs"
+            // 🎯 앞서 계산한 최대 연도 조건(isRightDisabled)을 여기에 대입합니다.
+            disabled={isRightDisabled}
+            style={{
+              opacity: isRightDisabled ? 0.25 : 1,
+            }}
           >
             <ChevronRight size={20} color={colors.textSecondary} />
           </Pressable>
