@@ -213,6 +213,14 @@ function parseFilenameDate(
   return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
+function getLocalTodayDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getSelectedDates(photos: PendingPhoto[]) {
   return Array.from(
     new Set(photos.map((photo) => photo.takenDate).filter(Boolean) as string[]),
@@ -221,6 +229,19 @@ function getSelectedDates(photos: PendingPhoto[]) {
 
 function getPhotoDateKey(photo: PendingPhoto) {
   return photo.takenDate ?? "__unknown_date__";
+}
+
+function sortPhotosByTakenDate(photos: PendingPhoto[]) {
+  return [...photos]
+    .sort((left, right) => {
+      if (left.takenDate && right.takenDate) {
+        return left.takenDate.localeCompare(right.takenDate) || left.displayOrder - right.displayOrder;
+      }
+      if (left.takenDate) return -1;
+      if (right.takenDate) return 1;
+      return left.displayOrder - right.displayOrder;
+    })
+    .map((photo, index) => ({ ...photo, displayOrder: index }));
 }
 
 function getDailyPhotoCounts(photos: PendingPhoto[]) {
@@ -336,9 +357,8 @@ async function buildPendingPhoto(
     fileUri: uploadImage.uri,
     thumbnailUri: thumbnail.uri,
     originalFilename: asset.fileName ?? `photo-${displayOrder + 1}.jpg`,
-    mimeType: "image/jpeg",
-    takenDate:
-      parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName),
+    mimeType: 'image/jpeg',
+    takenDate: parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName) ?? getLocalTodayDate(),
     gpsLatitude: gps?.latitude,
     gpsLongitude: gps?.longitude,
     placeName: geo?.placeName,
@@ -457,12 +477,7 @@ export default function AddScreen() {
         acceptedPhotos.push(photo);
       }
 
-      setPendingPhotos((current) =>
-        [...current, ...acceptedPhotos].map((photo, index) => ({
-          ...photo,
-          displayOrder: index,
-        })),
-      );
+      setPendingPhotos((current) => sortPhotosByTakenDate([...current, ...acceptedPhotos]));
 
       if (rejectedCount > 0) {
         Alert.alert(
@@ -572,7 +587,7 @@ export default function AddScreen() {
             <Text className="text-xl font-sans-bold leading-8 text-textPrimary dark:text-dark-textPrimary">
               {photoHeading}
             </Text>
-            <Text className="mt-sm text-md leading-6 text-textSecondary dark:text-dark-textSecondary">
+            <Text className="mt-sm text-md font-sans leading-6 text-textSecondary dark:text-dark-textSecondary">
               {photoDescription}
             </Text>
           </View>
@@ -649,7 +664,7 @@ export default function AddScreen() {
             accessibilityLabel="AI로 일기"
             disabled={pendingPhotos.length === 0 || isPreparing || isUploading}
             onPress={moveToAnalysis}
-            className="w-full max-w-[360px] overflow-hidden rounded-lg"
+            className="w-full max-w-[420px] overflow-hidden rounded-lg"
             style={{
               opacity:
                 pendingPhotos.length === 0 || isPreparing || isUploading

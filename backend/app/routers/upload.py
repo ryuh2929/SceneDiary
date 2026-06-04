@@ -214,6 +214,17 @@ def _get_or_create_trip_day_for_date(
     return trip_day
 
 
+def _renumber_trip_days_by_date(db: Session, trip_id: int) -> None:
+    trip_days = (
+        db.query(TripDay)
+        .filter(TripDay.trip_id == trip_id)
+        .order_by(TripDay.date, TripDay.id)
+        .all()
+    )
+    for day_number, trip_day in enumerate(trip_days, start=1):
+        trip_day.day_number = day_number
+
+
 def _generation_progress(status: str) -> tuple[LoadingStep, int, str | None]:
     if status == "ready":
         return "completed", 100, None
@@ -347,9 +358,9 @@ async def upload_first_day_photos(
             )
         )
 
-    sorted_dates = sorted({draft.photo_date for draft in drafts})
-    effective_start = sorted_dates[0]
-    effective_end = sorted_dates[-1]
+    photo_taken_dates = sorted({draft.photo_date for draft in drafts})
+    effective_start = photo_taken_dates[0]
+    effective_end = photo_taken_dates[-1]
     trip = _get_or_create_trip(
         db,
         trip_id=trip_id,
@@ -370,15 +381,16 @@ async def upload_first_day_photos(
             trip_date=grouped_date,
             preferred_day_number=day_number + index,
         )
-        for index, grouped_date in enumerate(sorted_dates)
+        for index, grouped_date in enumerate(photo_taken_dates)
     }
+    _renumber_trip_days_by_date(db, trip.id)
 
     base = _base_url(request)
     uploaded: list[UploadedPhoto] = []
     uploaded_by_day_id: dict[int, list[UploadedPhoto]] = {}
     drafts_by_date = {
         grouped_date: [draft for draft in drafts if draft.photo_date == grouped_date]
-        for grouped_date in sorted_dates
+        for grouped_date in photo_taken_dates
     }
 
     for grouped_date, grouped_drafts in drafts_by_date.items():
@@ -513,7 +525,7 @@ async def upload_first_day_photos(
     for trip_day_id, gen_id in generation_jobs:
         background_tasks.add_task(_run_generation, trip_day_id, gen_id)
 
-    first_trip_day = trip_days_by_date[sorted_dates[0]]
+    first_trip_day = trip_days_by_date[photo_taken_dates[0]]
     return FirstDayUploadResponse(
         tripId=trip.id,
         tripDayId=first_trip_day.id,
@@ -527,7 +539,7 @@ async def upload_first_day_photos(
                 date=grouped_date.isoformat(),
                 photos=uploaded_by_day_id[trip_days_by_date[grouped_date].id],
             )
-            for grouped_date in sorted_dates
+            for grouped_date in photo_taken_dates
         ],
     )
 
