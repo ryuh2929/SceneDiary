@@ -353,7 +353,7 @@ export default function LoadingScreen() {
     <View
       className="flex-1 items-center bg-surface px-lg dark:bg-dark-surface"
       style={{ paddingTop: insets.top + 24, paddingBottom: bottomInset }}>
-      <View className="mx-auto w-full max-w-[720px] flex-1 items-center justify-center px-xl">
+      <View className="mx-auto w-full max-w-[720px] flex-1 items-center justify-center">
         <View className="w-full items-center">
           <View className="relative h-40 w-40 items-center justify-center">
             <Animated.View
