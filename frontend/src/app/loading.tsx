@@ -8,7 +8,6 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -117,8 +116,6 @@ export default function LoadingScreen() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 16);
   const rotation = useSharedValue(0);
-  const pulse = useSharedValue(1);
-  const drift = useSharedValue(0);
   const [progress, setProgress] = useState(18);
   const [stepIndex, setStepIndex] = useState(0);
   const [loadingStep, setLoadingStep] = useState<LoadingStep | null>(
@@ -165,24 +162,7 @@ export default function LoadingScreen() {
       false,
     );
 
-    pulse.value = withRepeat(
-      withSequence(
-        withTiming(1.04, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      true,
-    );
-
-    drift.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 2600, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      true,
-    );
-  }, [drift, pulse, rotation]);
+  }, [rotation]);
 
   useEffect(() => {
     if (hasApiLoading) {
@@ -318,37 +298,6 @@ export default function LoadingScreen() {
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulse.value }],
-  }));
-
-  const softBlobStyle = useAnimatedStyle(() => ({
-    opacity: 0.18 + drift.value * 0.08,
-    transform: [
-      { translateX: -12 + drift.value * 18 },
-      { translateY: 4 - drift.value * 10 },
-      { scale: 1 + drift.value * 0.08 },
-    ],
-  }));
-
-  const paleBlobStyle = useAnimatedStyle(() => ({
-    opacity: 0.14 + (1 - drift.value) * 0.08,
-    transform: [
-      { translateX: 14 - drift.value * 12 },
-      { translateY: -8 + drift.value * 12 },
-      { scale: 1.08 - drift.value * 0.05 },
-    ],
-  }));
-
-  const lightBlobStyle = useAnimatedStyle(() => ({
-    opacity: 0.1 + drift.value * 0.06,
-    transform: [
-      { translateX: 3 + drift.value * 8 },
-      { translateY: 14 - drift.value * 8 },
-      { scale: pulse.value },
-    ],
-  }));
-
   return (
     <View
       className="flex-1 items-center bg-surface px-lg dark:bg-dark-surface"
@@ -356,52 +305,6 @@ export default function LoadingScreen() {
       <View className="mx-auto w-full max-w-[720px] flex-1 items-center justify-center">
         <View className="w-full items-center">
           <View className="relative h-40 w-40 items-center justify-center">
-            <Animated.View
-              style={[
-                {
-                  position: 'absolute',
-                  width: 142,
-                  height: 116,
-                  borderRadius: 999,
-                  backgroundColor: `${colors.primaryLight}42`,
-                },
-                softBlobStyle,
-              ]}
-            />
-            <Animated.View
-              style={[
-                {
-                  position: 'absolute',
-                  width: 124,
-                  height: 134,
-                  borderRadius: 999,
-                  backgroundColor: `${colors.ring}57`,
-                },
-                paleBlobStyle,
-              ]}
-            />
-            <Animated.View
-              style={[
-                {
-                  position: 'absolute',
-                  width: 88,
-                  height: 82,
-                  borderRadius: 999,
-                  backgroundColor: `${colors.primaryLight}2E`,
-                },
-                lightBlobStyle,
-              ]}
-            />
-            <Animated.View
-              className="absolute h-28 w-28 rounded-full"
-              style={[
-                {
-                  backgroundColor: `${colors.primaryLight}14`,
-                },
-                pulseStyle,
-              ]}
-            />
-
             <Animated.View
               className="absolute h-28 w-28 rounded-full border-[2px]"
               style={[

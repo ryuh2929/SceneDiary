@@ -214,6 +214,17 @@ def _get_or_create_trip_day_for_date(
     return trip_day
 
 
+def _renumber_trip_days_by_date(db: Session, trip_id: int) -> None:
+    trip_days = (
+        db.query(TripDay)
+        .filter(TripDay.trip_id == trip_id)
+        .order_by(TripDay.date, TripDay.id)
+        .all()
+    )
+    for day_number, trip_day in enumerate(trip_days, start=1):
+        trip_day.day_number = day_number
+
+
 def _generation_progress(status: str) -> tuple[LoadingStep, int, str | None]:
     if status == "ready":
         return "completed", 100, None
@@ -372,6 +383,7 @@ async def upload_first_day_photos(
         )
         for index, grouped_date in enumerate(photo_taken_dates)
     }
+    _renumber_trip_days_by_date(db, trip.id)
 
     base = _base_url(request)
     uploaded: list[UploadedPhoto] = []

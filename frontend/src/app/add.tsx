@@ -175,6 +175,19 @@ function getPhotoDateKey(photo: PendingPhoto) {
   return photo.takenDate ?? '__unknown_date__';
 }
 
+function sortPhotosByTakenDate(photos: PendingPhoto[]) {
+  return [...photos]
+    .sort((left, right) => {
+      if (left.takenDate && right.takenDate) {
+        return left.takenDate.localeCompare(right.takenDate) || left.displayOrder - right.displayOrder;
+      }
+      if (left.takenDate) return -1;
+      if (right.takenDate) return 1;
+      return left.displayOrder - right.displayOrder;
+    })
+    .map((photo, index) => ({ ...photo, displayOrder: index }));
+}
+
 function getDailyPhotoCounts(photos: PendingPhoto[]) {
   return photos.reduce<Record<string, number>>((counts, photo) => {
     const key = getPhotoDateKey(photo);
@@ -377,9 +390,7 @@ export default function AddScreen() {
         acceptedPhotos.push(photo);
       }
 
-      setPendingPhotos((current) =>
-        [...current, ...acceptedPhotos].map((photo, index) => ({ ...photo, displayOrder: index })),
-      );
+      setPendingPhotos((current) => sortPhotosByTakenDate([...current, ...acceptedPhotos]));
 
       if (rejectedCount > 0) {
         Alert.alert(
