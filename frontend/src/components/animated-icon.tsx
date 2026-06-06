@@ -1,11 +1,12 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
+const SPLASH_DURATION = 2200;
 
 export function AnimatedSplashOverlay() {
   const [visible, setVisible] = useState(true);
@@ -14,33 +15,29 @@ export function AnimatedSplashOverlay() {
 
   const splashKeyframe = new Keyframe({
     0: {
-      transform: [{ scale: INITIAL_SCALE_FACTOR }],
       opacity: 1,
     },
-    20: {
+    75: {
       opacity: 1,
-    },
-    70: {
-      opacity: 0,
-      easing: Easing.elastic(0.7),
     },
     100: {
       opacity: 0,
-      transform: [{ scale: 1 }],
-      easing: Easing.elastic(0.7),
+      easing: Easing.out(Easing.cubic),
     },
   });
 
   return (
     <Animated.View
-      entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
+      entering={splashKeyframe.duration(SPLASH_DURATION).withCallback((finished) => {
         'worklet';
         if (finished) {
           scheduleOnRN(setVisible, false);
         }
       })}
       style={styles.backgroundSolidColor}
-    />
+    >
+      <Text style={styles.splashTitle}>SceneDiary</Text>
+    </Animated.View>
   );
 }
 
@@ -126,7 +123,15 @@ const styles = StyleSheet.create({
   },
   backgroundSolidColor: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#208AEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#152538',
     zIndex: 1000,
+  },
+  splashTitle: {
+    color: '#f8fbff',
+    fontFamily: 'DancingScript',
+    fontSize: 42,
+    letterSpacing: 0,
   },
 });
