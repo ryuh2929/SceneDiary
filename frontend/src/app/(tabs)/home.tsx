@@ -255,24 +255,6 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerClassName="px-md mt-lg mb-md gap-lg"
         contentContainerStyle={{ paddingBottom: 180 }}
-        ListEmptyComponent={
-          !isLoading && !error ? (
-            <View className="mt-xl items-center justify-center rounded-2xl bg-surface p-xl border border-border dark:border-dark-border dark:bg-dark-surface shadow-sm">
-              <Text style={{ fontSize: 32 }} className="mb-sm">
-                ✈️
-              </Text>
-
-              <Text className="text-base font-sans-bold text-textPrimary dark:text-dark-textPrimary text-center">
-                작성된 일기가 없습니다
-              </Text>
-
-              <Text className="mt-xs text-sm text-textSecondary dark:text-dark-textSecondary text-center leading-5">
-                오른쪽 아래 '+' 버튼을 눌러{"\n"}새로운 여행의 추억을 기록해
-                보세요!
-              </Text>
-            </View>
-          ) : null
-        }
         renderItem={({ item }) => {
           const isExpanded = expandedId === item.id;
 
