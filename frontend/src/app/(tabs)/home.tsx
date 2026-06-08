@@ -23,6 +23,7 @@ import { useAppThemeColors } from "@/constants/app-colors";
 import { useAppSettings } from "@/contexts/app-settings-context";
 import { useUserStore } from "@/data/userStore";
 
+
 // ─────────────────────────────────────────────
 // 🔧 유틸 함수 섹션
 // ─────────────────────────────────────────────
@@ -150,27 +151,33 @@ export default function HomeScreen() {
   );
 
   // ─────────────────────────────────────────────
-  // ⚙️ 화살표 비활성화 (락) 조건 계산 구역
+  // ⚙️ 화살표 제어 및 연도 건너뛰기(Jump) 계산 구역
   // ─────────────────────────────────────────────
   
-  // 🎯 전체 연도 배열을 API로 안 받아왔기 때문에, 
-  // '현재 데이터가 있는 것으로 확인된 연도 범위' 안에서만 움직이도록 가둡니다!
-  const minYear = Math.min(...hasDataYears);
-  const maxYear = Math.max(...hasDataYears);
+  // 1. 유효한 연도 목록을 오름차순으로 정렬합니다 (예: [2016, 2025, 2026])
+  const sortedAvailableYears = [...hasDataYears].sort((a, b) => a - b);
 
-  // 현재 데이터 상태에 맞춰 실시간으로 화살표 제어
-  // 오직 내가 탐색한 범위의 최소/최대 연도만 비교하여 칼같이 잠급니다.
-  const isLeftDisabled = currentYear <= minYear;
-  const isRightDisabled = currentYear >= maxYear;
+  // 2. 현재 선택된 연도가 이 배열에서 몇 번째 칸(Index)에 있는지 찾습니다.
+  const currentIdx = sortedAvailableYears.indexOf(currentYear);
 
-  if (!userProfile?.userId) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={{ marginTop: 10 }}>유저 정보를 불러오는 중...</Text>
-      </View>
-    );
-  }
+  // 3. 왼쪽(이전), 오른쪽(다음) 화살표 잠금 조건 설정
+  // 배열의 맨 첫 칸이거나 배열에 존재하지 않으면 왼쪽 잠금
+  const isLeftDisabled = currentIdx <= 0 || currentIdx === -1;
+  // 배열의 맨 마지막 칸이거나 배열에 존재하지 않으면 오른쪽 잠금
+  const isRightDisabled = currentIdx >= sortedAvailableYears.length - 1 || currentIdx === -1;
+
+  // 4. 껑충껑충 건너뛰는 화살표 핸들러 함수
+  const handlePrevYear = () => {
+    if (!isLeftDisabled) {
+      setCurrentYear(sortedAvailableYears[currentIdx - 1]);
+    }
+  };
+
+  const handleNextYear = () => {
+    if (!isRightDisabled) {
+      setCurrentYear(sortedAvailableYears[currentIdx + 1]);
+    }
+  };
   // ─────────────────────────────────────────────
   // 🔀 아코디언 토글 핸들러
   // ─────────────────────────────────────────────
@@ -206,9 +213,11 @@ export default function HomeScreen() {
       <View className="bg-surface pt-safe pb-md items-center border-b border-border shadow-sm dark:border-dark-border dark:bg-dark-surface">
         <Text className="text-xl font-logo text-logo mt-sm">SceneDiary</Text>
 
+      {!isLoading && sortedAvailableYears.length > 0 && (
         <View className="flex-row items-center justify-center gap-xl mt-md">
           <Pressable
-            onPress={() => setCurrentYear((prev) => prev - 1)}
+            // onPress={() => setCurrentYear((prev) => prev - 1)}
+            onPress={handlePrevYear}
             className="p-xs"
             disabled={isLeftDisabled}
             style={{
@@ -224,7 +233,8 @@ export default function HomeScreen() {
           </Text>
 
         <Pressable
-          onPress={() => setCurrentYear((prev) => prev + 1)}
+          // onPress={() => setCurrentYear((prev) => prev + 1)}
+          onPress={handleNextYear}
           className="p-xs"
           // 🎯 앞서 계산한 최대 연도 조건(isRightDisabled)을 여기에 대입합니다.
           disabled={isRightDisabled}
@@ -235,8 +245,9 @@ export default function HomeScreen() {
             <ChevronRight size={20} color={colors.textSecondary} />
           </Pressable>
         </View>
+           )}
       </View>
-
+       
       <FlatList
         className="flex-1"
         data={tripData}
