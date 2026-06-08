@@ -495,6 +495,13 @@ export default function LoadingScreen() {
             colors={[colors.primary, colors.primaryLight, colors.accent]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
+            //아이폰 스타일 적용
+            style={{
+              paddingVertical: 16,
+              paddingHorizontal: 24,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
             className="h-14 items-center justify-center">
             <Text className="text-md font-sans-bold text-textOnPrimary">{buttonLabel}</Text>
           </LinearGradient>
