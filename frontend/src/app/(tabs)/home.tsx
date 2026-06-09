@@ -22,6 +22,7 @@ import { Trip } from "@/types/api";
 import { useAppThemeColors } from "@/constants/app-colors";
 import { useAppSettings } from "@/contexts/app-settings-context";
 import { useUserStore } from "@/data/userStore";
+import { getFlagCodepoint } from '@/data/flagMapping';
 
 
 // ─────────────────────────────────────────────
@@ -90,6 +91,8 @@ export default function HomeScreen() {
   const [tripData, setTripData] = useState<Trip[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  
 
   // 🎯 핵심 꼼수: 데이터가 존재한다고 '확인된' 연도들을 기록해둘 상자입니다.
   // 진입할 때의 2026년은 기본적으로 포함해 둡니다
@@ -195,7 +198,7 @@ export default function HomeScreen() {
   if (!userProfile?.userId) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#ef4444" />
         <Text style={{ marginTop: 10 }}>유저 정보를 불러오는 중...</Text>
       </View>
     );
@@ -258,6 +261,9 @@ export default function HomeScreen() {
         renderItem={({ item }) => {
           const isExpanded = expandedId === item.id;
 
+          const countryName = item.destination ? item.destination.split('/')[0] : '';
+          const currentFlag = getFlagCodepoint(countryName);
+
           return (
             <View
               className="bg-surface rounded-lg overflow-hidden border border-border dark:border-dark-border dark:bg-dark-surface shadow-sm shadow-black/10 dark:shadow-none"
@@ -266,7 +272,7 @@ export default function HomeScreen() {
                 elevation: 3,
                 shadowColor: colors.textPrimary,
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.08,
+                shadowOpacity: 0.08, 
                 shadowRadius: 4,
               }}
             >
@@ -296,7 +302,8 @@ export default function HomeScreen() {
                 </View>
 
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  <EmojiIcon codepoint={item.flag || "1f1f0-1f1f7"} size={26} />
+                  {/* <EmojiIcon codepoint={item.flag || "1f30d"} size={26} /> */}
+                  <EmojiIcon codepoint={currentFlag} size={26} />
                 </View>
               </Pressable>
 
