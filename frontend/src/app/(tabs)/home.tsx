@@ -260,7 +260,7 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 180 }}
         renderItem={({ item }) => {
           const isExpanded = expandedId === item.id;
-
+          // [실시간 파싱] destination(ex: "중국/Xi An Shi")에서 국가명만 추출하여 매핑
           const countryName = item.destination ? item.destination.split('/')[0] : '';
           const currentFlag = getFlagCodepoint(countryName);
 
@@ -294,7 +294,7 @@ export default function HomeScreen() {
                 }
               >
                 {getMainImage(item)}
-
+                {/* [국기 배치] 우측 상단 혹은 지정된 영역에 실시간 매핑된 국기 아이콘 렌더링 */}
                 <View className="absolute top-md left-md bg-muted rounded-md px-sm py-xs items-center shadow-sm dark:bg-dark-muted">
                   <Text className="text-sm font-sans text-textPrimary dark:text-dark-textPrimary">
                     {item.start_date} ~ {item.end_date}
@@ -302,7 +302,6 @@ export default function HomeScreen() {
                 </View>
 
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  {/* <EmojiIcon codepoint={item.flag || "1f30d"} size={26} /> */}
                   <EmojiIcon codepoint={currentFlag} size={26} />
                 </View>
               </Pressable>
