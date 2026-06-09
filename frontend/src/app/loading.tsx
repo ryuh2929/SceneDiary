@@ -1,14 +1,13 @@
-import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { Image as ImageIcon } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Check, Circle, Image as ImageIcon, Loader2 } from 'lucide-react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Image, Pressable, Text, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
-  withSequence,
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -56,6 +55,13 @@ const nextDaySteps = [
 ];
 
 const COMPLETE_DELAY_MS = 650;
+
+const backendSteps = [
+  { key: 'upload', label: '사진 업로드 및 이미지 정리' },
+  { key: 'metadata', label: '촬영 날짜와 위치 정보 분류' },
+  { key: 'diary', label: '사진을 분석해 일기 초안 생성' },
+  { key: 'ready', label: '여행 기록 준비 완료' },
+] as const;
 
 function getFirstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -125,8 +131,6 @@ export default function LoadingScreen() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 16);
   const rotation = useSharedValue(0);
-  const pulse = useSharedValue(1);
-  const drift = useSharedValue(0);
   const [progress, setProgress] = useState(18);
   const [stepIndex, setStepIndex] = useState(0);
   const [loadingStep, setLoadingStep] = useState<LoadingStep | null>(
@@ -136,11 +140,10 @@ export default function LoadingScreen() {
   const [pollingAttempt, setPollingAttempt] = useState(0);
   const hasApiLoading = Boolean(tripDayId) && !isNextDayMode;
   // 다중 일차 추적: 각 일차의 완료 여부를 id → boolean 맵으로 관리합니다.
-  const [completedDayIds, setCompletedDayIds] = useState<Set<number>>(
-    new Set(),
-  );
-  const totalDayCount = allDays.length > 1 ? allDays.length : 0;
+  const [completedDayIds, setCompletedDayIds] = useState<Set<number>>(new Set());
+  const totalDayCount = allDays.length || (tripDayId ? 1 : 0);
   const completedDayCount = completedDayIds.size;
+  const allDaysCompleted = totalDayCount > 0 && completedDayCount === totalDayCount;
 
   // 같은 로딩 화면을 상황별로 재사용하기 위해 모드에 따라 문구 묶음만 바꿉니다.
   const steps = isNextDayMode ? nextDaySteps : analysisSteps;
@@ -177,6 +180,18 @@ export default function LoadingScreen() {
         ? "작업 준비가 끝났어요"
         : helperText;
 
+  const currentDay = allDays.find((item) => !completedDayIds.has(item.tripDayId));
+  const generationLabel =
+    totalDayCount > 1 && currentDay
+      ? `${currentDay.day}일차 일기를 만들고 있어요`
+      : '사진을 분석해 일기 초안을 만들고 있어요';
+  const getBackendStepState = (key: typeof backendSteps[number]['key']) => {
+    if (loadingStep === 'failed' && (key === 'diary' || key === 'ready')) return 'failed';
+    if (key === 'upload' || key === 'metadata') return 'completed';
+    if (key === 'diary') return allDaysCompleted ? 'completed' : 'active';
+    return allDaysCompleted ? 'completed' : 'pending';
+  };
+
   useEffect(() => {
     rotation.value = withRepeat(
       withTiming(360, { duration: 2200, easing: Easing.linear }),
@@ -184,24 +199,7 @@ export default function LoadingScreen() {
       false,
     );
 
-    pulse.value = withRepeat(
-      withSequence(
-        withTiming(1.04, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      true,
-    );
-
-    drift.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 2600, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      true,
-    );
-  }, [drift, pulse, rotation]);
+  }, [rotation]);
 
   useEffect(() => {
     if (hasApiLoading) {
@@ -236,16 +234,36 @@ export default function LoadingScreen() {
     let isMounted = true;
     const firstDayId = Number(tripDayId);
     // 다중 일차가 있으면 모든 일차를, 없으면 첫 날만 폴링합니다.
-    const dayIdsToTrack =
-      allDays.length > 1 ? allDays.map((d) => d.tripDayId) : [firstDayId];
+    const dayIdsToTrack = allDays.length > 1
+      ? allDays.map((d) => d.tripDayId)
+      : [firstDayId];
+    const doneIds = new Set<number>();
 
     async function pollInitialStatus() {
       try {
-        const firstStatus = await fetchTripDayGenerationStatus(firstDayId);
+        const statuses = await Promise.all(
+          dayIdsToTrack.map((id) => fetchTripDayGenerationStatus(id)),
+        );
         if (!isMounted) return;
-        setLoadingStep(firstStatus.status);
-        setProgress(firstStatus.progress);
-        setErrorMessage(firstStatus.errorMessage ?? null);
+        statuses.forEach((status) => {
+          if (status.status === 'completed') doneIds.add(status.tripDayId);
+        });
+        setCompletedDayIds(new Set(doneIds));
+        const failedStatus = statuses.find((status) => status.status === 'failed');
+        const completedCount = statuses.filter((status) => status.status === 'completed').length;
+        if (failedStatus) {
+          setLoadingStep('failed');
+          setProgress(100);
+          setErrorMessage(failedStatus.errorMessage ?? '일기 생성에 실패했어요.');
+        } else if (completedCount === statuses.length) {
+          setLoadingStep('completed');
+          setProgress(100);
+          setErrorMessage(null);
+        } else {
+          setLoadingStep('generating_diary');
+          setProgress(Math.round(58 + (completedCount / statuses.length) * 40));
+          setErrorMessage(null);
+        }
       } catch {
         if (!isMounted) return;
         setLoadingStep("failed");
@@ -255,50 +273,41 @@ export default function LoadingScreen() {
 
     pollInitialStatus();
 
-    const doneIds = new Set<number>();
-
     const pollTimer = setInterval(async () => {
       try {
-        // 첫 번째 일차 상태는 메인 UI(progress/loadingStep)에 반영합니다.
-        const firstStatus = await fetchTripDayGenerationStatus(firstDayId);
+        // 모든 일차의 실제 생성 상태를 함께 조회해 화면 진행 상태에 반영합니다.
+        const statuses = await Promise.all(
+          dayIdsToTrack.map((id) => fetchTripDayGenerationStatus(id)),
+        );
         if (!isMounted) return;
-        setLoadingStep(firstStatus.status);
-        setProgress(firstStatus.progress);
-        setErrorMessage(firstStatus.errorMessage ?? null);
+        statuses.forEach((status) => {
+          if (status.status === 'completed') doneIds.add(status.tripDayId);
+        });
+        setCompletedDayIds(new Set(doneIds));
 
-        if (
-          firstStatus.status === "completed" ||
-          firstStatus.status === "failed"
-        ) {
-          doneIds.add(firstDayId);
-          setCompletedDayIds(new Set(doneIds));
-        }
-
-        // 나머지 일차들은 완료 여부만 추적합니다 (병렬 요청).
-        if (dayIdsToTrack.length > 1) {
-          const otherIds = dayIdsToTrack.filter(
-            (id) => id !== firstDayId && !doneIds.has(id),
-          );
-          await Promise.allSettled(
-            otherIds.map(async (id) => {
-              const s = await fetchTripDayGenerationStatus(id);
-              if (s.status === "completed" || s.status === "failed") {
-                doneIds.add(id);
-                if (isMounted) {
-                  setCompletedDayIds(new Set(doneIds));
-                }
-              }
-            }),
-          );
-        }
-
-        // 첫 날 완료되면 폴링 중단 (나머지는 백그라운드에서 계속 진행됨).
-        if (
-          firstStatus.status === "completed" ||
-          firstStatus.status === "failed"
-        ) {
+        const failedStatus = statuses.find((status) => status.status === 'failed');
+        if (failedStatus) {
+          setLoadingStep('failed');
+          setProgress(100);
+          setErrorMessage(failedStatus.errorMessage ?? '일기 생성에 실패했어요.');
           clearInterval(pollTimer);
+          return;
         }
+
+        // 전체 일차 중 완료된 비율을 진행률에 반영합니다.
+        const completedCount = statuses.filter((status) => status.status === 'completed').length;
+
+        // 모든 일차가 완료되어야 작성 화면으로 이동합니다.
+        if (completedCount === statuses.length) {
+          setLoadingStep('completed');
+          setProgress(100);
+          setErrorMessage(null);
+          clearInterval(pollTimer);
+          return;
+        }
+        setLoadingStep('generating_diary');
+        setProgress(Math.round(58 + (completedCount / statuses.length) * 40));
+        setErrorMessage(null);
       } catch {
         if (!isMounted) return;
         setLoadingStep("failed");
@@ -344,95 +353,13 @@ export default function LoadingScreen() {
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulse.value }],
-  }));
-
-  const softBlobStyle = useAnimatedStyle(() => ({
-    opacity: 0.18 + drift.value * 0.08,
-    transform: [
-      { translateX: -12 + drift.value * 18 },
-      { translateY: 4 - drift.value * 10 },
-      { scale: 1 + drift.value * 0.08 },
-    ],
-  }));
-
-  const paleBlobStyle = useAnimatedStyle(() => ({
-    opacity: 0.14 + (1 - drift.value) * 0.08,
-    transform: [
-      { translateX: 14 - drift.value * 12 },
-      { translateY: -8 + drift.value * 12 },
-      { scale: 1.08 - drift.value * 0.05 },
-    ],
-  }));
-
-  const lightBlobStyle = useAnimatedStyle(() => ({
-    opacity: 0.1 + drift.value * 0.06,
-    transform: [
-      { translateX: 3 + drift.value * 8 },
-      { translateY: 14 - drift.value * 8 },
-      { scale: pulse.value },
-    ],
-  }));
-
   return (
     <View
       className="flex-1 items-center bg-surface px-lg dark:bg-dark-surface"
-      style={{ paddingTop: insets.top + 24, paddingBottom: bottomInset }}
-    >
-      <View className="mx-auto w-full max-w-[720px] flex-1 items-center justify-center px-xl">
+      style={{ paddingTop: insets.top + 24, paddingBottom: bottomInset }}>
+      <View className="mx-auto w-full max-w-[720px] flex-1 items-center justify-center">
         <View className="w-full items-center">
           <View className="relative h-40 w-40 items-center justify-center">
-            <Animated.View
-              style={[
-                {
-                  position: "absolute",
-                  width: 142,
-                  height: 116,
-                  borderRadius: 999,
-                  backgroundColor: "rgba(169,195,230,0.26)",
-                },
-                softBlobStyle,
-              ]}
-            />
-            <Animated.View
-              style={[
-                {
-                  position: "absolute",
-                  width: 124,
-                  height: 134,
-                  borderRadius: 999,
-                  backgroundColor: "rgba(214,226,242,0.34)",
-                },
-                paleBlobStyle,
-              ]}
-            />
-            <Animated.View
-              style={[
-                {
-                  position: "absolute",
-                  width: 88,
-                  height: 82,
-                  borderRadius: 999,
-                  backgroundColor: "rgba(169,195,230,0.18)",
-                },
-                lightBlobStyle,
-              ]}
-            />
-            <Animated.View
-              className="absolute h-28 w-28 rounded-full"
-              style={[
-                {
-                  backgroundColor: "rgba(169,195,230,0.08)",
-                },
-                pulseStyle,
-              ]}
-            />
-
-            <View
-              className="absolute h-28 w-28 rounded-full border"
-              style={{ borderColor: "rgba(216,227,241,0.78)", zIndex: 4 }}
-            />
             <Animated.View
               className="absolute h-28 w-28 rounded-full border-[2px]"
               style={[
@@ -440,7 +367,7 @@ export default function LoadingScreen() {
                   borderColor: "transparent",
                   borderTopColor: colors.primary,
                   borderRightColor: colors.primaryLight,
-                  borderBottomColor: "rgba(91,125,187,0.2)",
+                  borderBottomColor: `${colors.primary}33`,
                   zIndex: 5,
                 },
                 spinnerStyle,
@@ -452,9 +379,10 @@ export default function LoadingScreen() {
                 {previewPhotos.slice(0, 3).map((photo, index) => (
                   <View
                     key={`${photo.thumbnailUri}-${photo.displayOrder}`}
-                    className="absolute h-16 w-16 overflow-hidden rounded-lg border-2 border-white bg-muted dark:bg-dark-muted"
+                    className="absolute h-16 w-16 overflow-hidden rounded-lg border-2 bg-muted dark:bg-dark-muted"
                     style={{
                       left: 20 + index * 12,
+                      borderColor: colors.surface,
                       transform: [{ rotate: `${(index - 1) * 7}deg` }],
                       shadowColor: colors.textPrimary,
                       shadowOffset: { width: 0, height: 4 },
@@ -481,10 +409,10 @@ export default function LoadingScreen() {
             )}
           </View>
 
-          <Text className="mt-md text-center text-2xl font-extrabold text-textPrimary dark:text-dark-textPrimary">
-            {displayStep}
+          <Text className="mt-md text-center text-2xl font-sans-real-bold text-textPrimary dark:text-dark-textPrimary">
+            {hasApiLoading && loadingStep !== 'failed' && !allDaysCompleted ? generationLabel : displayStep}
           </Text>
-          <Text className="mt-xs text-center text-md font-semibold text-textSecondary dark:text-dark-textSecondary">
+          <Text className="mt-xs text-center text-md font-sans-semibold text-textSecondary dark:text-dark-textSecondary">
             {displayHelperText}
           </Text>
 
@@ -494,10 +422,42 @@ export default function LoadingScreen() {
             </Text>
           ) : null}
 
-          <View className="mt-xl w-[280px] max-w-full">
-            <View className="h-[5px] overflow-hidden rounded-full bg-muted dark:bg-dark-muted">
+          {hasApiLoading ? (
+            <View
+              className="mt-lg w-full max-w-[360px] rounded-lg px-md py-md"
+              style={{ backgroundColor: colors.muted, borderColor: colors.border, borderWidth: 1 }}>
+              {backendSteps.map((step, index) => {
+                const state = getBackendStepState(step.key);
+                return (
+                  <View key={step.key} className={`flex-row items-center ${index > 0 ? 'mt-sm' : ''}`}>
+                    <View
+                      className="h-6 w-6 items-center justify-center rounded-full"
+                      style={{ backgroundColor: state === 'completed' ? colors.primary : colors.surface }}>
+                      {state === 'completed' ? (
+                        <Check size={14} color={colors.textOnPrimary} strokeWidth={3} />
+                      ) : state === 'active' ? (
+                        <Loader2 size={15} color={colors.primary} />
+                      ) : (
+                        <Circle size={12} color={state === 'failed' ? colors.error : colors.textSecondary} />
+                      )}
+                    </View>
+                    <Text
+                      className="ml-sm flex-1 text-sm font-sans-semibold"
+                      style={{ color: state === 'active' ? colors.textPrimary : colors.textSecondary }}>
+                      {step.label}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+
+          <View className="mt-lg w-[320px] max-w-full">
+            <View
+              className="h-[10px] overflow-hidden rounded-full"
+              style={{ backgroundColor: colors.ring, borderColor: colors.border, borderWidth: 1 }}>
               <LinearGradient
-                colors={[colors.primary, colors.primaryLight, colors.accent]}
+                colors={[colors.primary, colors.accent]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 className="h-full rounded-full"
@@ -529,25 +489,21 @@ export default function LoadingScreen() {
               params: { tripId, day, mode },
             });
           }}
-          className="absolute bottom-md w-full max-w-[360px] overflow-hidden rounded-lg"
-          style={{
-            opacity: progress >= 100 || loadingStep === "failed" ? 1 : 0.58,
-          }}
-        >
+          className="absolute bottom-md w-full max-w-[420px] overflow-hidden rounded-lg"
+          style={{ opacity: progress >= 100 || loadingStep === 'failed' ? 1 : 0.58 }}>
           <LinearGradient
             colors={[colors.primary, colors.primaryLight, colors.accent]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
+            //아이폰 스타일 적용
             style={{
               paddingVertical: 16,
               paddingHorizontal: 24,
               justifyContent: "center",
               alignItems: "center",
             }}
-          >
-            <Text className="text-md font-extrabold text-textOnPrimary">
-              {buttonLabel}
-            </Text>
+            className="h-14 items-center justify-center">
+            <Text className="text-md font-sans-bold text-textOnPrimary">{buttonLabel}</Text>
           </LinearGradient>
         </Pressable>
       </View>
