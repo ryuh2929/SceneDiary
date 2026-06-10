@@ -658,13 +658,13 @@ export default function AddScreen() {
           )}
         </ScrollView>
 
-        <View className="items-center bg-surface dark:bg-dark-surface">
+        <View className="items-center bg-surface dark:bg-dark-surface px-4">
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="AI로 일기"
             disabled={pendingPhotos.length === 0 || isPreparing || isUploading}
             onPress={moveToAnalysis}
-            className="w-full max-w-[420px] overflow-hidden rounded-lg"
+            className="w-full max-w-[360px] overflow-hidden rounded-lg"
             style={{
               opacity:
                 pendingPhotos.length === 0 || isPreparing || isUploading
@@ -687,7 +687,7 @@ export default function AddScreen() {
               colors={[colors.primary, colors.primaryLight, colors.accent]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              className="w-full max-w-[360px] overflow-hidden rounded-lg"
+              className="w-full overflow-hidden rounded-lg"
               style={{
                 paddingVertical: 16,
                 paddingHorizontal: 24,
