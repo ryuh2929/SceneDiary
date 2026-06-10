@@ -37,7 +37,7 @@ body {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 1;
 }
-/* ?? [_80?먯꽌] 留덉?留?鍮쏅굹???뚰떚?댁슜 ?덉씠???? */
+/* ── [_80에서] 마지막 빛나는 파티클용 레이어 ── */
 #dust_container {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 3;
@@ -52,7 +52,7 @@ body {
 .glow-particle {
   position: absolute; border-radius: 50%; pointer-events: none;
 }
-/* ?? [_02 ?좎?] ?ъ쭊 ?ш린 100px + [_80?먯꽌] ???뚮몢由??? */
+/* ── [_02 유지] 사진 크기 100px + [_80에서] 흰 테두리 ── */
 .photo-particle {
   position: absolute;
   width: 100px; height: 100px;
@@ -202,11 +202,11 @@ svg {
 
 </div>
 <script>
-// ?? [_02 ?좎?] 湲곕낯 ?ㅼ젙 ??
+// ── [_02 유지] 기본 설정 ──
 const S1 = ['#paper_group_01','#paper_group_02','#paper_group_03','#paper_group_04'];
 const S7 = ['#text_group_01','#text_group_02','#text_group_03'];
 
-// ?? [_02 ?좎?] ??蹂댁? 6媛???
+// ── [_02 유지] 큰 보케 6개 ──
 const BOKEH_CONFIG = [
   { x: 28,  y: 22,  size: 300, color: '#27345d', opacity: 0.34 },
   { x: 60,  y: 40,  size: 230, color: '#4f78b8', opacity: 0.26 },
@@ -218,7 +218,7 @@ const BOKEH_CONFIG = [
 const SPARKLE_COLORS = ['#dce8f7','#b9d2f1','#91b7e8','#6f9ed6'];
 const WATERCOLOR_DARK_COLORS = ['rgba(28,39,84,0.42)','rgba(45,68,130,0.36)','rgba(74,116,181,0.30)','rgba(124,166,219,0.22)'];
 
-// ?? [_80?먯꽌] ?ъ쭊 ?곗???PHOTO_FAN ??
+// ── [_80에서] 사진 터지는 PHOTO_FAN ──
 const PHOTO_FAN = [
   { x:-150, y:-108, rotation:-32, scale:1.34 },
   { x:-68,  y:-184, rotation:-11, scale:1.62 },
@@ -227,7 +227,7 @@ const PHOTO_FAN = [
   { x:151,  y:-132, rotation:34,  scale:1.40 },
 ];
 
-// ?? [_02 ?좎?] ?뚰떚???앹꽦 ??
+// ── [_02 유지] 파티클 생성 ──
 function makeParticles() {
   const bokehBox = document.querySelector('#bokeh_container');
   bokehBox.innerHTML = '';
@@ -250,7 +250,7 @@ function makeParticles() {
   const ptBox = document.querySelector('#particle_container');
   ptBox.innerHTML = '';
 
-  // Dark watercolor dust particles.
+  // 다크 수채화 먼지 파티클 40개
   for (let i = 0; i < 40; i++) {
     const el = document.createElement('div');
     el.className = 'dust';
@@ -260,7 +260,7 @@ function makeParticles() {
     ptBox.appendChild(el);
   }
 
-  // Dark sparkle particles.
+  // 다크 스파클 30개
   for (let i = 0; i < 30; i++) {
     const el = document.createElement('div');
     el.className = 'sparkle';
@@ -270,7 +270,7 @@ function makeParticles() {
     ptBox.appendChild(el);
   }
 
-  // Photo particles.
+  // 포토 파티클 5개
   for (let i = 0; i < 5; i++) {
     const el = document.createElement('img');
     el.className = 'photo-particle';
@@ -280,7 +280,7 @@ function makeParticles() {
   }
 }
 
-// ?? [_80?먯꽌] 留덉?留?鍮쏅굹?????뚰떚???앹꽦 ??
+// ── [_80에서] 마지막 빛나는 흰 파티클 생성 ──
 function makeDust() {
   const box = document.querySelector('#dust_container');
   box.innerHTML = '';
@@ -294,7 +294,7 @@ function makeDust() {
   }
 }
 
-// ?? [_02 ?좎?] 蹂댁? float ??
+// ── [_02 유지] 보케 float ──
 function startBokehFloat() {
   document.querySelectorAll('#bokeh_container .bokeh').forEach((el, i) => {
     const dur = 3 + i * 1.4;
@@ -305,7 +305,7 @@ function startBokehFloat() {
   });
 }
 
-// ?? [_80?먯꽌] 留덉?留?鍮쏅굹?????뚰떚???щ씪?ㅻ뒗 ?좊땲硫붿씠????
+// ── [_80에서] 마지막 빛나는 흰 파티클 올라오는 애니메이션 ──
 function startDust() {
   const box = document.querySelector('#dust_container');
   const lights = box.querySelectorAll('.final-glow');
@@ -323,7 +323,7 @@ function startDust() {
   });
 }
 
-// ?? [_02 ?좎?] 珥덇린????
+// ── [_02 유지] 초기화 ──
 function init() {
   gsap.set('svg', { visibility: 'visible' });
   gsap.set(['#Animation_Scenes_04','#Scene_01','#motion_parts01','#Scene_07'], { opacity:1, display:'inline' });
@@ -337,24 +337,24 @@ function init() {
   gsap.set(['#logo_group_00', ...S7], { opacity: 0 });
 
   makeParticles();
-  makeDust(); // ??[_80?먯꽌]
+  makeDust(); // ← [_80에서]
 
-  gsap.set('#dust_container .final-glow', { opacity:0 }); // ??[_80?먯꽌]
+  gsap.set('#dust_container .final-glow', { opacity:0 }); // ← [_80에서]
   gsap.set('.dust',    { xPercent:-50, yPercent:-50, opacity:0, scale:1 });
   gsap.set('.sparkle', { opacity:0, xPercent:-50, yPercent:-50, scale:1 });
   gsap.set('.photo-particle', { opacity:0, xPercent:-50, yPercent:-50, scale:0.5, rotation:0 });
   gsap.set('.bokeh', { xPercent:-50, yPercent:-50, opacity:0, scale:0.6 });
 }
 
-// ?? play ??
+// ── play ──
 function play() {
   gsap.killTweensOf('*');
   init();
 
-  // [_80?먯꽌] onComplete??startDust 異붽?
+  // [_80에서] onComplete에 startDust 추가
   const tl = gsap.timeline({ onComplete: () => startDust() });
 
-  // ?? [_02 ?좎?] 醫낆씠 珥ㅻⅤ瑜???
+  // ── [_02 유지] 종이 촤르륵 ──
   tl.to('#paper_group_01', { opacity:1, duration:0.3, ease:'power2.out' })
     .to({}, { duration:0.5 });
 
@@ -367,7 +367,7 @@ function play() {
 
   tl.addLabel('climax', '+=0.05');
 
-  // ?? [_02 ?좎?] ??癒쇱? ??컻 ??
+  // ── [_02 유지] 흰 먼지 폭발 ──
   tl.to('.dust', {
     x:'random(-150,150)', y:'random(-200,50)',
     opacity:'random(0.12,0.30)', scale:'random(0.38,1.25)',
@@ -377,26 +377,26 @@ function play() {
     opacity:0, y:'-=40', duration:1.2, ease:'sine.in', stagger:0.02,
   }, 'climax+=0.3');
 
-  // ?? [_02 ?좎?] 諛곌꼍 ?꾪솚 ??
+  // ── [_02 유지] 배경 전환 ──
   tl.to(S1, { opacity:0, duration:0.1 }, 'climax')
     .to('#bg_layer', { backgroundColor:'#2f3a5a', duration:1.8, ease:'power1.inOut' }, 'climax')
     .to('#cloud_left',  { opacity:0.38, x:'-50%', z:300, rotationY:40,  scale:2.2, duration:3.5, ease:'power2.inOut' }, 'climax')
     .to('#cloud_right', { opacity:0.24, x:'50%', z:200, rotationY:-40, scale:1.8, duration:3.5, ease:'power2.inOut' }, 'climax')
 
-  // ?? [_02 ?좎?] 蹂댁? ?쇱뼱?ㅻ쫫 ??
+  // ── [_02 유지] 보케 피어오름 ──
     .to('.bokeh', {
       opacity:(i) => BOKEH_CONFIG[i].opacity, scale:1,
       duration:2.8, ease:'power2.out', stagger:0.15,
     }, 'climax+=0.2')
 
-  // ?? [_02 ?좎?] ?ㅽ뙆????
+  // ── [_02 유지] 스파클 ──
     .to('.sparkle', {
       x:'random(-130,130)', y:'random(-180,80)',
       opacity:'random(0.16,0.36)', scale:'random(0.45,4.8)',
       duration:2.2, ease:'power1.out', stagger:0.06,
     }, 'climax+=0.1');
 
-  // ?? [_80?먯꽌] ?ъ쭊 ??踰꾩뒪??(PHOTO_FAN, back.out) ??
+  // ── [_80에서] 사진 팬 버스트 (PHOTO_FAN, back.out) ──
   tl.to('.photo-particle', {
     x:(i) => PHOTO_FAN[i].x, y:(i) => PHOTO_FAN[i].y,
     rotation:(i) => PHOTO_FAN[i].rotation, scale:(i) => PHOTO_FAN[i].scale,
@@ -405,17 +405,17 @@ function play() {
   }, 'climax')
   .to('.photo-particle', { opacity:0, y:'-=20', duration:0.3, ease:'sine.in' }, 'climax+=0.55');
 
-  // ?? [_02 ?좎?] 蹂댁? float ?쒖옉 ??
+  // ── [_02 유지] 보케 float 시작 ──
   tl.call(() => startBokehFloat(), [], 'climax+=0.5');
 
   tl.addLabel('aftermath', 'climax+=1.8');
 
-  // ?? [_02 ?좎?] 援щ쫫 嫄룻옒 + ?뚰떚???щ씪吏???
+  // ── [_02 유지] 구름 걷힘 + 파티클 사라짐 ──
   tl.to(['#cloud_left','#cloud_right'], { opacity:0, duration:1.8, ease:'power2.inOut' }, 'aftermath')
     .to('.sparkle', { opacity:0, y:'-=20', duration:1.2, ease:'sine.inOut', stagger:0.04 }, 'aftermath')
     .to('.bokeh', { opacity:(i) => BOKEH_CONFIG[i].opacity * 0.4, duration:1.5, ease:'sine.inOut' }, 'aftermath')
 
-  // ?? [_02 ?좎?] 濡쒓퀬 + ?띿뒪???ㅻŉ????
+  // ── [_02 유지] 로고 + 텍스트 스며듦 ──
     .to('#logo_group_00', { opacity:1,    duration:1.2, ease:'power2.out'  }, 'aftermath')
     .to('#text_group_01', { opacity:0.15, duration:0.6, ease:'sine.out'    }, 'aftermath+=0.2')
     .to('#text_group_02', { opacity:0.4,  duration:0.6, ease:'sine.out'    }, 'aftermath+=0.35')
