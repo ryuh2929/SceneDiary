@@ -169,7 +169,9 @@ export default function TravelDetailUI() {
       try {
         setIsLoading(true);
         setError(null);
+        // console.log("상세보기 조회 trip ID:",tripId)
         const data = await getDetailPage(tripId);
+        
         // console.log("🔥 백엔드가 준 진짜 데이터 구조:", JSON.stringify(data, null, 2));
         setTrip(data);
 
@@ -338,9 +340,9 @@ export default function TravelDetailUI() {
                 </View>
               </View>
               {/* 여행 대표 이모지: trip.flag가 있을 때만 표시 (테스트용 폴백: "1f1f0-1f1f7" = 한국국기) */}
-              {(trip.flag || "1f1f0-1f1f7") && (
+              {(trip.flag) && (
                 <View className="absolute right-3 w-10 h-10 items-center justify-center overflow-hidden">
-                  <EmojiIcon codepoint={trip.flag || "1f1f0-1f1f7"} size={26} />
+                  <EmojiIcon codepoint={trip.flag} size={26} />
                 </View>
               )}
             </View>

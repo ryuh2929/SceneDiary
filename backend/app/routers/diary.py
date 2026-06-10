@@ -189,6 +189,7 @@ def get_trip(
         title=trip.title,
         representImage=_photo_url(db, base, trip.cover_photo_id),
         status=trip.status,
+        flag=trip.flag,
         days=[_build_day(db, td, base) for td in trip_days],
     )
 
@@ -412,7 +413,7 @@ def regenerate_trip_day(
     db: Session = Depends(get_db),
 ) -> DayStatus:
     trip_day = _get_trip_day_or_404(db, trip_day_id)
-
+    print("다이어리 작성 시작 API 호출")
     # 합치기 후: 일기 = trip_day(항상 존재)라 "diary 먼저 만들기"가 불필요해짐(닭-알 해결).
     # 바로 생성 시작 기록(status='running') → 폴링이 generating 으로 봄.
     gen = DiaryGeneration(

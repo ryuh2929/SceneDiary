@@ -22,7 +22,6 @@ import { Trip } from "@/types/api";
 import { useAppThemeColors } from "@/constants/app-colors";
 import { useAppSettings } from "@/contexts/app-settings-context";
 import { useUserStore } from "@/data/userStore";
-import { getFlagCodepoint } from '@/data/flagMapping';
 
 
 // ─────────────────────────────────────────────
@@ -113,7 +112,7 @@ export default function HomeScreen() {
       setTripData([]); // 이전 데이터 초기화
 
       const data = await getTrips(currentYear, userProfile?.userId);
-      // console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+      console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
       console.log("데이터 불러옴");
       
       //받아온 전체 데이터 중, 실제 start_date의 연도가 currentYear와 일치하는 것만
@@ -260,9 +259,6 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 180 }}
         renderItem={({ item }) => {
           const isExpanded = expandedId === item.id;
-          // [실시간 파싱] destination(ex: "중국/Xi An Shi")에서 국가명만 추출하여 매핑
-          const countryName = item.destination ? item.destination.split('/')[0] : '';
-          const currentFlag = getFlagCodepoint(countryName);
 
           return (
             <View
@@ -302,7 +298,7 @@ export default function HomeScreen() {
                 </View>
 
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  <EmojiIcon codepoint={currentFlag} size={26} />
+                  <EmojiIcon codepoint={item.flag} size={26} />
                 </View>
               </Pressable>
 

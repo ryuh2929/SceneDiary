@@ -233,6 +233,11 @@ def generate_day_diary(
     return write_diary(analyses, location=location, date=date)
 
 
+
+
+
+
+
 if __name__ == "__main__":
     # 1일차(신시모섬) 사진으로 빠른 단독 테스트.
     images_dir = (

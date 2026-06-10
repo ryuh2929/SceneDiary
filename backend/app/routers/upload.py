@@ -47,6 +47,43 @@ LoadingStep = Literal[
 ]
 
 
+COUNTRY_FLAG_MAP = {
+    # 아시아
+    '대한민국': '1f1f0-1f1f7', 'South Korea': '1f1f0-1f1f7',
+    '중국': '1f1e8-1f1f3', 'China': '1f1e8-1f1f3',
+    '일본': '1f1ef-1f1f5', 'Japan': '1f1ef-1f1f5',
+    '대만': '1f1f9-1f1fc', 'Taiwan': '1f1f9-1f1fc',
+    '홍콩': '1f1ed-1f1f0', 'Hong Kong': '1f1ed-1f1f0',
+    '태국': '1f1f0-1f1ed', 'Thailand': '1f1f0-1f1ed',
+    '베트남': '1f1fb-1f1f3', 'Vietnam': '1f1fb-1f1f3',
+    '필리핀': '1f1f5-1f1ed', 'Philippines': '1f1f5-1f1ed',
+    '싱가포르': '1f1f8-1f1ec', 'Singapore': '1f1f8-1f1ec',
+    '말레이시아': '1f1f2-1f1fe', 'Malaysia': '1f1f2-1f1fe',
+    '인도네시아': '1f1ee-1f1e9', 'Indonesia': '1f1ee-1f1e9',
+    '몽골': '1f1f2-1f1f3', 'Mongolia': '1f1f2-1f1f3',
+
+    # 유럽
+    '프랑스': '1f1eb-1f1f7', 'France': '1f1eb-1f1f7',
+    '영국': '1f1ec-1f1e7', 'United Kingdom': '1f1ec-1f1e7', 'UK': '1f1ec-1f1e7',
+    '독일': '1f1e9-1f1ea', 'Germany': '1f1e9-1f1ea',
+    '이탈리아': '1f1ee-1f1f9', 'Italy': '1f1ee-1f1f9',
+    '스페인': '1f1ea-1f1f8', 'Spain': '1f1ea-1f1f8',
+    '스위스': '1f1e8-1f1ed', 'Switzerland': '1f1e8-1f1ed',
+    '네덜란드': '1f1f3-1f1f1', 'Netherlands': '1f1f3-1f1f1',
+    '오스트리아': '1f1e6-1f1f9', 'Austria': '1f1e6-1f1f9',
+    '체코': '1f1e4-1f1ff', 'Czech Republic': '1f1e4-1f1ff',
+    '포르투갈': '1f1f5-1f1f9', 'Portugal': '1f1f5-1f1f9',
+
+    # 아메리카 / 오세아니아
+    '미국': '1f1fa-1f1f8', 'USA': '1f1fa-1f1f8', 'United States': '1f1fa-1f1f8',
+    '캐나다': '1f1e8-1f1e6', 'Canada': '1f1e8-1f1e6',
+    '호주': '1f1e6-1f1fa', 'Australia': '1f1e6-1f1fa',
+    '뉴질랜드': '1f1f3-1f1ff', 'New Zealand': '1f1f3-1f1ff',
+    '괌': '1f1ec-1f1fa', 'Guam': '1f1ec-1f1fa',
+    '사이판': '1f1f2-1f1f5', 'Saipan': '1f1f2-1f1f5',
+}
+
+
 class UploadedPhoto(BaseModel):
     id: int
     thumbnailUrl: str
@@ -307,11 +344,15 @@ async def upload_first_day_photos(
     # 사진 업로드 API.
     # EXIF 촬영일이 있으면 날짜별로 trip_day를 나누고, 없으면 요청 날짜를 fallback으로 씁니다.
     # GPS는 프론트가 리사이즈 전에 추출해서 form으로 보낸 값을 우선 사용하고, 없으면 raw_bytes에서 fallback합니다.
+    print("업로드 시작")
+    print(f"DEBUG: 프론트에서 넘어온 국가 리스트: {photo_country_names}")
+    print(f"DEBUG: 프론트에서 넘어온 도시 리스트: {photo_city_names}")
     if not files:
         raise HTTPException(status_code=400, detail="At least one photo is required")
     if day_number < 1:
         raise HTTPException(status_code=400, detail="day_number must be greater than 0")
-
+    photo_gps_latitudes = "37.363595"
+    photo_gps_longitudes = "126.96334666666667"
     fallback_date = trip_date or date.today()
     drafts: list[UploadDraft] = []
     for index, upload_file in enumerate(files):
@@ -322,7 +363,8 @@ async def upload_first_day_photos(
         if len(raw_bytes) > MAX_UPLOAD_BYTES:
             raise HTTPException(status_code=400, detail=f"{upload_file.filename} is larger than 12MB")
         form_photo_date = _parse_upload_date(photo_dates[index] if photo_dates and index < len(photo_dates) else None)
-
+        print("프론트에서 받은 LAT:",photo_gps_latitudes)
+        print("프론트에서 받은 LON:",photo_gps_longitudes)
         form_lat = _parse_form_coordinate(photo_gps_latitudes, index)
         form_lon = _parse_form_coordinate(photo_gps_longitudes, index)
         if form_lat is not None and form_lon is not None and _valid_coordinates(form_lat, form_lon):
@@ -331,6 +373,7 @@ async def upload_first_day_photos(
             gps = extract_image_gps_coordinates(raw_bytes)
             latitude = _decimal_coordinate(gps.latitude) if gps else None
             longitude = _decimal_coordinate(gps.longitude) if gps else None
+            print("LAT:",latitude,"LON:",longitude)
 
         # 지명 form 필드는 같은 index 로 photo 와 매칭. 빈 문자열은 None 으로 정규화.
         def _form_str_at(values: list[str] | None, idx: int) -> str | None:
@@ -338,6 +381,10 @@ async def upload_first_day_photos(
                 return None
             raw = values[idx].strip()
             return raw or None
+        print(f"DEBUG: 현재 인덱스: {index}")
+        print(f"DEBUG: photo_country_names 리스트 상태: {photo_country_names}")
+        print(f"DEBUG: photo_city_names 리스트 상태: {photo_city_names}")
+        print(f"DEBUG: 추출된 country_name: {_form_str_at(photo_country_names, index)}")
 
         drafts.append(
             UploadDraft(
@@ -384,7 +431,7 @@ async def upload_first_day_photos(
         for index, grouped_date in enumerate(photo_taken_dates)
     }
     _renumber_trip_days_by_date(db, trip.id)
-
+    
     base = _base_url(request)
     uploaded: list[UploadedPhoto] = []
     uploaded_by_day_id: dict[int, list[UploadedPhoto]] = {}
@@ -392,7 +439,7 @@ async def upload_first_day_photos(
         grouped_date: [draft for draft in drafts if draft.photo_date == grouped_date]
         for grouped_date in photo_taken_dates
     }
-
+    print("장소")
     for grouped_date, grouped_drafts in drafts_by_date.items():
         trip_day = trip_days_by_date[grouped_date]
         existing_count = (
@@ -485,10 +532,15 @@ async def upload_first_day_photos(
         _refresh_trip_day_representative_coordinates(db, trip_day)
         # 일차 대표 지명: 그날 사진들의 placeName 중 가장 빈도 높은 값.
         # 이미 값이 있으면 덮어쓰지 않음(이전 업로드/사용자 picker 편집 보존).
+        print('위치 정보 조회 시작')
         if not trip_day.location_summary:
             place_candidates = [d.place_name for d in grouped_drafts if d.place_name]
+            
             if place_candidates:
                 trip_day.location_summary = Counter(place_candidates).most_common(1)[0][0]
+                print(trip_day.location_summary)
+                
+                
 
     generation_jobs: list[tuple[int, int]] = []
     for trip_day in trip_days_by_date.values():
@@ -520,6 +572,8 @@ async def upload_first_day_photos(
         )
         if first_draft:
             trip.destination = f"{first_draft.country_name}/{first_draft.city_name}"
+            trip.flag = COUNTRY_FLAG_MAP.get(first_draft.country_name, "1f30d") # 존재하지 않을 경우를 대비해 .get() 사용
+            print(f"{first_draft.country_name}의 코드: {trip.flag}")
 
     db.commit()
     for trip_day_id, gen_id in generation_jobs:

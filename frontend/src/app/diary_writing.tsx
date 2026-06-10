@@ -127,6 +127,7 @@ export default function DiaryWritingScreen() {
     setError(null);
     try {
       const data = await fetchTripDiary(TRIP_ID); // GET /trips/{tripId}
+      console.log("승은이가 요청한 데이터: ", JSON.stringify(data,null,2))
       setTrip(data);
       setDays(data.days);
       // 서버 진본 값을 스냅샷으로 보관 → handleNext 가 "바뀐 게 있을 때만" PATCH 하도록.
@@ -369,7 +370,6 @@ export default function DiaryWritingScreen() {
     );
     try {
       // 국가/도시까지 함께 전달 → 백엔드가 trip.destination 자동 채움(비어있을 때만).
-      console.log("선택된 국가명:", context?.countryName);
       await saveDayLocation(
         day.tripDayId,
         placeName,
@@ -455,7 +455,7 @@ export default function DiaryWritingScreen() {
               </Text>
               {/* 국기가 글자 바로 뒤에 찰떡처럼 붙어 다님 */}
               <View className="w-8 h-8 items-center justify-center">
-                <EmojiIcon codepoint={trip.flag || "1f30d"} size={24} />
+                <EmojiIcon codepoint={trip.flag} size={22} />
               </View>
             </View>
           </View>
@@ -495,7 +495,6 @@ export default function DiaryWritingScreen() {
                       <Text className="text-sm font-medium text-textPrimary dark:text-dark-textPrimary">
                         {formatDate(day.date)}
                       </Text>
-                      {/* <Calendar size={16} color={colors.textSecondary} /> */}
                     </View>
                   </View>
                 </View>

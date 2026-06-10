@@ -1,5 +1,5 @@
 // 딕셔너리에 매핑할 국가 이름들을 정의합니다.
-const COUNTRY_TO_FLAG: Record<string, string> = {
+export const COUNTRY_TO_FLAG: Record<string, string> = {
   // 🇰🇷 아시아
   '대한민국': '1f1f0-1f1f7',
   'South Korea': '1f1f0-1f1f7',
@@ -79,4 +79,20 @@ export function getFlagCodepoint(countryName: string | null | undefined): string
   
   // 매핑 데이터가 있으면 해당 코드포인트 반환, 없으면 지구본 반환
   return COUNTRY_TO_FLAG[trimmedName] || '1f30d'; 
+}
+
+
+export function findCountryFromAddress(address: string): string {
+  if (!address) return '';
+  
+  const cleanText = address.toLowerCase();
+  
+  // 딕셔너리 내부 키(France, 일본, 대한민국 등)를 돌며 주소에 들어있는지 확인
+  for (const key of Object.keys(COUNTRY_TO_FLAG)) {
+    if (cleanText.includes(key.toLowerCase())) {
+      return key; // 매칭되는 국가명(딕셔너리 Key) 반환
+    }
+  }
+  
+  return '';
 }
