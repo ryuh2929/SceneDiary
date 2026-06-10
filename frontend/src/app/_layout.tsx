@@ -9,6 +9,7 @@ import {
   Hahmlet_700Bold,
 } from "@expo-google-fonts/hahmlet";
 import { View } from "react-native";
+import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { AppSettingsProvider } from "@/contexts/app-settings-context";
 import { useUserUuidBootstrap } from "@/hooks/use-user-uuid";
 import "../../global.css";
@@ -40,6 +41,7 @@ export default function RootLayout() {
         <Stack.Screen name="detail" />
         <Stack.Screen name="add" />
       </Stack>
+      <AnimatedSplashOverlay />
     </AppSettingsProvider>
   );
 }
