@@ -1,13 +1,32 @@
-import React, { useState } from 'react';
-import { View, Text, Image, FlatList, Pressable } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronLeft, ChevronRight, ChevronDown, MapPin, Plus } from 'lucide-react-native';
-import Twemoji from 'react-native-twemoji';
-import { DarkModeBackground } from '@/components/dark-mode-background';
-import { getTrips } from '@/api/home';
-import { Trip } from '@/types/api';
-import { useAppThemeColors } from '@/constants/app-colors';
-import { useAppSettings } from '@/contexts/app-settings-context';
+import React, { useState,useMemo } from "react";
+import {
+  View,
+  Text,
+  Image,
+  FlatList,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  MapPin,
+  Plus,
+} from "lucide-react-native";
+import Twemoji from "react-native-twemoji";
+import { DarkModeBackground } from "@/components/dark-mode-background";
+import { getTrips} from "@/api/home";
+import { Trip } from "@/types/api";
+import { useAppThemeColors } from "@/constants/app-colors";
+import { useAppSettings } from "@/contexts/app-settings-context";
+import { useUserStore } from "@/data/userStore";
+
+
+// ─────────────────────────────────────────────
+// 🔧 유틸 함수 섹션
+// ─────────────────────────────────────────────
 
 /**
  * 이모지 코드포인트(hex 문자열)를 실제 이모지 문자로 변환합니다.
@@ -15,9 +34,9 @@ import { useAppSettings } from '@/contexts/app-settings-context';
  */
 function codepointToEmoji(codepoint: string): string {
   return codepoint
-    .split('-')
+    .split("-")
     .map((cp) => String.fromCodePoint(parseInt(cp, 16)))
-    .join('');
+    .join("");
 }
 
 /**
@@ -42,7 +61,9 @@ function EmojiIcon({ codepoint, size }: { codepoint: string; size: number }) {
  */
 export function getMainImage(item: Trip) {
   const allPhotos = item.tripDays.flatMap((day) => day.photos || []);
-  const coverPhoto = allPhotos.find((photo) => photo.id === item.cover_photo_id);
+  const coverPhoto = allPhotos.find(
+    (photo) => photo.id === item.cover_photo_id,
+  );
 
   if (!coverPhoto?.image_url) return null;
 
@@ -70,32 +91,96 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 🎯 핵심 꼼수: 데이터가 존재한다고 '확인된' 연도들을 기록해둘 상자입니다.
+  // 진입할 때의 2026년은 기본적으로 포함해 둡니다
+  const [hasDataYears, setHasDataYears] = useState<number[]>([2026]);
+
   /**
    * 현재 선택된 연도의 여행 목록을 서버에서 불러옵니다.
    * 화면에 다시 진입하거나 연도가 바뀔 때마다 최신 데이터를 반영합니다.
    */
+  //1. Zustand 스토어에서 userProfile의 변경 사항을 실시간으로 감시
+  const userProfile = useUserStore((state) => state.userProfile);
   const loadTripData = async () => {
+    // 🌟 [안전장치] 혹시라도 userId가 없으면 즉시 종료
+    if (!userProfile?.userId|| currentYear === null) return;
     try {
-      setIsLoading(true);
-      setError(null);
-      setTripData([]);
+      setIsLoading(true); // 로딩 시작
+      setError(null); // 이전 에러 초기화
+      setTripData([]); // 이전 데이터 초기화
 
-      const data = await getTrips(currentYear);
-      setTripData(data);
+      const data = await getTrips(currentYear, userProfile?.userId);
+      // console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+      console.log("데이터 불러옴");
+      
+      //받아온 전체 데이터 중, 실제 start_date의 연도가 currentYear와 일치하는 것만
+      const filteredData = data.filter(item => {
+      return new Date(item.start_date).getFullYear() === currentYear;
+    });
+      setTripData(filteredData); // 필터링된 진짜 해당 연도 데이터만 화면 리스트에 세팅
+
+      // [화살표 잠금 연동]: 데이터가 '진짜로 존재하는 연도들'을 수집할 때도 
+      // filteredData가 아니라 원본 data(전체 데이터)를 활용하면 유저가 작성한 모든 연도가 자동으로 수집
+      if (data && data.length > 0) {
+      const allYears = data.map(item => new Date(item.start_date).getFullYear());
+      setHasDataYears(Array.from(new Set(allYears))); // ex) [2025, 2026]이 자동으로 들어감!
+    }
     } catch (err: any) {
       setTripData([]);
-      console.log('여행 데이터 조회 실패:', err);
-      setError('여행 정보를 불러오는 중 오류가 발생했습니다.');
+      console.log("API 에러 전체:", err);
+      console.log("API 에러 메시지:", err?.message);
+      console.log("API 에러 응답:", err?.response?.status, err?.response?.data);
+      setError("여행 정보를 불러오는 중 오류가 발생했습니다.");
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // 성공/실패 관계없이 로딩 종료
     }
   };
 
+  // 2. 화면에 들어올 때마다(Focus) 데이터 갱신
   useFocusEffect(
     React.useCallback(() => {
-      loadTripData();
-    }, [currentYear]),
+      //userProfile과 userId가 확실히 존재할 때만 API 호출
+      if (userProfile?.userId) {
+        loadTripData(); // 데이터 새로고침
+      }
+      return () => {
+        /* 필요 시 정리 작업 */
+      };
+    }, [currentYear, userProfile]), //의존성 배열에 userProfile을 반드시 추가해야 값이 들어온 순간 반응
+    
   );
+
+  // ─────────────────────────────────────────────
+  // ⚙️ 화살표 제어 및 연도 건너뛰기(Jump) 계산 구역
+  // ─────────────────────────────────────────────
+  
+  // 1. 유효한 연도 목록을 오름차순으로 정렬합니다 (예: [2016, 2025, 2026])
+  const sortedAvailableYears = [...hasDataYears].sort((a, b) => a - b);
+
+  // 2. 현재 선택된 연도가 이 배열에서 몇 번째 칸(Index)에 있는지 찾습니다.
+  const currentIdx = sortedAvailableYears.indexOf(currentYear);
+
+  // 3. 왼쪽(이전), 오른쪽(다음) 화살표 잠금 조건 설정
+  // 배열의 맨 첫 칸이거나 배열에 존재하지 않으면 왼쪽 잠금
+  const isLeftDisabled = currentIdx <= 0 || currentIdx === -1;
+  // 배열의 맨 마지막 칸이거나 배열에 존재하지 않으면 오른쪽 잠금
+  const isRightDisabled = currentIdx >= sortedAvailableYears.length - 1 || currentIdx === -1;
+
+  // 4. 껑충껑충 건너뛰는 화살표 핸들러 함수
+  const handlePrevYear = () => {
+    if (!isLeftDisabled) {
+      setCurrentYear(sortedAvailableYears[currentIdx - 1]);
+    }
+  };
+
+  const handleNextYear = () => {
+    if (!isRightDisabled) {
+      setCurrentYear(sortedAvailableYears[currentIdx + 1]);
+    }
+  };
+  // ─────────────────────────────────────────────
+  // 🔀 아코디언 토글 핸들러
+  // ─────────────────────────────────────────────
 
   /**
    * 여행 카드 상세 영역을 펼치거나 접습니다.
@@ -105,6 +190,22 @@ export default function HomeScreen() {
     setExpandedId(expandedId === id ? null : id);
   };
 
+ 
+  // 🌟 4. [기다리기 처리] 유저 ID가 아직 안 들어왔다면 화면 자체를 홀딩합니다.
+  if (!userProfile?.userId) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={{ marginTop: 10 }}>유저 정보를 불러오는 중...</Text>
+      </View>
+    );
+  }
+
+  
+
+  // ─────────────────────────────────────────────
+  // 🖥️ UI 렌더링
+  // ─────────────────────────────────────────────
   return (
     <View className="flex-1 bg-background dark:bg-dark-background">
       {isDarkMode ? <DarkModeBackground /> : null}
@@ -112,10 +213,17 @@ export default function HomeScreen() {
       <View className="bg-surface pt-safe pb-md items-center border-b border-border shadow-sm dark:border-dark-border dark:bg-dark-surface">
         <Text className="text-xl font-logo text-logo mt-sm">SceneDiary</Text>
 
+      {!isLoading && sortedAvailableYears.length > 0 && (
         <View className="flex-row items-center justify-center gap-xl mt-md">
           <Pressable
-            onPress={() => setCurrentYear((prev) => prev - 1)}
+            // onPress={() => setCurrentYear((prev) => prev - 1)}
+            onPress={handlePrevYear}
             className="p-xs"
+            disabled={isLeftDisabled}
+            style={{
+              // 잠겼을 때는 25% 투명도로 흐리게 만들고, 누를 수 있을 때는 100%(1) 쨍하게 만듭니다.
+              opacity: isLeftDisabled ? 0.25 : 1
+            }}
           >
             <ChevronLeft size={20} color={colors.textSecondary} />
           </Pressable>
@@ -124,15 +232,22 @@ export default function HomeScreen() {
             {currentYear}
           </Text>
 
-          <Pressable
-            onPress={() => setCurrentYear((prev) => prev + 1)}
-            className="p-xs"
-          >
+        <Pressable
+          // onPress={() => setCurrentYear((prev) => prev + 1)}
+          onPress={handleNextYear}
+          className="p-xs"
+          // 🎯 앞서 계산한 최대 연도 조건(isRightDisabled)을 여기에 대입합니다.
+          disabled={isRightDisabled}
+          style={{
+            opacity: isRightDisabled ? 0.25 : 1
+          }}
+        >
             <ChevronRight size={20} color={colors.textSecondary} />
           </Pressable>
         </View>
+           )}
       </View>
-
+       
       <FlatList
         className="flex-1"
         data={tripData}
@@ -140,23 +255,6 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerClassName="px-md mt-lg mb-md gap-lg"
         contentContainerStyle={{ paddingBottom: 180 }}
-        ListEmptyComponent={
-          !isLoading && !error ? (
-            <View className="mt-xl items-center justify-center rounded-2xl bg-surface p-xl border border-border dark:border-dark-border dark:bg-dark-surface shadow-sm">
-              <Text style={{ fontSize: 32 }} className="mb-sm">
-                ✈️
-              </Text>
-
-              <Text className="text-base font-sans-bold text-textPrimary dark:text-dark-textPrimary text-center">
-                작성된 일기가 없습니다
-              </Text>
-
-              <Text className="mt-xs text-sm text-textSecondary dark:text-dark-textSecondary text-center leading-5">
-                오른쪽 아래 '+' 버튼을 눌러{'\n'}새로운 여행의 추억을 기록해 보세요!
-              </Text>
-            </View>
-          ) : null
-        }
         renderItem={({ item }) => {
           const isExpanded = expandedId === item.id;
 
@@ -176,7 +274,7 @@ export default function HomeScreen() {
                 className="relative h-60 w-full"
                 onPress={() =>
                   router.push({
-                    pathname: '/detail',
+                    pathname: "/detail",
                     params: {
                       id: item.id,
                       title: item.title,
@@ -198,7 +296,7 @@ export default function HomeScreen() {
                 </View>
 
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  <EmojiIcon codepoint={item.flag || '1f1f0-1f1f7'} size={26} />
+                  <EmojiIcon codepoint={item.flag || "1f1f0-1f1f7"} size={26} />
                 </View>
               </Pressable>
 
@@ -219,21 +317,23 @@ export default function HomeScreen() {
                 <Pressable
                   onPress={() => toggleExpand(item.id)}
                   className={
-                    'w-full flex-row items-center justify-center py-sm gap-xs border-t border-border dark:border-dark-border ' +
+                    "w-full flex-row items-center justify-center py-sm gap-xs border-t border-border dark:border-dark-border " +
                     (isExpanded
-                      ? 'bg-muted dark:bg-dark-muted'
-                      : 'bg-surface dark:bg-dark-surface')
+                      ? "bg-muted dark:bg-dark-muted"
+                      : "bg-surface dark:bg-dark-surface")
                   }
                 >
                   <Text className="text-sm text-primary font-sans">
-                    {isExpanded ? '접기' : `여행 상세 (${item.tripDays.length}일)`}
+                    {isExpanded
+                      ? "접기"
+                      : `여행 상세 (${item.tripDays.length}일)`}
                   </Text>
 
                   <ChevronDown
                     size={14}
                     color={colors.primary}
                     style={{
-                      transform: [{ rotate: isExpanded ? '180deg' : '0deg' }],
+                      transform: [{ rotate: isExpanded ? "180deg" : "0deg" }],
                       marginLeft: 2,
                     }}
                   />
@@ -248,7 +348,7 @@ export default function HomeScreen() {
                       className="flex-row items-center bg-surface p-sm rounded-md shadow-sm dark:bg-dark-surface"
                       onPress={() =>
                         router.push({
-                          pathname: '/detail',
+                          pathname: "/detail",
                           params: {
                             id: item.id,
                             title: detail.subtitle,
@@ -282,9 +382,9 @@ export default function HomeScreen() {
                             style={{
                               width: 28,
                               height: 28,
-                              flexDirection: 'row',
-                              justifyContent: 'center',
-                              alignItems: 'center',
+                              flexDirection: "row",
+                              justifyContent: "center",
+                              alignItems: "center",
                             }}
                           >
                             {detail.emotion && (
@@ -317,7 +417,9 @@ export default function HomeScreen() {
       />
 
       <Pressable
-        onPress={() => router.push('/add')}
+        onPress={() =>
+          router.push({ pathname: "/add", params: { path: "home" } })
+        }
         className="absolute right-md bg-fab w-14 h-14 rounded-full items-center justify-center shadow-lg"
         style={{ zIndex: 99, bottom: 125 }}
       >

@@ -11,16 +11,15 @@ from app.schemas.home import MainList
 router = APIRouter(tags=["home"])
 
 # 지정된 연도의 삭제되지 않은 여행(Trip) 목록 조회
-def _get_tripList(db: Session, year: int) -> List[Trip]:
+def _get_tripList(db: Session, year: int,user_id:int) -> List[Trip]:
     trip = (
         db.query(Trip)
         # start_date에서 연도(year)만 추출
-        .filter(extract('year', Trip.start_date) == year, 
-        Trip.deleted_at.is_(None))
+        .filter(extract('year', Trip.start_date) == year, Trip.user_id == user_id, Trip.status == 'completed',
+                Trip.deleted_at.is_(None))
         .order_by(Trip.id.desc())
         .all()
     )
-    
     return trip
 
 # 특정 여행(Trip)의 일차별 상세 일정(TripDay)목록을 일차 순으로 조회
@@ -51,10 +50,11 @@ def _get_detailList(db:Session, request:Request, trip_id:int) -> List[TripDay]:
 # 메인 홈 — 연도별 여행 및 일차별 요약 전체 조회
 @router.get("/trips",summary="메인 리스트", response_model=List[MainList])
 def get_mainlList(
-    year: int, request: Request, db: Session = Depends(get_db)
+    year: int, user_id:int, request: Request, db: Session = Depends(get_db)
 ):
     # 해당 연도의 여행 리스트 조회
-    tripList = _get_tripList(db, year)
+    print("uvicorn 전달 받은 user id:",user_id)
+    tripList = _get_tripList(db, year, user_id)
 
     if not tripList:  # None(데이터 없음) 일 때 
         return {"message": "해당 여행 정보를 찾을 수 없습니다."} 

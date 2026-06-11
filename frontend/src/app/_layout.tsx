@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
 import { DancingScript_400Regular } from "@expo-google-fonts/dancing-script";
 import {
@@ -9,14 +9,14 @@ import {
   Hahmlet_700Bold,
 } from "@expo-google-fonts/hahmlet";
 import { View } from "react-native";
+import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { AppSettingsProvider } from "@/contexts/app-settings-context";
 import { useUserUuidBootstrap } from "@/hooks/use-user-uuid";
 import "../../global.css";
 import "@/api/client";
 
 export default function RootLayout() {
-  useUserUuidBootstrap();
-
+  useUserUuidBootstrap()
   const [fontsLoaded] = useFonts({
     DancingScript: DancingScript_400Regular,
     Hahmlet: Hahmlet_400Regular,        // 추가
@@ -31,7 +31,6 @@ export default function RootLayout() {
   if (!fontsLoaded) {
     return <View className="flex-1 bg-background" />;
   }
-
   return (
     <AppSettingsProvider>
       <Stack screenOptions={{ headerShown: false }}>
@@ -42,6 +41,7 @@ export default function RootLayout() {
         <Stack.Screen name="detail" />
         <Stack.Screen name="add" />
       </Stack>
+      <AnimatedSplashOverlay />
     </AppSettingsProvider>
   );
 }

@@ -1,18 +1,33 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import Constants from 'expo-constants';
-import * as ImageManipulator from 'expo-image-manipulator';
-import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
-import * as MediaLibrary from 'expo-media-library';
-import { PermissionsAndroid } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Camera, ChevronLeft, ImagePlus, Loader2, X } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { Alert, Image, Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from "expo-linear-gradient";
+import Constants from "expo-constants";
+import * as ImageManipulator from "expo-image-manipulator";
+import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
+import * as MediaLibrary from "expo-media-library";
+import { PermissionsAndroid } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+  Camera,
+  ChevronLeft,
+  ImagePlus,
+  Loader2,
+  X,
+} from "lucide-react-native";
+import React, { useState } from "react";
+import {
+  Alert,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { uploadFirstDayPhotos } from '@/api/diary';
-import { useAppThemeColors } from '@/constants/app-colors';
+import { uploadFirstDayPhotos } from "@/api/diary";
+import { useAppThemeColors } from "@/constants/app-colors";
 
 type PendingPhoto = {
   id: string;
@@ -25,9 +40,9 @@ type PendingPhoto = {
   gpsLongitude?: number;
   // GPS 좌표를 OS 지오코딩으로 변환한 지명. 백엔드에서 trip_days.location_summary,
   // trips.destination 자동 채우기에 사용됩니다. 권한·네트워크 실패 시 undefined.
-  placeName?: string;       // 일차 대표 지명 (district 우선)
-  countryName?: string;     // 국가명 — trip destination "국가/도시" 의 앞부분
-  cityName?: string;        // 도시명 — trip destination "국가/도시" 의 뒷부분
+  placeName?: string; // 일차 대표 지명 (district 우선)
+  countryName?: string; // 국가명 — trip destination "국가/도시" 의 앞부분
+  cityName?: string; // 도시명 — trip destination "국가/도시" 의 뒷부분
   fileSizeBytes?: number;
   width: number;
   height: number;
@@ -36,14 +51,21 @@ type PendingPhoto = {
 
 type LoadingPhotoParam = Pick<
   PendingPhoto,
-  'fileUri' | 'thumbnailUri' | 'originalFilename' | 'mimeType' | 'fileSizeBytes' | 'width' | 'height' | 'displayOrder'
+  | "fileUri"
+  | "thumbnailUri"
+  | "originalFilename"
+  | "mimeType"
+  | "fileSizeBytes"
+  | "width"
+  | "height"
+  | "displayOrder"
 >;
 
 const MAX_IMAGE_SIZE = 1024;
 const THUMBNAIL_SIZE = 256;
 const MAX_PHOTOS_PER_DAY = 8;
 const PHOTO_PROCESSING_CONCURRENCY = 2;
-const IS_EXPO_GO = Constants.appOwnership === 'expo';
+const IS_EXPO_GO = Constants.appOwnership === "expo";
 
 // 원본 비율을 유지하면서 긴 변만 기준 크기 이하로 줄입니다.
 function resizeAction(width: number, height: number, maxSize: number) {
@@ -74,14 +96,18 @@ async function mapWithConcurrency<T, R>(
   // 큰 사진 여러 장을 한 번에 리사이즈하면 기기 메모리와 UI 응답성이 흔들릴 수 있어 작은 묶음으로 처리합니다.
   for (let start = 0; start < items.length; start += concurrency) {
     const batch = items.slice(start, start + concurrency);
-    const batchResults = await Promise.all(batch.map((item, index) => mapper(item, start + index)));
+    const batchResults = await Promise.all(
+      batch.map((item, index) => mapper(item, start + index)),
+    );
     results.push(...batchResults);
   }
 
   return results;
 }
 
-function parseExifTakenDate(exif: Record<string, unknown> | null | undefined): string | undefined {
+function parseExifTakenDate(
+  exif: Record<string, unknown> | null | undefined,
+): string | undefined {
   if (!exif) {
     return undefined;
   }
@@ -89,10 +115,10 @@ function parseExifTakenDate(exif: Record<string, unknown> | null | undefined): s
   const dateCandidates = [
     exif.SubSecDateTimeOriginal,
     exif.CompositeSubSecDateTimeOriginal,
-    exif['Composite:SubSecDateTimeOriginal'],
+    exif["Composite:SubSecDateTimeOriginal"],
     exif.TimeStamp,
     exif.SamsungTimeStamp,
-    exif['Samsung:TimeStamp'],
+    exif["Samsung:TimeStamp"],
     exif.DateTimeOriginal,
     exif.DateTimeDigitized,
     exif.DateTime,
@@ -100,8 +126,11 @@ function parseExifTakenDate(exif: Record<string, unknown> | null | undefined): s
     exif.ModifyDate,
   ];
 
-  const rawDate = dateCandidates.find((value) => typeof value === 'string');
-  const match = typeof rawDate === 'string' ? rawDate.match(/^(20\d{2})[:/-](\d{2})[:/-](\d{2})/) : null;
+  const rawDate = dateCandidates.find((value) => typeof value === "string");
+  const match =
+    typeof rawDate === "string"
+      ? rawDate.match(/^(20\d{2})[:/-](\d{2})[:/-](\d{2})/)
+      : null;
   if (!match) {
     return undefined;
   }
@@ -110,15 +139,20 @@ function parseExifTakenDate(exif: Record<string, unknown> | null | undefined): s
 }
 
 function parseGpsCoordinateValue(value: unknown): number | undefined {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
     const rationalMatch = value.match(/^(-?\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/);
     const parsed = rationalMatch
       ? Number(rationalMatch[1]) / Number(rationalMatch[2])
       : Number(value);
     return Number.isFinite(parsed) ? parsed : undefined;
   }
-  if (value && typeof value === 'object' && 'numerator' in value && 'denominator' in value) {
+  if (
+    value &&
+    typeof value === "object" &&
+    "numerator" in value &&
+    "denominator" in value
+  ) {
     const rational = value as { numerator: unknown; denominator: unknown };
     const numerator = parseGpsCoordinateValue(rational.numerator);
     const denominator = parseGpsCoordinateValue(rational.denominator);
@@ -133,20 +167,30 @@ function parseGpsCoordinateValue(value: unknown): number | undefined {
   return undefined;
 }
 
-function parseExifGps(exif: Record<string, unknown> | null | undefined): { latitude: number; longitude: number } | undefined {
+function parseExifGps(
+  exif: Record<string, unknown> | null | undefined,
+): { latitude: number; longitude: number } | undefined {
   if (!exif) return undefined;
 
-  const lat = exif.GPSLatitude ?? exif['GPS:GPSLatitude'];
-  const lon = exif.GPSLongitude ?? exif['GPS:GPSLongitude'];
-  const latRef = String(exif.GPSLatitudeRef ?? exif['GPS:GPSLatitudeRef'] ?? 'N').toUpperCase();
-  const lonRef = String(exif.GPSLongitudeRef ?? exif['GPS:GPSLongitudeRef'] ?? 'E').toUpperCase();
+  const lat = exif.GPSLatitude ?? exif["GPS:GPSLatitude"];
+  const lon = exif.GPSLongitude ?? exif["GPS:GPSLongitude"];
+  const latRef = String(
+    exif.GPSLatitudeRef ?? exif["GPS:GPSLatitudeRef"] ?? "N",
+  ).toUpperCase();
+  const lonRef = String(
+    exif.GPSLongitudeRef ?? exif["GPS:GPSLongitudeRef"] ?? "E",
+  ).toUpperCase();
 
   const latitude = parseGpsCoordinateValue(lat);
   const longitude = parseGpsCoordinateValue(lon);
   if (latitude === undefined || longitude === undefined) return undefined;
 
-  const signedLat = latRef.startsWith('S') ? -Math.abs(latitude) : Math.abs(latitude);
-  const signedLon = lonRef.startsWith('W') ? -Math.abs(longitude) : Math.abs(longitude);
+  const signedLat = latRef.startsWith("S")
+    ? -Math.abs(latitude)
+    : Math.abs(latitude);
+  const signedLon = lonRef.startsWith("W")
+    ? -Math.abs(longitude)
+    : Math.abs(longitude);
 
   if (signedLat === 0 && signedLon === 0) return undefined;
   if (Math.abs(signedLat) > 90 || Math.abs(signedLon) > 180) return undefined;
@@ -154,7 +198,9 @@ function parseExifGps(exif: Record<string, unknown> | null | undefined): { latit
   return { latitude: signedLat, longitude: signedLon };
 }
 
-function parseFilenameDate(filename: string | null | undefined): string | undefined {
+function parseFilenameDate(
+  filename: string | null | undefined,
+): string | undefined {
   if (!filename) {
     return undefined;
   }
@@ -167,12 +213,35 @@ function parseFilenameDate(filename: string | null | undefined): string | undefi
   return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
+function getLocalTodayDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getSelectedDates(photos: PendingPhoto[]) {
-  return Array.from(new Set(photos.map((photo) => photo.takenDate).filter(Boolean) as string[])).sort();
+  return Array.from(
+    new Set(photos.map((photo) => photo.takenDate).filter(Boolean) as string[]),
+  ).sort();
 }
 
 function getPhotoDateKey(photo: PendingPhoto) {
-  return photo.takenDate ?? '__unknown_date__';
+  return photo.takenDate ?? "__unknown_date__";
+}
+
+function sortPhotosByTakenDate(photos: PendingPhoto[]) {
+  return [...photos]
+    .sort((left, right) => {
+      if (left.takenDate && right.takenDate) {
+        return left.takenDate.localeCompare(right.takenDate) || left.displayOrder - right.displayOrder;
+      }
+      if (left.takenDate) return -1;
+      if (right.takenDate) return 1;
+      return left.displayOrder - right.displayOrder;
+    })
+    .map((photo, index) => ({ ...photo, displayOrder: index }));
 }
 
 function getDailyPhotoCounts(photos: PendingPhoto[]) {
@@ -184,7 +253,7 @@ function getDailyPhotoCounts(photos: PendingPhoto[]) {
 }
 
 function formatDisplayDate(dateValue: string) {
-  const [year, month, day] = dateValue.split('-');
+  const [year, month, day] = dateValue.split("-");
   return `${year}.${month}.${day}`;
 }
 
@@ -194,7 +263,7 @@ function getPhotoHeading(selectedDates: string[], targetDayNumber?: number) {
   }
 
   if (selectedDates.length === 0) {
-    return '여행 사진을 골라주세요';
+    return "여행 사진을 골라주세요";
   }
 
   if (selectedDates.length === 1) {
@@ -226,14 +295,24 @@ function getPhotoDayLabel(photo: PendingPhoto, selectedDates: string[]) {
 async function reverseGeocode(
   lat: number,
   lon: number,
-): Promise<{ placeName?: string; countryName?: string; cityName?: string } | undefined> {
+): Promise<
+  { placeName?: string; countryName?: string; cityName?: string } | undefined
+> {
   try {
-    const results = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
+    const results = await Location.reverseGeocodeAsync({
+      latitude: lat,
+      longitude: lon,
+    });
     const first = results[0];
     if (!first) return undefined;
     // 일차 대표 지명: district(구/동급) 우선, 없으면 city, 그것도 없으면 region.
     // 예) "신주쿠", "오다이바", "강남구"
-    const placeName = first.district || first.city || first.subregion || first.region || undefined;
+    const placeName =
+      first.district ||
+      first.city ||
+      first.subregion ||
+      first.region ||
+      undefined;
     // trip 단위 destination 의 "국가/도시" 부분. city 가 비어있는 한국식 주소는 region 로 폴백.
     const countryName = first.country || undefined;
     const cityName = first.city || first.region || undefined;
@@ -243,11 +322,16 @@ async function reverseGeocode(
   }
 }
 
-async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrder: number): Promise<PendingPhoto> {
+async function buildPendingPhoto(
+  asset: ImagePicker.ImagePickerAsset,
+  displayOrder: number,
+): Promise<PendingPhoto> {
   // 리사이즈하면 EXIF가 사라지므로, 원본 asset에서 GPS를 먼저 읽습니다.
   const gps = parseExifGps(asset.exif);
   // GPS 가 있으면 OS 지오코딩으로 지명도 미리 확보. 백엔드가 그대로 location_summary/destination 으로 사용.
-  const geo = gps ? await reverseGeocode(gps.latitude, gps.longitude) : undefined;
+  const geo = gps
+    ? await reverseGeocode(gps.latitude, gps.longitude)
+    : undefined;
   // 업로드용 1024px 이미지와 화면 미리보기용 256px 썸네일을 따로 만듭니다.
   // EXIF가 리사이즈 과정에서 사라질 수 있어 촬영일/GPS는 원본 asset에서 먼저 읽어 form 필드로 보냅니다.
   const uploadImage = await ImageManipulator.manipulateAsync(
@@ -274,7 +358,7 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
     thumbnailUri: thumbnail.uri,
     originalFilename: asset.fileName ?? `photo-${displayOrder + 1}.jpg`,
     mimeType: 'image/jpeg',
-    takenDate: parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName),
+    takenDate: parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName) ?? getLocalTodayDate(),
     gpsLatitude: gps?.latitude,
     gpsLongitude: gps?.longitude,
     placeName: geo?.placeName,
@@ -290,7 +374,11 @@ async function buildPendingPhoto(asset: ImagePicker.ImagePickerAsset, displayOrd
 export default function AddScreen() {
   const router = useRouter();
   const colors = useAppThemeColors();
-  const params = useLocalSearchParams<{ trip_id?: string; day_number?: string }>();
+  const params = useLocalSearchParams<{
+    trip_id?: string;
+    day_number?: string;
+    path?: string;
+  }>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
@@ -298,11 +386,18 @@ export default function AddScreen() {
   const [isUploading, setIsUploading] = useState(false);
   const contentWidth = Math.min(width, 760);
   const columnCount = contentWidth >= 700 ? 4 : 3;
-  const tileSize = Math.max(88, Math.floor((contentWidth - 48 - (columnCount - 1) * 16) / columnCount));
+  const tileSize = Math.max(
+    88,
+    Math.floor((contentWidth - 48 - (columnCount - 1) * 16) / columnCount),
+  );
   const bottomInset = Math.max(insets.bottom, 16);
-  const targetTripId = typeof params.trip_id === 'string' ? params.trip_id : undefined;
+  const targetTripId =
+    typeof params.trip_id === "string" ? params.trip_id : undefined;
   const targetDayNumber = Number(params.day_number);
-  const displayDayNumber = Number.isFinite(targetDayNumber) && targetDayNumber > 0 ? targetDayNumber : undefined;
+  const displayDayNumber =
+    Number.isFinite(targetDayNumber) && targetDayNumber > 0
+      ? targetDayNumber
+      : undefined;
   const selectedDates = getSelectedDates(pendingPhotos);
   const photoHeading = getPhotoHeading(selectedDates, displayDayNumber);
   const photoDescription = getPhotoDescription(selectedDates);
@@ -314,7 +409,10 @@ export default function AddScreen() {
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('사진 접근 권한이 필요해요', '여행 사진을 고르려면 사진 보관함 접근을 허용해 주세요.');
+      Alert.alert(
+        "사진 접근 권한이 필요해요",
+        "여행 사진을 고르려면 사진 보관함 접근을 허용해 주세요.",
+      );
       return;
     }
 
@@ -322,11 +420,13 @@ export default function AddScreen() {
     // ImagePicker 의 요청은 일반 사진 접근만 다루므로 별도로 요청해야 합니다.
     // (manifest 선언은 app.config.js 의 expo-media-library 플러그인이 담당)
     // Expo Go는 미디어 권한/manifest 제약이 있어 이 보조 권한 요청을 건너뛰고 사진 선택만 확인합니다.
-    if (Platform.OS === 'android' && !IS_EXPO_GO) {
-      await PermissionsAndroid.request('android.permission.ACCESS_MEDIA_LOCATION' as never);
+    if (Platform.OS === "android" && !IS_EXPO_GO) {
+      await PermissionsAndroid.request(
+        "android.permission.ACCESS_MEDIA_LOCATION" as never,
+      );
       try {
         // 인자 없이 호출하면 Android 13+에서 audio/video 권한까지 요청해 Expo Go에서 실패할 수 있습니다.
-        await MediaLibrary.requestPermissionsAsync(false, ['photo']);
+        await MediaLibrary.requestPermissionsAsync(false, ["photo"]);
       } catch {
         // 사진 선택은 ImagePicker 권한으로 진행하고, EXIF GPS가 제한되면 백엔드/수동 입력 흐름으로 보완합니다.
       }
@@ -338,14 +438,14 @@ export default function AddScreen() {
     await Location.requestForegroundPermissionsAsync();
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ["images"],
       allowsMultipleSelection: true,
       // 0은 ImagePicker의 "시스템 기본 최대치"를 뜻합니다. 전체 제한은 두지 않고 아래에서 일차별 8장만 걸러냅니다.
       selectionLimit: 0,
       quality: 1,
       exif: true,
       // Expo Go에서는 legacy picker/전체 미디어 권한 제약이 있어 기본 picker를 사용합니다.
-      legacy: Platform.OS === 'android' && !IS_EXPO_GO,
+      legacy: Platform.OS === "android" && !IS_EXPO_GO,
     });
 
     if (result.canceled) {
@@ -377,9 +477,7 @@ export default function AddScreen() {
         acceptedPhotos.push(photo);
       }
 
-      setPendingPhotos((current) =>
-        [...current, ...acceptedPhotos].map((photo, index) => ({ ...photo, displayOrder: index })),
-      );
+      setPendingPhotos((current) => sortPhotosByTakenDate([...current, ...acceptedPhotos]));
 
       if (rejectedCount > 0) {
         Alert.alert(
@@ -388,7 +486,7 @@ export default function AddScreen() {
         );
       }
     } catch {
-      Alert.alert('사진을 준비하지 못했어요', '다시 선택해 주세요.');
+      Alert.alert("사진을 준비하지 못했어요", "다시 선택해 주세요.");
     } finally {
       setIsPreparing(false);
     }
@@ -406,37 +504,43 @@ export default function AddScreen() {
     if (pendingPhotos.length === 0 || isPreparing || isUploading) {
       return;
     }
-
     setIsUploading(true);
     try {
       const uploadResponse = await uploadFirstDayPhotos(pendingPhotos, {
         tripId: targetTripId,
         dayNumber: displayDayNumber,
       });
-      const photos: LoadingPhotoParam[] = uploadResponse.photos.map((photo) => ({
-        fileUri: photo.fileUrl,
-        thumbnailUri: photo.thumbnailUrl,
-        originalFilename: photo.originalFilename ?? `photo-${photo.displayOrder + 1}.jpg`,
-        mimeType: photo.mimeType ?? 'image/jpeg',
-        fileSizeBytes: photo.fileSizeBytes ?? undefined,
-        width: photo.width ?? 0,
-        height: photo.height ?? 0,
-        displayOrder: photo.displayOrder,
-      }));
+      const photos: LoadingPhotoParam[] = uploadResponse.photos.map(
+        (photo) => ({
+          fileUri: photo.fileUrl,
+          thumbnailUri: photo.thumbnailUrl,
+          originalFilename:
+            photo.originalFilename ?? `photo-${photo.displayOrder + 1}.jpg`,
+          mimeType: photo.mimeType ?? "image/jpeg",
+          fileSizeBytes: photo.fileSizeBytes ?? undefined,
+          width: photo.width ?? 0,
+          height: photo.height ?? 0,
+          displayOrder: photo.displayOrder,
+        }),
+      );
 
       router.replace({
-        pathname: '/loading',
+        pathname: "/loading",
         params: {
+          path: params.path,
           photos: encodeURIComponent(JSON.stringify(photos)),
           tripId: String(uploadResponse.tripId),
           tripDayId: String(uploadResponse.tripDayId),
           day: String(uploadResponse.day),
-          mode: 'initial',
+          mode: "initial",
           days: encodeURIComponent(JSON.stringify(uploadResponse.days)),
         },
       });
     } catch {
-      Alert.alert('사진 업로드에 실패했어요', '서버 연결 상태를 확인한 뒤 다시 시도해 주세요.');
+      Alert.alert(
+        "사진 업로드에 실패했어요",
+        "서버 연결 상태를 확인한 뒤 다시 시도해 주세요.",
+      );
     } finally {
       setIsUploading(false);
     }
@@ -449,13 +553,24 @@ export default function AddScreen() {
         style={{
           paddingTop: insets.top + 14,
           paddingBottom: bottomInset,
-        }}>
+        }}
+      >
         <View className="flex-row items-center justify-between px-lg pb-lg">
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="이전 화면으로 돌아가기"
-            onPress={() => router.back()}
-            className="h-10 w-10 items-center justify-center rounded-full">
+            onPress={() => {
+              if (params.path === "home") {
+                router.back();
+              } else {
+                router.replace({
+                  pathname: "/detail",
+                  params: { day: params.day_number, id: params.trip_id },
+                });
+              }
+            }}
+            className="h-10 w-10 items-center justify-center rounded-full"
+          >
             <ChevronLeft size={24} color={colors.textSecondary} />
           </Pressable>
 
@@ -466,12 +581,13 @@ export default function AddScreen() {
         <ScrollView
           className="flex-1"
           contentContainerClassName="px-lg pb-xl"
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+        >
           <View className="mb-xl">
             <Text className="text-xl font-sans-bold leading-8 text-textPrimary dark:text-dark-textPrimary">
               {photoHeading}
             </Text>
-            <Text className="mt-sm text-md leading-6 text-textSecondary dark:text-dark-textSecondary">
+            <Text className="mt-sm text-md font-sans leading-6 text-textSecondary dark:text-dark-textSecondary">
               {photoDescription}
             </Text>
           </View>
@@ -484,17 +600,18 @@ export default function AddScreen() {
               disabled={isPreparing || isUploading}
               className={`items-center justify-center rounded-lg border-2 border-dashed ${
                 isPreparing || isUploading
-                  ? 'border-muted bg-muted dark:border-dark-muted dark:bg-dark-muted'
-                  : 'border-border bg-surface dark:border-dark-border dark:bg-dark-surface'
+                  ? "border-muted bg-muted dark:border-dark-muted dark:bg-dark-muted"
+                  : "border-border bg-surface dark:border-dark-border dark:bg-dark-surface"
               }`}
-              style={{ width: tileSize, height: tileSize }}>
+              style={{ width: tileSize, height: tileSize }}
+            >
               {isPreparing ? (
                 <Loader2 size={24} color={colors.border} />
               ) : (
                 <Camera size={24} color={colors.primaryLight} />
               )}
               <Text className="mt-xs text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
-                {isPreparing ? '준비 중' : '사진 추가'}
+                {isPreparing ? "준비 중" : "사진 추가"}
               </Text>
             </Pressable>
 
@@ -502,16 +619,24 @@ export default function AddScreen() {
               <View
                 key={photo.id}
                 className="overflow-hidden rounded-lg bg-muted dark:bg-dark-muted"
-                style={{ width: tileSize, height: tileSize }}>
-                <Image source={{ uri: photo.thumbnailUri }} className="h-full w-full" resizeMode="cover" />
+                style={{ width: tileSize, height: tileSize }}
+              >
+                <Image
+                  source={{ uri: photo.thumbnailUri }}
+                  className="h-full w-full"
+                  resizeMode="cover"
+                />
                 <View className="absolute bottom-xs left-xs rounded-md bg-textPrimary/70 px-xs py-[2px]">
-                  <Text className="text-xs font-sans-bold text-textOnPrimary">{getPhotoDayLabel(photo, selectedDates)}</Text>
+                  <Text className="text-xs font-sans-bold text-textOnPrimary">
+                    {getPhotoDayLabel(photo, selectedDates)}
+                  </Text>
                 </View>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="사진 삭제"
                   onPress={() => removePhoto(photo.id)}
-                  className="absolute right-xs top-xs h-6 w-6 items-center justify-center rounded-full bg-textPrimary/70">
+                  className="absolute right-xs top-xs h-6 w-6 items-center justify-center rounded-full bg-textPrimary/70"
+                >
                   <X size={14} color={colors.textOnPrimary} />
                 </Pressable>
               </View>
@@ -527,39 +652,55 @@ export default function AddScreen() {
             </View>
           ) : (
             <Text className="mt-lg text-center text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
-              {pendingPhotos.length}장 선택됨 · 일차별 최대 {MAX_PHOTOS_PER_DAY}장
+              {pendingPhotos.length}장 선택됨 · 일차별 최대 {MAX_PHOTOS_PER_DAY}
+              장
             </Text>
           )}
         </ScrollView>
 
-        <View className="items-center bg-surface px-lg pb-md pt-md dark:bg-dark-surface">
+        <View className="items-center bg-surface dark:bg-dark-surface px-4">
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="AI로 일기 작성하기"
+            accessibilityLabel="AI로 일기"
             disabled={pendingPhotos.length === 0 || isPreparing || isUploading}
             onPress={moveToAnalysis}
             className="w-full max-w-[360px] overflow-hidden rounded-lg"
             style={{
-              opacity: pendingPhotos.length === 0 || isPreparing || isUploading ? 0.55 : 1,
+              opacity:
+                pendingPhotos.length === 0 || isPreparing || isUploading
+                  ? 0.55
+                  : 1,
               shadowColor: colors.primary,
               shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: pendingPhotos.length === 0 || isPreparing || isUploading ? 0 : 0.16,
+              shadowOpacity:
+                pendingPhotos.length === 0 || isPreparing || isUploading
+                  ? 0
+                  : 0.16,
               shadowRadius: 16,
-              elevation: pendingPhotos.length === 0 || isPreparing || isUploading ? 0 : 4,
-            }}>
-
-              
+              elevation:
+                pendingPhotos.length === 0 || isPreparing || isUploading
+                  ? 0
+                  : 4,
+            }}
+          >
             <LinearGradient
               colors={[colors.primary, colors.primaryLight, colors.accent]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              className="h-14 items-center justify-center">
+              className="w-full overflow-hidden rounded-lg"
+              style={{
+                paddingVertical: 16,
+                paddingHorizontal: 24,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <Text className="text-md font-sans-bold text-textOnPrimary">
                 {isUploading
-                  ? '사진 업로드 중'
+                  ? "사진 업로드 중"
                   : pendingPhotos.length > 0
                     ? `${pendingPhotos.length}장으로 일기 작성하기`
-                    : 'AI로 일기 작성하기'}
+                    : "AI로 일기 작성하기"}
               </Text>
             </LinearGradient>
           </Pressable>
