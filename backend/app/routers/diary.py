@@ -271,6 +271,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
 
     db = SessionLocal()
     started = time.monotonic()
+    image_path = []
     try:
         trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
         photos = (
@@ -299,6 +300,8 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                 continue
 
             path = _BACKEND_DIR / p.file_url
+            print("사진 경로:",path)
+            image_path.append(path)
             if not path.exists():
                 continue  # 파일이 없으면 그 사진은 건너뜀
             try:
@@ -381,7 +384,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                     }
                     for d in all_days
                 ]
-                title = write_trip_title(days_payload, destination=trip.destination or "")
+                title = write_trip_title(days_payload, destination=trip.destination or "", path_list=image_path)
                 if title:
                     trip.title = title
                     db.commit()
@@ -413,7 +416,7 @@ def regenerate_trip_day(
     db: Session = Depends(get_db),
 ) -> DayStatus:
     trip_day = _get_trip_day_or_404(db, trip_day_id)
-    print("다이어리 작성 시작 API 호출")
+    print("다이어리 작성 시작 ")
     # 합치기 후: 일기 = trip_day(항상 존재)라 "diary 먼저 만들기"가 불필요해짐(닭-알 해결).
     # 바로 생성 시작 기록(status='running') → 폴링이 generating 으로 봄.
     gen = DiaryGeneration(

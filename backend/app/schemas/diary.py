@@ -58,7 +58,7 @@ class TripDiary(BaseModel):
     # trips.cover_photo_id 가 가리키는 사진의 URL. VLM이 고른 trip 대표사진(매 페이지 동일).
     representImage: str
     status: str  # trips.status — 최종 저장 시 'completed'
-    flag:str
+    flag:str | None = "1f30d"
     days: list[DayPage]  # 길이 = N (총 일수)
 
 

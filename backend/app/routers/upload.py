@@ -355,6 +355,7 @@ async def upload_first_day_photos(
     photo_gps_longitudes = "126.96334666666667"
     fallback_date = trip_date or date.today()
     drafts: list[UploadDraft] = []
+    photo_id_list = []
     for index, upload_file in enumerate(files):
         if upload_file.content_type and not upload_file.content_type.startswith("image/"):
             raise HTTPException(status_code=400, detail=f"{upload_file.filename} is not an image")
@@ -509,7 +510,7 @@ async def upload_first_day_photos(
                 )
                 db.add(photo)
                 db.flush()
-
+                photo_id_list.append(photo.id)
                 if trip.cover_photo_id is None:
                     trip.cover_photo_id = photo.id
                 if trip_day.represent_image is None:
@@ -532,6 +533,7 @@ async def upload_first_day_photos(
         _refresh_trip_day_representative_coordinates(db, trip_day)
         # 일차 대표 지명: 그날 사진들의 placeName 중 가장 빈도 높은 값.
         # 이미 값이 있으면 덮어쓰지 않음(이전 업로드/사용자 picker 편집 보존).
+        print("사진 포토 번호:",photo_id_list)
         print('위치 정보 조회 시작')
         if not trip_day.location_summary:
             place_candidates = [d.place_name for d in grouped_drafts if d.place_name]
@@ -576,6 +578,7 @@ async def upload_first_day_photos(
             print(f"{first_draft.country_name}의 코드: {trip.flag}")
 
     db.commit()
+    print("AI가 사진 분석 하기2")
     for trip_day_id, gen_id in generation_jobs:
         background_tasks.add_task(_run_generation, trip_day_id, gen_id)
 
@@ -635,6 +638,7 @@ def start_trip_day_generation(
     )
     db.add(gen)
     db.commit()
+    print("AI가 사진 분석 하기1")
     background_tasks.add_task(_run_generation, trip_day.id, gen.id)
 
     return GenerationStartResponse(

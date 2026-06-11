@@ -27,8 +27,10 @@ from openai import OpenAI
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 DIARY_MODEL = os.getenv("DIARY_MODEL", "gemma4:e4b")
 
+
+API_KEY = os.getenv("OPENAI_API_KEY")
 # api_key 는 SDK가 요구하지만 Ollama는 무시합니다.
-_client = OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
+_client = OpenAI(base_url="https://api.openai.com/v1", api_key=API_KEY)
 
 # [1단계 · VLM] 사진을 객관적으로만 묘사하게 하는 프롬프트. 감성 해석은 2단계 작가의 몫.
 _ANALYZE_PROMPT = """당신은 사진을 객관적으로 묘사하는 분석가입니다.
@@ -74,6 +76,7 @@ _TITLE_PROMPT = """당신은 여행 일기 모음을 보고 그 여행 전체의
 def _encode_image(path: Path) -> str:
     """이미지 파일 → data URI(base64). 멀티모달 모델 입력용."""
     b64 = base64.b64encode(path.read_bytes()).decode()
+    print(f"인코딩된 데이터 길이: {len(b64)}")
     return f"data:image/jpeg;base64,{b64}"
 
 
@@ -110,6 +113,7 @@ def analyze_photo(path: Path) -> dict:
       - analysis_text : 2단계 작가에게 넘길 텍스트 (photo_generations.analysis_text)
       - analysis_json : 묘사·키워드·날씨·분위기 원본 dict (photo_generations.analysis_json)
     """
+    
     resp = _client.chat.completions.create(
         model=DIARY_MODEL,
         messages=[
@@ -125,6 +129,7 @@ def analyze_photo(path: Path) -> dict:
         response_format={"type": "json_object"},
         temperature=0.2,  # 분석은 사실 위주라 낮게(작문은 0.8)
     )
+    print(f"analyze_photo 사용한 모델: {resp.model}")
     parsed = _parse_json(resp.choices[0].message.content)
 
     # 작가에게 넘길 한 줄 텍스트로 정리: "묘사 (날씨: .., 분위기: .., 키워드: ..)"
@@ -159,9 +164,14 @@ def write_diary(
     # 분석들을 번호 매겨 한 덩어리 텍스트로 (사진 대신 이 글을 모델에 넣음)
     joined = "\n".join(f"{i}. {a}" for i, a in enumerate(analyses, 1)) or "(분석 없음)"
     user_text = (
-        f"다음은 같은 날 찍은 사진들의 분석입니다.\n{joined}{hint}\n"
-        "이 분석들을 바탕으로 그 날의 일기를 만들어 주세요."
-    )
+    f"다음은 같은 날 찍은 사진들의 분석 내용이야:\n{joined}{hint}\n\n"
+    "이 분석 내용을 바탕으로 하루의 기록을 일기 형식으로 작성해 줘.\n\n"
+    "주의사항:\n"
+    "- 지역 이름(동네 이름 등)을 일일이 나열하지 말고, 장소의 느낌 위주로 서술해.\n"
+    "- '한국식' 같은 불필요한 수식어는 빼고, 일기 본연의 개인적인 감상과 느낌을 중심으로 작성해.\n"
+    "- 마치 오늘 하루를 되돌아보는 것처럼 편안하고 자연스러운 구어체 말투로 써 줘.\n"
+    "- 사진 속 상황을 묘사할 때, 마치 그 자리에 있었던 것처럼 생생하게 느껴지도록 작성해."
+)
 
     resp = _client.chat.completions.create(
         model=DIARY_MODEL,
@@ -170,8 +180,9 @@ def write_diary(
             {"role": "user", "content": user_text},
         ],
         response_format={"type": "json_object"},  # JSON 으로 받기(프롬프트와 이중 안전장치)
-        temperature=0.8,
+        temperature=0.2,
     )
+    print(f"write_diary 사용한 모델: {resp.model}")
     parsed = _parse_json(resp.choices[0].message.content)
 
     return {
@@ -183,7 +194,7 @@ def write_diary(
 
 
 def write_trip_title(
-    days: list[dict], *, destination: str = ""
+    days: list[dict], *, destination: str = "", path_list: list[Path]
 ) -> str:
     """[3단계 · LLM] 모든 일차의 (subtitle, content 요약) 을 보고 여행 제목 한 줄을 만듭니다.
 
@@ -203,19 +214,39 @@ def write_trip_title(
     joined = "\n".join(lines)
     hint = f"\n참고: 여행지='{destination}'." if destination else ""
     user_text = (
-        f"다음은 한 여행의 일차별 일기입니다.\n{joined}{hint}\n"
-        "이 여행 전체를 아우르는 짧은 제목을 한 줄로 지어 주세요."
+        f"다음은 여행의 일차별 일기야:"
+    "이 일기를 쓴 사람이 여행을 다녀온 뒤, 친구들에게 자랑하거나 SNS에 올릴 때 쓸 법한 "
+    "자연스럽고 감성적인 여행 제목을 한 줄로 지어 줘.\n"
+    "- 딱딱한 요약이나 키워드 나열은 피할 것.\n"
+    "- 여행의 분위기가 느껴지는 구어체로 작성할 것.\n"
+    "- 너무 거창하지 않고, 일상적이고 친근한 느낌으로 작성해 줘."
     )
+    
+    encoded_images = [_encode_image(path) for path in path_list]
 
+    # 2. 메시지 구성 (기본 텍스트 포함)
+    message_content = [{"type": "text", "text": user_text}]
+
+    # 3. 이미지들을 하나씩 별도의 객체로 추가
+    for url in encoded_images:
+        message_content.append({
+            "type": "image_url",
+            "image_url": {"url": url}
+        })
+
+    # 4. API 호출
     resp = _client.chat.completions.create(
         model=DIARY_MODEL,
         messages=[
             {"role": "system", "content": _TITLE_PROMPT},
-            {"role": "user", "content": user_text},
+            {"role": "user", "content": message_content} # 위에서 만든 리스트를 통째로 전달
         ],
         response_format={"type": "json_object"},
-        temperature=0.8,
+        temperature=0.2,
     )
+    print(f"write_trip_title 사용한 모델: {resp.model}")
+    print(f"write_trip_title 출력된 제목: {resp.choices[0].message.content}")
+    print(f"write_trip_title 출력된 제목: {len(path_list)}")
     parsed = _parse_json(resp.choices[0].message.content)
     return (parsed.get("title") or "").strip()
 
