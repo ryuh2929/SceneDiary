@@ -1,12 +1,39 @@
 import { Image } from 'expo-image';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Keyframe, Easing } from 'react-native-reanimated';
+import { useAppSettings } from '@/contexts/app-settings-context';
 
 import classes from './animated-icon.module.css';
 const DURATION = 300;
+const SPLASH_DURATION = 6400;
+const splashFrameStyle: React.CSSProperties = {
+  width: '100%',
+  height: '100%',
+  border: 0,
+  display: 'block',
+};
 
 export function AnimatedSplashOverlay() {
-  return null;
+  const [visible, setVisible] = useState(true);
+  const { isDarkMode } = useAppSettings();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisible(false), SPLASH_DURATION);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <View style={styles.splashOverlay} pointerEvents="none">
+      {React.createElement('iframe', {
+        src: isDarkMode ? '/scenediary-splash-dark.html' : '/scenediary-splash.html',
+        title: 'SceneDiary splash',
+        style: splashFrameStyle,
+      })}
+    </View>
+  );
 }
 
 const keyframe = new Keyframe({
@@ -73,6 +100,11 @@ export function AnimatedIcon() {
 }
 
 const styles = StyleSheet.create({
+  splashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#152538',
+    zIndex: 10000,
+  },
   container: {
     alignItems: 'center',
     width: '100%',

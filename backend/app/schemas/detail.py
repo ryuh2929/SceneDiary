@@ -38,6 +38,7 @@ class DetailPage(BaseModel):
     user_id:int
     title:str
     destination:Optional[str] = None
+    flag:Optional[str] = "1f30d"
     start_date:date
     end_date:date
     cover_photo_id:Optional[int] = None

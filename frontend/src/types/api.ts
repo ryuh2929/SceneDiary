@@ -33,7 +33,7 @@ export interface Trip {
   end_date: string; // date ('YYYY-MM-DD' 형태의 문자열)
   cover_photo_id: number | null; // int8 (커버 사진이 없을 수도 있으므로 null 허용)
   status: string; // varchar(20) (예: 'PLANNING', 'TRAVELING', 'COMPLETED')
-  flag: string | null; // 여행 대표 이모지 (Twemoji codepoint)
+  flag: string; // 여행 대표 이모지 (Twemoji codepoint)
   tripDays: Days[];
 }
 

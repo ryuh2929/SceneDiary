@@ -37,7 +37,7 @@ class MainList(BaseModel):
     end_date:date
     cover_photo_id:Optional[int] = None
     status:str
-    flag: Optional[str] = None
+    flag: Optional[str] = "1f30d"
     tripDays:List[DaysWithPhotos] = []
     
     class Config:

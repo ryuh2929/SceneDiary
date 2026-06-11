@@ -8,7 +8,7 @@ from app.db.models import Trip, TripDay
 from app.db.session import get_db
 from app.schemas.detail import DetailPage
 
-router = APIRouter(tags=["detail"])
+router = APIRouter(tags=["detail"],prefix="/detail")
 
 # 특정 여행 ID(trip_id)에 해당하는 기본 여행 정보
 def _get_detailPage(db:Session,trip_id:int)-> Trip:
@@ -17,6 +17,7 @@ def _get_detailPage(db:Session,trip_id:int)-> Trip:
         .filter(Trip.id == trip_id,Trip.deleted_at.is_(None))
         .first()
     )
+    print(trip)
     return trip
 
 # 특정 여행 ID(trip_id)에 묶여 있는 모든 일차별(Day 1 ~ Day N) 상세 일정 목록을 조회
@@ -50,9 +51,11 @@ def _get_dayDetail(db:Session, request:Request, trip_id:int)->List[TripDay]:
 def get_detailPage(
     trip_id:int, request: Request, db: Session = Depends(get_db)
 ):
+    print("detail trip_days호출")
     # 내부 조회 함수가 .first()를 사용하여 단일 'Trip 객체' 알맹이 하나만 딱 줍니다.
     detailPage = _get_detailPage(db,trip_id)
-
+    if detailPage.flag is None:
+        detailPage.flag = "1f30d"
     if not detailPage:  # detailPage가 None(데이터 없음) 일 때 
      return {"message": "해당 여행 정보를 찾을 수 없습니다."}
     

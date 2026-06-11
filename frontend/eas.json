@@ -4,13 +4,22 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.22.53:8000",
+        "EXPO_PUBLIC_API_URL": "http://192.168.22.65:8000",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDwA34NLES7T8k-9twHz2x4I17m-fny4OU"
+      }
+    },
+    "preview": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://192.168.22.65:8000",
         "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDwA34NLES7T8k-9twHz2x4I17m-fny4OU"
       }
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.22.53:8000",
+        "EXPO_PUBLIC_API_URL": "http://192.168.22.65:8000",
         "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDwA34NLES7T8k-9twHz2x4I17m-fny4OU"
       }
     }

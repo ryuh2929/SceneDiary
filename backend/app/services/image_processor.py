@@ -152,7 +152,7 @@ def extract_image_gps_coordinates(raw_bytes: bytes) -> GpsCoordinates | None:
             gps_ifd = exif.get_ifd(34853) if hasattr(exif, "get_ifd") else exif.get(34853)
     except Exception:
         return None
-
+    
     if not gps_ifd:
         return None
 
