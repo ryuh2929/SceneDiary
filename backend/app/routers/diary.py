@@ -384,11 +384,11 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                     }
                     for d in all_days
                 ]
-                title = write_trip_title(days_payload, destination=trip.destination or "", path_list=image_path)
-                if title:
-                    trip.title = title
+                title_dict = write_trip_title(days_payload, destination=trip.destination or "", path_list=image_path)
+                if title_dict:
+                    trip.title = title_dict.get("title")
                     db.commit()
-                    print(f"[trip-title] generated: trip={trip.id} title={title!r}")
+                    print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
         except Exception as exc:
             # 제목 생성 실패해도 일기 본문 흐름엔 영향 없게 — 로그만.
             print(f"[trip-title] FAILED: trip_day={trip_day_id}: {exc}")

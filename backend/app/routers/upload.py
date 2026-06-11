@@ -356,6 +356,7 @@ async def upload_first_day_photos(
     fallback_date = trip_date or date.today()
     drafts: list[UploadDraft] = []
     photo_id_list = []
+    
     for index, upload_file in enumerate(files):
         if upload_file.content_type and not upload_file.content_type.startswith("image/"):
             raise HTTPException(status_code=400, detail=f"{upload_file.filename} is not an image")
@@ -510,7 +511,9 @@ async def upload_first_day_photos(
                 )
                 db.add(photo)
                 db.flush()
-                photo_id_list.append(photo.id)
+                new_photo = {"img_id": photo.id, "file_url": photo.file_url}
+
+                photo_id_list.append(new_photo)
                 if trip.cover_photo_id is None:
                     trip.cover_photo_id = photo.id
                 if trip_day.represent_image is None:
@@ -533,7 +536,7 @@ async def upload_first_day_photos(
         _refresh_trip_day_representative_coordinates(db, trip_day)
         # 일차 대표 지명: 그날 사진들의 placeName 중 가장 빈도 높은 값.
         # 이미 값이 있으면 덮어쓰지 않음(이전 업로드/사용자 picker 편집 보존).
-        print("사진 포토 번호:",photo_id_list)
+        print("사진 포토 번호, url:",photo_id_list)
         print('위치 정보 조회 시작')
         if not trip_day.location_summary:
             place_candidates = [d.place_name for d in grouped_drafts if d.place_name]
@@ -579,6 +582,34 @@ async def upload_first_day_photos(
 
     db.commit()
     print("AI가 사진 분석 하기2")
+    
+    # 제목을 만들기
+            
+    if trip is not None and (not trip.title or trip.title == "새 여행"):
+        from app.services.diary_generator import write_trip_title
+
+        all_days = (
+            db.query(TripDay)
+            .filter(TripDay.trip_id == trip.id)
+            .order_by(TripDay.day_number)
+            .all()
+        )
+        days_payload = [
+            {
+                "subtitle": d.subtitle or "",
+                # 너무 길면 토큰 낭비. 앞 200자만 발췌해 분위기 전달.
+                "content_excerpt": (d.content or "")[:200],
+            }
+            for d in all_days
+        ]
+        title_dict = write_trip_title(days_payload, destination=trip.destination or "", path_list=None,photo_info=photo_id_list)
+        if title_dict:
+            trip.title = title_dict.get("title")
+            trip.cover_photo_id= title_dict.get("img_id")
+            db.commit()
+            print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
+    
+    # 일차 데이터 api호출
     for trip_day_id, gen_id in generation_jobs:
         background_tasks.add_task(_run_generation, trip_day_id, gen_id)
 
