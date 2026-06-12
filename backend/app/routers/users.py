@@ -16,6 +16,7 @@ def ensure_user(
     db: Session = Depends(get_db),
 ) -> EnsureUserResponse:
     # 앱 시작 시 프런트가 보낸 user_uuid로 기존 유저를 찾고, 없으면 기본 설정값으로 새 유저를 만듭니다.
+    print("user ID 번호 호출 시도")
     user_uuid = payload.user_uuid.strip()
 
     if not user_uuid:

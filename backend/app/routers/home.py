@@ -8,14 +8,14 @@ from app.db.models import Trip, TripDay
 from app.db.session import get_db
 from app.schemas.home import MainList
 
-router = APIRouter(tags=["home"])
+router = APIRouter(tags=["home"],prefix="/home")
 
 # 지정된 연도의 삭제되지 않은 여행(Trip) 목록 조회
 def _get_tripList(db: Session, year: int,user_id:int) -> List[Trip]:
     trip = (
         db.query(Trip)
         # start_date에서 연도(year)만 추출
-        .filter(extract('year', Trip.start_date) == year, Trip.user_id == user_id, Trip.status == 'completed',
+        .filter(Trip.user_id == user_id, Trip.status == 'completed',
                 Trip.deleted_at.is_(None))
         .order_by(Trip.id.desc())
         .all()
@@ -61,8 +61,10 @@ def get_mainlList(
     
     
     # 각 여행 객체를 순회하며 일차별 상세 스케줄을 동적으로 주입
-    for item in tripList:
-        
+    print("home 메인 리스트 가져오기", len(tripList))
+    for item in tripList:        
+        if item.flag is None:
+            item.flag = "1f30d"
         # 스키마(MainList)의 'tripDays' 필드명과 일치하는 속성에 자식 리스트를 대입
         item.tripDays = _get_detailList(db, request, item.id)
         

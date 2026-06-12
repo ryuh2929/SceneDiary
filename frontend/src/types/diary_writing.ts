@@ -35,6 +35,7 @@ export type DayPage = {
 
 // 여행 전체 (모든 페이지 공통 정보 + 하루치 배열)
 export type TripDiary = {
+  flag: string;
   tripId: number; // trips.id
   title: string; // trips.title — 매 페이지 동일한 큰 제목
   // trips.cover_photo_id 가 가리키는 사진의 URL. VLM이 고른 trip 대표사진(매 페이지 동일).
