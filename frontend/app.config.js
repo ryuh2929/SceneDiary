@@ -43,7 +43,7 @@ export default {
             "이 앱은 여행 사진의 위치 정보를 읽기 위해 사진 접근 권한이 필요합니다.",
           savePhotosPermission: "이 앱은 사진 저장 권한이 필요합니다.",
           isAccessMediaLocationEnabled: true,
-          isSilenceAudioSourcePermission: false
+          isSilenceAudioSourcePermission: false,
         },
       ],
       [
@@ -74,7 +74,7 @@ export default {
       EXPO_PUBLIC_GOOGLE_MAPS_API_KEY:
         process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       eas: {
-        projectId: "7a721926-fa9a-470f-ace4-f4aa3666005c",
+        // projectId: "7a721926-fa9a-470f-ace4-f4aa3666005c",
       },
     },
   },

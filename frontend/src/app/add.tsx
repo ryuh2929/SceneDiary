@@ -216,8 +216,8 @@ function parseFilenameDate(
 function getLocalTodayDate() {
   const today = new Date();
   const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -235,7 +235,10 @@ function sortPhotosByTakenDate(photos: PendingPhoto[]) {
   return [...photos]
     .sort((left, right) => {
       if (left.takenDate && right.takenDate) {
-        return left.takenDate.localeCompare(right.takenDate) || left.displayOrder - right.displayOrder;
+        return (
+          left.takenDate.localeCompare(right.takenDate) ||
+          left.displayOrder - right.displayOrder
+        );
       }
       if (left.takenDate) return -1;
       if (right.takenDate) return 1;
@@ -358,8 +361,11 @@ async function buildPendingPhoto(
     fileUri: uploadImage.uri,
     thumbnailUri: thumbnail.uri,
     originalFilename: asset.fileName ?? `photo-${displayOrder + 1}.jpg`,
-    mimeType: 'image/jpeg',
-    takenDate: parseExifTakenDate(asset.exif) ?? parseFilenameDate(asset.fileName) ?? getLocalTodayDate(),
+    mimeType: "image/jpeg",
+    takenDate:
+      parseExifTakenDate(asset.exif) ??
+      parseFilenameDate(asset.fileName) ??
+      getLocalTodayDate(),
     gpsLatitude: gps?.latitude,
     gpsLongitude: gps?.longitude,
     placeName: geo?.placeName,
@@ -372,7 +378,10 @@ async function buildPendingPhoto(
   };
 
   // 🎯 최종 결과물 콘솔 출력
-  console.log("🚀 [최종 데이터] 백엔드로 전송될 객체:", JSON.stringify(finalPendingPhoto, null, 2));
+  console.log(
+    "🚀 [최종 데이터] 백엔드로 전송될 객체:",
+    JSON.stringify(finalPendingPhoto, null, 2),
+  );
 
   return finalPendingPhoto;
 }
@@ -455,24 +464,25 @@ export default function AddScreen() {
     });
 
     if (!result.canceled) {
-            // result.assets 배열 전체를 순회합니다.
-          result.assets.forEach((asset, index) => {
-            console.log(`--- 📸 사진 #${index + 1} 정보 ---`);
-            
-            if (asset.exif) {
-              // JSON.stringify로 전체 구조를 펼쳐서 확인
-              console.log(JSON.stringify(asset.exif, null, 2));
-              
-              // 특히 GPS 정보가 있는지 확인하고 싶을 때
-              if (asset.exif.GPSLatitude || asset.exif.GPSLongitude) {
-                console.log(`📍 위치 확인: 위도 ${asset.exif.GPSLatitude}, 경도 ${asset.exif.GPSLongitude}`);
-              }
-            } else {
-              console.log("⚠️ 이 사진은 EXIF 데이터가 없습니다.");
-            }
-          });
-    
-  }
+      // result.assets 배열 전체를 순회합니다.
+      result.assets.forEach((asset, index) => {
+        console.log(`--- 📸 사진 #${index + 1} 정보 ---`);
+
+        if (asset.exif) {
+          // JSON.stringify로 전체 구조를 펼쳐서 확인
+          console.log(JSON.stringify(asset.exif, null, 2));
+
+          // 특히 GPS 정보가 있는지 확인하고 싶을 때
+          if (asset.exif.GPSLatitude || asset.exif.GPSLongitude) {
+            console.log(
+              `📍 위치 확인: 위도 ${asset.exif.GPSLatitude}, 경도 ${asset.exif.GPSLongitude}`,
+            );
+          }
+        } else {
+          console.log("⚠️ 이 사진은 EXIF 데이터가 없습니다.");
+        }
+      });
+    }
 
     if (result.canceled) {
       return;
@@ -503,7 +513,9 @@ export default function AddScreen() {
         acceptedPhotos.push(photo);
       }
 
-      setPendingPhotos((current) => sortPhotosByTakenDate([...current, ...acceptedPhotos]));
+      setPendingPhotos((current) =>
+        sortPhotosByTakenDate([...current, ...acceptedPhotos]),
+      );
 
       if (rejectedCount > 0) {
         Alert.alert(
@@ -562,7 +574,8 @@ export default function AddScreen() {
           days: encodeURIComponent(JSON.stringify(uploadResponse.days)),
         },
       });
-    } catch {
+    } catch (error) {
+      console.log("업로드 실패 원인:", error);
       Alert.alert(
         "사진 업로드에 실패했어요",
         "서버 연결 상태를 확인한 뒤 다시 시도해 주세요.",
