@@ -351,8 +351,7 @@ async def upload_first_day_photos(
         raise HTTPException(status_code=400, detail="At least one photo is required")
     if day_number < 1:
         raise HTTPException(status_code=400, detail="day_number must be greater than 0")
-    photo_gps_latitudes = "37.363595"
-    photo_gps_longitudes = "126.96334666666667"
+
     fallback_date = trip_date or date.today()
     drafts: list[UploadDraft] = []
     photo_id_list = []
@@ -383,10 +382,7 @@ async def upload_first_day_photos(
                 return None
             raw = values[idx].strip()
             return raw or None
-        print(f"DEBUG: 현재 인덱스: {index}")
-        print(f"DEBUG: photo_country_names 리스트 상태: {photo_country_names}")
-        print(f"DEBUG: photo_city_names 리스트 상태: {photo_city_names}")
-        print(f"DEBUG: 추출된 country_name: {_form_str_at(photo_country_names, index)}")
+        
 
         drafts.append(
             UploadDraft(
@@ -583,8 +579,7 @@ async def upload_first_day_photos(
     db.commit()
     print("AI가 사진 분석 하기2")
     
-    # 제목을 만들기
-            
+    # 제목을 만들기            
     if trip is not None and (not trip.title or trip.title == "새 여행"):
         from app.services.diary_generator import write_trip_title
 

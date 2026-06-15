@@ -253,7 +253,8 @@ def write_trip_title(
         사진 선택할 때는 임팩트 있는 걸로 선택하되 순서 상관없이 골라줘
         {photo_id_text}"""
     )
-    
+    # 이미지 데이터 변환
+    # 각 사진의 URL을 AI가 읽을 수 있는 바이너리 형식(blob)으로 변환하여 리스트에 저장
     encoded_images = [get_gemini_image_blob(Path(path['file_url'])) for path in photo_info]
 
     # 2. 메시지 구성 (기본 텍스트 포함)
@@ -266,7 +267,7 @@ def write_trip_title(
             "image_url": {"url": url}
         })
 
-    # 4. API 호출
+    # 4. API 호출  (텍스트 데이터만 사용)
     # resp = _client.chat.completions.create(
     #     model=DIARY_MODEL,
     #     messages=[
@@ -277,6 +278,7 @@ def write_trip_title(
     #     temperature=0.2,
     # )
     
+    # 멀티모달(Multimodal)방식 => (텍스트+이미지 동시에 분석)
     response = google_model.generate_content([_TITLE_PROMPT+"\n"+user_text] + encoded_images)
     print(response.text)
     dict_text = _parse_dict(response.text)

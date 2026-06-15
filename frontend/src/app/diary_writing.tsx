@@ -441,10 +441,6 @@ export default function DiaryWritingScreen() {
                 style={{width: "100%", height: "100%"}}
               />
             </View>
-            {/* <Text className="flex-1 text-center text-lg font-sans-bold text-textPrimary dark:text-dark-textPrimary">
-              {trip.title}
-            </Text>
-            */}
               {/* 2. 중앙 텍스트 + 국기 통합 구역 (absolute 제거) */}
             <View className="flex-1 flex-row items-center justify-center gap-xs px-2">
               <Text 
