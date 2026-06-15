@@ -10,3 +10,4 @@ alembic
 Pillow
 python-multipart
 google-generativeai
+google-genai
