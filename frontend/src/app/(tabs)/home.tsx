@@ -91,6 +91,8 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  
+
   // 🎯 핵심 꼼수: 데이터가 존재한다고 '확인된' 연도들을 기록해둘 상자입니다.
   // 진입할 때의 2026년은 기본적으로 포함해 둡니다
   const [hasDataYears, setHasDataYears] = useState<number[]>([2026]);
@@ -110,7 +112,7 @@ export default function HomeScreen() {
       setTripData([]); // 이전 데이터 초기화
 
       const data = await getTrips(currentYear, userProfile?.userId);
-      // console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+      console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
       console.log("데이터 불러옴");
       
       //받아온 전체 데이터 중, 실제 start_date의 연도가 currentYear와 일치하는 것만
@@ -195,7 +197,7 @@ export default function HomeScreen() {
   if (!userProfile?.userId) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#ef4444" />
         <Text style={{ marginTop: 10 }}>유저 정보를 불러오는 중...</Text>
       </View>
     );
@@ -266,7 +268,7 @@ export default function HomeScreen() {
                 elevation: 3,
                 shadowColor: colors.textPrimary,
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.08,
+                shadowOpacity: 0.08, 
                 shadowRadius: 4,
               }}
             >
@@ -288,7 +290,7 @@ export default function HomeScreen() {
                 }
               >
                 {getMainImage(item)}
-
+                {/* [국기 배치] 우측 상단 혹은 지정된 영역에 실시간 매핑된 국기 아이콘 렌더링 */}
                 <View className="absolute top-md left-md bg-muted rounded-md px-sm py-xs items-center shadow-sm dark:bg-dark-muted">
                   <Text className="text-sm font-sans text-textPrimary dark:text-dark-textPrimary">
                     {item.start_date} ~ {item.end_date}
@@ -296,7 +298,7 @@ export default function HomeScreen() {
                 </View>
 
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  <EmojiIcon codepoint={item.flag || "1f1f0-1f1f7"} size={26} />
+                  <EmojiIcon codepoint={item.flag} size={26} />
                 </View>
               </Pressable>
 

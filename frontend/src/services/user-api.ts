@@ -10,6 +10,7 @@ type EnsureUserResponse = {
 let ensureUserPromise: Promise<string> | null = null;
 
 export async function ensureUser(userUuid: string) {
+  console.log("유저 정보 조회 전송")
   const response = await fetch(`${getApiBaseUrl()}/users/ensure`, {
     method: 'POST',
     headers: {

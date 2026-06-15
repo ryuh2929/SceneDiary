@@ -127,6 +127,7 @@ export default function DiaryWritingScreen() {
     setError(null);
     try {
       const data = await fetchTripDiary(TRIP_ID); // GET /trips/{tripId}
+      console.log("승은이가 요청한 데이터: ", JSON.stringify(data,null,2))
       setTrip(data);
       setDays(data.days);
       // 서버 진본 값을 스냅샷으로 보관 → handleNext 가 "바뀐 게 있을 때만" PATCH 하도록.
@@ -432,6 +433,7 @@ export default function DiaryWritingScreen() {
           {/* --- 요약 카드: trip 대표사진 + 제목(매 페이지 동일) --- */}
           {/* (구 day.symbol 자리 폐지: 여행 단위 trips.flag 로 통일 예정. 노출은 추후 작업) */}
           <View className="flex-row items-center gap-3 rounded-3xl bg-background p-4 dark:bg-dark-background">
+            {/* 1. 왼쪽 이미지 구역 */}
             <View className="h-16 w-16 overflow-hidden rounded-2xl">
               <Image
                 source={{uri: trip.representImage}}
@@ -439,9 +441,23 @@ export default function DiaryWritingScreen() {
                 style={{width: "100%", height: "100%"}}
               />
             </View>
-            <Text className="flex-1 text-center text-lg font-sans-bold text-textPrimary dark:text-dark-textPrimary">
+            {/* <Text className="flex-1 text-center text-lg font-sans-bold text-textPrimary dark:text-dark-textPrimary">
               {trip.title}
             </Text>
+            */}
+              {/* 2. 중앙 텍스트 + 국기 통합 구역 (absolute 제거) */}
+            <View className="flex-1 flex-row items-center justify-center gap-xs px-2">
+              <Text 
+                numberOfLines={1} // 글자가 너무 길어지면 국기를 가리지 않고 알아서 '...' 처리
+                className="text-lg font-sans-bold text-textPrimary dark:text-dark-textPrimary text-center"
+              >
+                {trip.title}
+              </Text>
+              {/* 국기가 글자 바로 뒤에 찰떡처럼 붙어 다님 */}
+              <View className="w-8 h-8 items-center justify-center">
+                <EmojiIcon codepoint={trip.flag} size={22} />
+              </View>
+            </View>
           </View>
 
           {/* ====== 상태별 본문 ====== */}
@@ -479,7 +495,6 @@ export default function DiaryWritingScreen() {
                       <Text className="text-sm font-medium text-textPrimary dark:text-dark-textPrimary">
                         {formatDate(day.date)}
                       </Text>
-                      <Calendar size={16} color={colors.textSecondary} />
                     </View>
                   </View>
                 </View>

@@ -327,7 +327,9 @@ async function buildPendingPhoto(
   displayOrder: number,
 ): Promise<PendingPhoto> {
   // 리사이즈하면 EXIF가 사라지므로, 원본 asset에서 GPS를 먼저 읽습니다.
+  // console.log("📸 [디버그] 원본 asset.exif 내용:", JSON.stringify(asset.exif, null, 2));
   const gps = parseExifGps(asset.exif);
+  console.log("📍 [디버그] 파싱된 gps 결과값:", gps);
   // GPS 가 있으면 OS 지오코딩으로 지명도 미리 확보. 백엔드가 그대로 location_summary/destination 으로 사용.
   const geo = gps
     ? await reverseGeocode(gps.latitude, gps.longitude)
@@ -351,8 +353,7 @@ async function buildPendingPhoto(
     },
   );
   const fileSizeBytes = await getFileSizeBytes(uploadImage.uri);
-
-  return {
+  const finalPendingPhoto = {
     id: `${Date.now()}-${displayOrder}-${asset.assetId ?? asset.fileName ?? asset.uri}`,
     fileUri: uploadImage.uri,
     thumbnailUri: thumbnail.uri,
@@ -369,6 +370,11 @@ async function buildPendingPhoto(
     height: uploadImage.height,
     displayOrder,
   };
+
+  // 🎯 최종 결과물 콘솔 출력
+  console.log("🚀 [최종 데이터] 백엔드로 전송될 객체:", JSON.stringify(finalPendingPhoto, null, 2));
+
+  return finalPendingPhoto;
 }
 
 export default function AddScreen() {
@@ -447,6 +453,26 @@ export default function AddScreen() {
       // Expo Go에서는 legacy picker/전체 미디어 권한 제약이 있어 기본 picker를 사용합니다.
       legacy: Platform.OS === "android" && !IS_EXPO_GO,
     });
+
+    if (!result.canceled) {
+            // result.assets 배열 전체를 순회합니다.
+          result.assets.forEach((asset, index) => {
+            console.log(`--- 📸 사진 #${index + 1} 정보 ---`);
+            
+            if (asset.exif) {
+              // JSON.stringify로 전체 구조를 펼쳐서 확인
+              console.log(JSON.stringify(asset.exif, null, 2));
+              
+              // 특히 GPS 정보가 있는지 확인하고 싶을 때
+              if (asset.exif.GPSLatitude || asset.exif.GPSLongitude) {
+                console.log(`📍 위치 확인: 위도 ${asset.exif.GPSLatitude}, 경도 ${asset.exif.GPSLongitude}`);
+              }
+            } else {
+              console.log("⚠️ 이 사진은 EXIF 데이터가 없습니다.");
+            }
+          });
+    
+  }
 
     if (result.canceled) {
       return;
