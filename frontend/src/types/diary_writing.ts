@@ -29,6 +29,9 @@ export type DayPage = {
   subtitle: string; // trip_days.subtitle — 소제목
   emotion: string; // trip_days.emotion — Twemoji 코드포인트(hex)
   content: string; // trip_days.content — 본문
+  // 그날의 대표사진 photo_id. 사용자가 PhotoBar 에서 고를 수 있음.
+  // null 이면 화면에선 photos[0] 으로 fallback.
+  representImage: number | null; // trip_days.represent_image
   photos: DayPhoto[]; // 그날 다이어리용 사진들
   genStatus: GenStatus; // 위 참고
 };
@@ -64,6 +67,7 @@ export type DayUpdate = {
   lon?: number; // trip_days.representative_lon
   countryName?: string; // trip.destination 의 "국가" 부분
   cityName?: string; // trip.destination 의 "도시" 부분
+  representImage?: number; // trip_days.represent_image — 사용자가 고른 그날 대표사진 photo_id
 };
 
 // 최종 저장(PATCH /trips) 요청 body. 여행 상태를 'completed'로.
