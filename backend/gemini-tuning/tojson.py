@@ -1,8 +1,10 @@
 import json
+from pathlib import Path
 
-# 읽을 파일(train.jsonl)과 저장할 파일(pretty.json) 경로
-input_file = r'D:\Project\SceneDiary\docs\gemini-tuning\daily-persona-preference.jsonl'
-output_file = r'D:\Project\SceneDiary\docs\gemini-tuning\my_data.json'
+# 이 스크립트가 있는 폴더를 기준으로 파일 경로를 잡습니다.
+base_dir = Path(__file__).resolve().parent
+input_file = base_dir / 'daily-persona-preference.jsonl'
+output_file = base_dir / 'my_data.json'
 
 data = []
 with open(input_file, 'r', encoding='utf-8') as f:
