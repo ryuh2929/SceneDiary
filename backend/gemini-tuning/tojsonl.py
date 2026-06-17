@@ -1,8 +1,8 @@
 import json
 
 # 읽을 파일(pretty.json)과 저장할 파일(train.jsonl) 경로
-input_file = r'D:\Project\SceneDiary\docs\gemini-tuning\my_data.json'
-output_file = r'D:\Project\SceneDiary\docs\gemini-tuning\train.jsonl'
+input_file = r'C:\Users\akfnx\SceneDiary\backend\gemini-tuning\poetic_persona.json'
+output_file = r'C:\Users\akfnx\SceneDiary\backend\gemini-tuning\Poetic.jsonl'
 
 with open(input_file, 'r', encoding='utf-8') as fin, \
      open(output_file, 'w', encoding='utf-8') as fout:
