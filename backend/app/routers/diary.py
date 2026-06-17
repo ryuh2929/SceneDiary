@@ -137,6 +137,7 @@ def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
         subtitle=trip_day.subtitle or "",
         emotion=trip_day.emotion or "",
         content=trip_day.content or "",  # 합치기 후: trip_day 에서 직접
+        representImage=trip_day.represent_image,
         photos=[
             DayPhoto(
                 id=p.id,
@@ -250,6 +251,21 @@ def update_trip_day(
         # Decimal 컬럼에 float 직접 대입이 일부 환경에서 누락되는 사례 방어.
         trip_day.representative_lat = Decimal(str(round(body.lat, 8)))
         trip_day.representative_lon = Decimal(str(round(body.lon, 8)))
+    # 사용자가 고른 그날 대표사진. 검증: 그 photo_id 가 정말 이 trip_day 의 사진인지.
+    # 다른 일차의 사진이나 존재하지 않는 id 가 들어오면 400.
+    if body.representImage is not None:
+        owned = (
+            db.query(Photo.id)
+            .filter(
+                Photo.id == body.representImage,
+                Photo.trip_day_id == trip_day.id,
+                Photo.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if owned is None:
+            raise HTTPException(status_code=400, detail="representImage does not belong to this trip_day")
+        trip_day.represent_image = body.representImage
     # picker 가 알려준 국가/도시로 trip.destination 자동 보강(비어있을 때만).
     if body.countryName and body.cityName:
         trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()

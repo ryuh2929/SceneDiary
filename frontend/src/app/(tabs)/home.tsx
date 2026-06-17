@@ -344,7 +344,13 @@ export default function HomeScreen() {
 
               {isExpanded && (
                 <View className="bg-muted px-md pb-md pt-sm gap-sm dark:bg-dark-muted">
-                  {item.tripDays.map((detail) => (
+                  {item.tripDays.map((detail) => {
+                    // 그날 대표사진: represent_image(photo_id) 로 매칭. 없으면 photos[0] fallback.
+                    // (지도 탭 map.tsx / simpleView.tsx 와 동일 패턴)
+                    const repPhoto =
+                      detail.photos?.find((p) => p.id === detail.represent_image) ??
+                      detail.photos?.[0];
+                    return (
                     <Pressable
                       key={detail.id}
                       className="flex-row items-center bg-surface p-sm rounded-md shadow-sm dark:bg-dark-surface"
@@ -364,10 +370,10 @@ export default function HomeScreen() {
                         })
                       }
                     >
-                      {detail.photos && detail.photos.length > 0 && (
+                      {repPhoto && (
                         <Image
                           source={{
-                            uri: detail.photos[0].thumbnail_image_url,
+                            uri: repPhoto.thumbnail_image_url,
                           }}
                           className="w-14 h-14 rounded-md mr-md"
                           resizeMode="cover"
@@ -410,7 +416,8 @@ export default function HomeScreen() {
                         </View>
                       </View>
                     </Pressable>
-                  ))}
+                    );
+                  })}
                 </View>
               )}
             </View>

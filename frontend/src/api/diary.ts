@@ -140,6 +140,7 @@ export function saveDayLocation(
   lon?: number,
   countryName?: string,
   cityName?: string,
+  representImage?: number,
 ) {
   const body: DayUpdate = { locationSummary };
   if (lat !== undefined && lon !== undefined) {
@@ -150,6 +151,10 @@ export function saveDayLocation(
   if (countryName && cityName) {
     body.countryName = countryName;
     body.cityName = cityName;
+  }
+  // 사용자가 그날 대표사진을 바꿨다면 같이 보냄. (다음 누를 때 한꺼번에 저장)
+  if (representImage !== undefined) {
+    body.representImage = representImage;
   }
   return request<DayPage>(`/trip-days/${tripDayId}`, {
     method: 'PATCH',

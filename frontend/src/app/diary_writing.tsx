@@ -95,12 +95,14 @@ export default function DiaryWritingScreen() {
   // 여행지 지도 피커 열림 여부.
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  // 각 날의 "마지막으로 서버에 저장된 여행지" 스냅샷. handleNext 가 변경 여부 판단에 사용.
+  // 각 날의 "마지막으로 서버에 저장된 여행지 + 대표사진" 스냅샷.
+  // handleNext / handleSave 가 변경 여부 판단에 사용.
   // 같은 값을 다시 PATCH 하지 않게 막아서, picker 직후 "다음날로" 연타 시 경합·중복 호출을 방지합니다.
   type LocationSnapshot = {
     name: string;
     lat: number | null;
     lon: number | null;
+    representImage: number | null;
   };
   const [originalLocations, setOriginalLocations] = useState<
     Record<number, LocationSnapshot>
@@ -139,6 +141,7 @@ export default function DiaryWritingScreen() {
               name: d.locationSummary,
               lat: d.representativeLat,
               lon: d.representativeLon,
+              representImage: d.representImage,
             },
           ]),
         ),
@@ -223,6 +226,7 @@ export default function DiaryWritingScreen() {
                   emotion: full.emotion,
                   weather: full.weather,
                   photos: full.photos,
+                  representImage: full.representImage,
                   genStatus: full.genStatus,
                 }
               : d,
@@ -244,36 +248,46 @@ export default function DiaryWritingScreen() {
 
   // 현재 날(여행지)을 저장한 뒤 다음날로. 저장에 성공해야 넘어갑니다.
   // 변경이 없으면 PATCH 를 보내지 않고 바로 넘어가, picker 직후 연타로 인한 중복/경합을 피합니다.
-  const handleNext = async () => {
-    if (!canGoNext) return;
-    setActionError(null);
-
+  // 지금 보고 있는 날의 변경분(여행지/대표사진)을 한 번에 PATCH.
+  // handleNext(다음 날로) 와 handleSave(마지막 날 저장) 둘 다에서 사용.
+  // 스냅샷과 비교해서 정말 바뀌었을 때만 호출 → 동일 PATCH 중복 방지.
+  const flushCurrentDayChanges = async () => {
     const orig = originalLocations[day.tripDayId];
-    const changed =
+    const locationChanged =
       !orig ||
       orig.name !== day.locationSummary ||
       orig.lat !== day.representativeLat ||
       orig.lon !== day.representativeLon;
+    const representChanged = !orig || orig.representImage !== day.representImage;
 
+    if (!locationChanged && !representChanged) return;
+
+    await saveDayLocation(
+      day.tripDayId,
+      day.locationSummary,
+      day.representativeLat ?? undefined,
+      day.representativeLon ?? undefined,
+      undefined, // countryName
+      undefined, // cityName
+      // 사용자가 PhotoBar 에서 고른 그날 대표사진. 안 바꿨으면 안 보냄.
+      representChanged ? day.representImage ?? undefined : undefined,
+    );
+    setOriginalLocations((prev) => ({
+      ...prev,
+      [day.tripDayId]: {
+        name: day.locationSummary,
+        lat: day.representativeLat,
+        lon: day.representativeLon,
+        representImage: day.representImage,
+      },
+    }));
+  };
+
+  const handleNext = async () => {
+    if (!canGoNext) return;
+    setActionError(null);
     try {
-      if (changed) {
-        // 좌표가 있으면 함께 보내서 백엔드가 좌표까지 같이 갱신할 수 있게 합니다.
-        await saveDayLocation(
-          day.tripDayId,
-          day.locationSummary,
-          day.representativeLat ?? undefined,
-          day.representativeLon ?? undefined,
-        ); // PATCH /trip-days/{id}
-        // 스냅샷 갱신 → 다음 진입 시 또 PATCH 하지 않게.
-        setOriginalLocations((prev) => ({
-          ...prev,
-          [day.tripDayId]: {
-            name: day.locationSummary,
-            lat: day.representativeLat,
-            lon: day.representativeLon,
-          },
-        }));
-      }
+      await flushCurrentDayChanges();
       setDayIndex((i) => i + 1);
     } catch (e) {
       console.error(e);
@@ -286,6 +300,8 @@ export default function DiaryWritingScreen() {
   const handleSave = async () => {
     setActionError(null);
     try {
+      // 마지막 날에서 대표사진/여행지를 바꿨다면 먼저 flush.
+      await flushCurrentDayChanges();
       await completeTrip(TRIP_ID); // PATCH /trips/{id}  { status: 'completed' }
       if (routeParams.path === "detail")
         router.replace({pathname: "/detail", params: {id: String(TRIP_ID)}});
@@ -314,6 +330,16 @@ export default function DiaryWritingScreen() {
   };
   // 여행지 편집: 지도 피커를 엽니다. (앱 전용 — 웹은 안내 모달)
   const handleEditLocation = () => setPickerOpen(true);
+
+  // PhotoBar 에서 사진을 탭했을 때: 그날의 representImage 를 로컬 상태만 변경.
+  // 실제 백엔드 저장은 "다음"/"저장하기" 버튼에서 flushCurrentDayChanges 가 처리.
+  const handleSelectRepresentImage = (photoId: number) => {
+    setDays((prev) =>
+      prev.map((d, i) =>
+        i === dayIndex ? {...d, representImage: photoId} : d,
+      ),
+    );
+  };
 
   // 본문 편집 시작: 현재 본문을 draft 로 복사하고 편집 모드 켭니다.
   const handleStartEditContent = () => {
@@ -624,8 +650,12 @@ export default function DiaryWritingScreen() {
                 )}
               </View>
 
-              {/* --- 그날 사진 (읽기전용, +버튼 없음) --- */}
-              <PhotoBar photos={day.photos} />
+              {/* --- 그날 사진: 탭으로 그날 대표사진 선택 가능 --- */}
+              <PhotoBar
+                photos={day.photos}
+                representImageId={day.representImage}
+                onSelect={handleSelectRepresentImage}
+              />
             </>
           )}
 
@@ -656,7 +686,11 @@ export default function DiaryWritingScreen() {
                   </Text>
                 </Pressable>
               </View>
-              <PhotoBar photos={day.photos} />
+              <PhotoBar
+                photos={day.photos}
+                representImageId={day.representImage}
+                onSelect={handleSelectRepresentImage}
+              />
             </>
           )}
         </View>
@@ -725,8 +759,20 @@ export default function DiaryWritingScreen() {
   );
 }
 
-// 하단 "대표 사진" 바 — 그날 사진들만 가로 스크롤로 표시 (읽기전용).
-function PhotoBar({photos}: {photos: {id: number; thumbnailUrl: string}[]}) {
+// 하단 "대표 사진" 바 — 그날 사진들을 가로 스크롤로 표시.
+// 사진을 탭하면 그날의 대표사진으로 선택(로컬 상태만 변경, 실제 저장은 "다음"/"저장하기"에서).
+// 선택된 사진은 파란 테두리로 강조.
+function PhotoBar({
+  photos,
+  representImageId,
+  onSelect,
+}: {
+  photos: {id: number; thumbnailUrl: string}[];
+  representImageId: number | null;
+  onSelect: (photoId: number) => void;
+}) {
+  // 대표사진이 아직 정해져 있지 않으면 첫 사진을 대표처럼 보여줌(백엔드 fallback 과 동일).
+  const selectedId = representImageId ?? photos[0]?.id ?? null;
   return (
     <View className="gap-4">
       <Text className="ml-1 text-sm font-sans-bold text-textSecondary dark:text-dark-textSecondary">
@@ -737,18 +783,26 @@ function PhotoBar({photos}: {photos: {id: number; thumbnailUrl: string}[]}) {
         showsHorizontalScrollIndicator={false}
         contentContainerClassName="gap-2"
       >
-        {photos.map((p) => (
-          <View
-            key={p.id}
-            className="h-16 w-16 overflow-hidden rounded-xl border border-border dark:border-dark-border"
-          >
-            <Image
-              source={{uri: p.thumbnailUrl}}
-              contentFit="cover"
-              style={{width: "100%", height: "100%"}}
-            />
-          </View>
-        ))}
+        {photos.map((p) => {
+          const isSelected = p.id === selectedId;
+          return (
+            <Pressable
+              key={p.id}
+              onPress={() => onSelect(p.id)}
+              className={`h-16 w-16 overflow-hidden rounded-xl border-2 ${
+                isSelected
+                  ? "border-primary"
+                  : "border-border dark:border-dark-border"
+              }`}
+            >
+              <Image
+                source={{uri: p.thumbnailUrl}}
+                contentFit="cover"
+                style={{width: "100%", height: "100%"}}
+              />
+            </Pressable>
+          );
+        })}
       </ScrollView>
     </View>
   );
