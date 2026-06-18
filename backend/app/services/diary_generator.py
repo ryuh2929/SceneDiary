@@ -337,7 +337,10 @@ def write_trip_title(
             for i, day in enumerate(days, 1)
         ],
         "candidate_photos": [
-            {"img_id": item.get("img_id")}
+            {
+                "img_id": item.get("img_id"),
+                "analysis_text": (item.get("analysis_text") or "").strip(),
+            }
             for item in candidate_photos
             if item.get("img_id") is not None
         ],
@@ -358,21 +361,13 @@ def write_trip_title(
     print("AI에게 보내는 대표사진 후보:", candidate_img_ids)
 
     if TITLE_MODEL_PROVIDER in {"openai", "chatgpt", "gpt"}:
-        openai_images = [
-            {
-                "type": "image_url",
-                "image_url": {"url": _encode_image(Path(item["file_url"]))},
-            }
-            for item in candidate_photos
-            if item.get("file_url")
-        ]
         resp = _client.chat.completions.create(
             model=TITLE_MODEL,
             messages=[
                 {"role": "system", "content": "너는 SceneDiary 여행 제목 생성 모델이다. JSON만 응답한다."},
                 {
                     "role": "user",
-                    "content": [{"type": "text", "text": user_text}] + openai_images,
+                    "content": user_text,
                 },
             ],
             response_format={"type": "json_object"},
@@ -381,12 +376,7 @@ def write_trip_title(
         print(f"write_trip_title provider=openai model={resp.model}")
         dict_text = _parse_dict(resp.choices[0].message.content)
     else:
-        encoded_images = [
-            get_gemini_image_blob(Path(item["file_url"]))
-            for item in candidate_photos
-            if item.get("file_url")
-        ]
-        response = google_model.generate_content([user_text] + encoded_images)
+        response = google_model.generate_content(user_text)
         print(f"write_trip_title provider=gemini model={TITLE_GEMINI_MODEL}")
         print(response.text)
         dict_text = _parse_dict(response.text)

@@ -404,11 +404,45 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                     }
                     for d in all_days
                 ]
-                title_dict = write_trip_title(days_payload, destination=trip.destination or "", path_list=image_path)
+                trip_photos = (
+                    db.query(Photo)
+                    .join(TripDay, Photo.trip_day_id == TripDay.id)
+                    .filter(
+                        TripDay.trip_id == trip.id,
+                        Photo.deleted_at.is_(None),
+                    )
+                    .order_by(TripDay.day_number, Photo.display_order)
+                    .all()
+                )
+                photo_candidates = []
+                for photo in trip_photos:
+                    latest_analysis = (
+                        db.query(PhotoGeneration)
+                        .filter(
+                            PhotoGeneration.photo_id == photo.id,
+                            PhotoGeneration.status == "success",
+                        )
+                        .order_by(PhotoGeneration.id.desc())
+                        .first()
+                    )
+                    photo_candidates.append(
+                        {
+                            "img_id": photo.id,
+                            "analysis_text": latest_analysis.analysis_text if latest_analysis else "",
+                        }
+                    )
+                title_dict = write_trip_title(
+                    days_payload,
+                    destination=trip.destination or "",
+                    photo_info=photo_candidates,
+                )
                 if title_dict:
                     generated_title = (title_dict.get("title") or "").strip()
+                    generated_img_id = title_dict.get("img_id")
                     if generated_title:
                         trip.title = generated_title
+                    if generated_img_id:
+                        trip.cover_photo_id = generated_img_id
                     db.commit()
                     print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
         except Exception as exc:

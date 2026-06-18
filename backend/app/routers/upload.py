@@ -586,7 +586,7 @@ async def upload_first_day_photos(
     
     # 제목을 만들기
             
-    if trip is not None and (not trip.title or trip.title == "새 여행"):
+    if False and trip is not None and (not trip.title or trip.title == "새 여행"):
         from app.services.diary_generator import write_trip_title
 
         all_days = (
