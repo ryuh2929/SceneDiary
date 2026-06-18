@@ -59,15 +59,15 @@ confidence 값은 0.0~1.0 숫자로 작성하세요.
   "objects": ["주요 사물/풍경 키워드 몇 개"],
   "weather": "하늘/날씨가 보이면 한 단어(맑음/흐림/비/눈 등), 실내거나 알 수 없으면 빈 문자열",
   "mood": "사진의 전반적 분위기를 한 단어로",
-  "place_type": "landmark/street/nature/restaurant/cafe/hotel/transport/museum/shop/event/unknown 중 하나",
-  "indoor_outdoor": "indoor/outdoor/mixed/unknown 중 하나",
+  "place_type": "반드시 landmark, street, nature, restaurant, cafe, hotel, transport, museum, shop, event, unknown 중 하나",
+  "indoor_outdoor": "반드시 indoor, outdoor, mixed, unknown 중 하나",
   "activity": ["walking", "sightseeing"]처럼 사진에서 보이는 활동 키워드",
   "landmark_guess": "사진과 메타데이터가 함께 뒷받침할 때만 구체 랜드마크명, 아니면 빈 문자열",
   "landmark_confidence": 0.0,
   "landmark_basis": ["visual_match", "gps_context"]처럼 판단 근거 키워드 배열",
-  "people_type": "selfie/portrait_of_user/group_photo/performance/crowd/stranger/landscape_only/unclear 중 하나",
-  "people_importance": "main_subject/background/incidental/none/unclear 중 하나",
-  "time_hint": "early_morning/morning/afternoon/evening/night/unknown 중 하나",
+  "people_type": "반드시 selfie, portrait_of_user, group_photo, performance, crowd, stranger, landscape_only, unclear 중 하나",
+  "people_importance": "반드시 main_subject, background, incidental, none, unclear 중 하나",
+  "time_hint": "반드시 early_morning, morning, afternoon, evening, night, unknown 중 하나",
   "time_confidence": 0.0,
   "time_basis": ["exif_time", "visual_cues"]처럼 판단 근거 키워드 배열
 }"""
@@ -161,6 +161,39 @@ def _confidence(value: object) -> float:
     return max(0.0, min(1.0, score))
 
 
+_PLACE_TYPES = {
+    "landmark",
+    "street",
+    "nature",
+    "restaurant",
+    "cafe",
+    "hotel",
+    "transport",
+    "museum",
+    "shop",
+    "event",
+    "unknown",
+}
+_INDOOR_OUTDOOR = {"indoor", "outdoor", "mixed", "unknown"}
+_PEOPLE_TYPES = {
+    "selfie",
+    "portrait_of_user",
+    "group_photo",
+    "performance",
+    "crowd",
+    "stranger",
+    "landscape_only",
+    "unclear",
+}
+_PEOPLE_IMPORTANCE = {"main_subject", "background", "incidental", "none", "unclear"}
+_TIME_HINTS = {"early_morning", "morning", "afternoon", "evening", "night", "unknown"}
+
+
+def _enum_value(value: object, allowed: set[str], fallback: str) -> str:
+    normalized = str(value or "").strip().lower()
+    return normalized if normalized in allowed else fallback
+
+
 def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
     """[1단계 · VLM] 사진 1장을 보고 객관적 분석을 만듭니다(감성 X).
 
@@ -196,6 +229,15 @@ def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
     parsed = _parse_dict(resp.choices[0].message.content)
     parsed["landmark_confidence"] = _confidence(parsed.get("landmark_confidence"))
     parsed["time_confidence"] = _confidence(parsed.get("time_confidence"))
+    parsed["place_type"] = _enum_value(parsed.get("place_type"), _PLACE_TYPES, "unknown")
+    parsed["indoor_outdoor"] = _enum_value(parsed.get("indoor_outdoor"), _INDOOR_OUTDOOR, "unknown")
+    parsed["people_type"] = _enum_value(parsed.get("people_type"), _PEOPLE_TYPES, "unclear")
+    parsed["people_importance"] = _enum_value(
+        parsed.get("people_importance"),
+        _PEOPLE_IMPORTANCE,
+        "unclear",
+    )
+    parsed["time_hint"] = _enum_value(parsed.get("time_hint"), _TIME_HINTS, "unknown")
 
     # 작가에게 넘길 한 줄 텍스트로 정리: "묘사 (날씨: .., 분위기: .., 키워드: ..)"
     desc = (parsed.get("description") or "").strip()
