@@ -353,21 +353,32 @@ def write_diary(
     weather·emotion 은 이모지를 Twemoji 코드포인트(hex)로 변환해 돌려줍니다.
     """
     persona = _normalize_persona(persona)
-    hint = ""
-    if location or date:
-        hint = f"\n참고: 장소='{location}', 날짜='{date}'."
 
-    # 분석들을 번호 매겨 한 덩어리 텍스트로 (사진 대신 이 글을 모델에 넣음)
-    joined = "\n".join(f"{i}. {a}" for i, a in enumerate(analyses, 1)) or "(분석 없음)"
+    # 사진 원본 대신 VLM이 만든 analysis_text 배열을 JSON 입력으로 넘깁니다.
+    payload = {
+        "persona": persona,
+        "location": location or "",
+        "date": date or "",
+        "photo_analyses": [
+            {"order": index, "analysis_text": analysis}
+            for index, analysis in enumerate(analyses, 1)
+        ],
+        "instructions": [
+            "사진 분석 내용만 바탕으로 하루의 기록을 일기 형식으로 작성하세요.",
+            "지역 이름을 일일이 나열하지 말고, 장소의 느낌 위주로 서술하세요.",
+            "'한국식' 같은 불필요한 수식어는 빼고, 개인적인 감상과 느낌을 중심으로 작성하세요.",
+            "오늘 하루를 되돌아보는 것처럼 편안하고 자연스러운 구어체로 작성하세요.",
+        ],
+        "output_schema": {
+            "subtitle": "25자 이내의 자연스러운 한국어 소제목",
+            "content": "3~5문장의 한국어 일기 본문",
+            "weather": "☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, '' 중 하나",
+            "emotion": "그 날의 감정을 나타내는 이모지 1개",
+        },
+    }
     user_text = (
-        f"persona: {persona}\n"
-        f"다음은 같은 날 찍은 사진들의 분석 내용이야:\n{joined}{hint}\n\n"
-        "이 분석 내용을 바탕으로 하루의 기록을 일기 형식으로 작성해 줘.\n\n"
-        "주의사항:\n"
-        "- 지역 이름(동네 이름 등)을 일일이 나열하지 말고, 장소의 느낌 위주로 서술해.\n"
-        "- '한국식' 같은 불필요한 수식어는 빼고, 일기 본연의 개인적인 감상과 느낌을 중심으로 작성해.\n"
-        "- 마치 오늘 하루를 되돌아보는 것처럼 편안하고 자연스러운 구어체 말투로 써 줘.\n"
-        "- 사진 속 상황을 묘사할 때, 마치 그 자리에 있었던 것처럼 생생하게 느껴지도록 작성해."
+        "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n"
+        f"{json.dumps(payload, ensure_ascii=False)}"
     )
 
     if DIARY_MODEL_PROVIDER in {"gemini", "vertex", "vertexai"}:
