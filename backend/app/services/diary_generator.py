@@ -27,12 +27,15 @@ import google.generativeai as genai
 # 환경변수로 덮어쓸 수 있게(없으면 로컬 Ollama 기본값).
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 DIARY_MODEL = os.getenv("DIARY_MODEL", "gemma4:e4b")
+TITLE_MODEL_PROVIDER = os.getenv("TITLE_MODEL_PROVIDER", "gemini").strip().lower()
+TITLE_MODEL = os.getenv("TITLE_MODEL", DIARY_MODEL)
+TITLE_GEMINI_MODEL = os.getenv("TITLE_GEMINI_MODEL", "models/gemini-3.1-flash-lite")
 
 GOOGLE_API_KEY= os.getenv("GENAI_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 # 2. 모델 선택 (gemini-1.5-flash 또는 gemini-1.5-pro 등)
 google_model = genai.GenerativeModel(
-    model_name="models/gemini-3.1-flash-lite",
+    model_name=TITLE_GEMINI_MODEL,
     # 응답 형식을 JSON으로 강제
     generation_config={
         "response_mime_type": "application/json",
@@ -224,7 +227,7 @@ def write_diary(
     }
 
 
-def write_trip_title(
+def _write_trip_title_legacy(
     days: list[dict], *, destination: str = "", path_list: list[Path], photo_info:list[dict]
 ) -> dict:
     """[3단계 · LLM] 모든 일차의 (subtitle, content 요약) 을 보고 여행 제목 한 줄을 만듭니다.
@@ -277,11 +280,118 @@ def write_trip_title(
     #     temperature=0.2,
     # )
     
-    response = google_model.generate_content([_TITLE_PROMPT+"\n"+user_text] + encoded_images)
-    print(response.text)
-    dict_text = _parse_dict(response.text)
+    if TITLE_MODEL_PROVIDER in {"openai", "chatgpt", "gpt"}:
+        openai_images = [
+            {
+                "type": "image_url",
+                "image_url": {"url": _encode_image(Path(path["file_url"]))},
+            }
+            for path in photo_info
+        ]
+        resp = _client.chat.completions.create(
+            model=TITLE_MODEL,
+            messages=[
+                {"role": "system", "content": _TITLE_PROMPT},
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": user_text}] + openai_images,
+                },
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.2,
+        )
+        print(f"write_trip_title provider=openai model={resp.model}")
+        dict_text = _parse_dict(resp.choices[0].message.content)
+    else:
+        response = google_model.generate_content([_TITLE_PROMPT+"\n"+user_text] + encoded_images)
+        print(f"write_trip_title provider=gemini model={TITLE_GEMINI_MODEL}")
+        print(response.text)
+        dict_text = _parse_dict(response.text)
     print("AI가 돌려준 이미지 번호",dict_text.get("img_id"))
     return dict_text
+
+
+def write_trip_title(
+    days: list[dict],
+    *,
+    destination: str = "",
+    path_list: list[Path] | None = None,
+    photo_info: list[dict] | None = None,
+) -> dict:
+    """Create a trip title and choose one representative photo."""
+    if not days:
+        return {}
+
+    candidate_photos = photo_info or []
+    candidate_img_ids = [
+        item.get("img_id") for item in candidate_photos if item.get("img_id") is not None
+    ]
+    payload = {
+        "destination": destination or "",
+        "days": [
+            {
+                "day": i,
+                "subtitle": (day.get("subtitle") or "").strip(),
+                "content_excerpt": (day.get("content_excerpt") or "").strip(),
+            }
+            for i, day in enumerate(days, 1)
+        ],
+        "candidate_photos": [
+            {
+                "img_id": item.get("img_id"),
+                "analysis_text": (item.get("analysis_text") or "").strip(),
+            }
+            for item in candidate_photos
+            if item.get("img_id") is not None
+        ],
+    }
+
+    user_text = (
+        "다음 여행 일기 요약과 후보 사진을 보고 여행 제목과 대표사진을 정해줘.\n"
+        "반드시 JSON 객체 하나만 반환해.\n"
+        "규칙:\n"
+        "- title은 null이나 빈 문자열이면 안 된다.\n"
+        "- title은 한국어로 16자 이내, 친구에게 말하듯 자연스럽게 작성한다.\n"
+        "- title은 여행지, 먹은 것, 본 풍경, 겪은 일 중 구체적인 소재 하나를 담는다.\n"
+        "- img_id는 candidate_photos 중 하나만 고른다.\n"
+        "- candidate_photos가 비어 있으면 img_id는 null로 둔다.\n"
+        '응답 형식: {"title":"...", "img_id":123}\n\n'
+        f"입력 데이터:\n{json.dumps(payload, ensure_ascii=False)}"
+    )
+    print("AI에게 보내는 대표사진 후보:", candidate_img_ids)
+
+    if TITLE_MODEL_PROVIDER in {"openai", "chatgpt", "gpt"}:
+        resp = _client.chat.completions.create(
+            model=TITLE_MODEL,
+            messages=[
+                {"role": "system", "content": "너는 SceneDiary 여행 제목 생성 모델이다. JSON만 응답한다."},
+                {
+                    "role": "user",
+                    "content": user_text,
+                },
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.2,
+        )
+        print(f"write_trip_title provider=openai model={resp.model}")
+        dict_text = _parse_dict(resp.choices[0].message.content)
+    else:
+        response = google_model.generate_content(user_text)
+        print(f"write_trip_title provider=gemini model={TITLE_GEMINI_MODEL}")
+        print(response.text)
+        dict_text = _parse_dict(response.text)
+
+    title = (dict_text.get("title") or "").strip()
+    img_id = dict_text.get("img_id")
+    try:
+        img_id = int(img_id) if img_id is not None else None
+    except (TypeError, ValueError):
+        img_id = None
+    if candidate_img_ids and img_id not in candidate_img_ids:
+        img_id = None
+
+    print("AI가 돌려준 제목/이미지:", title, img_id)
+    return {"title": title, "img_id": img_id}
 
 
 def generate_day_diary(

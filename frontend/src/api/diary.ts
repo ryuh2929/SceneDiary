@@ -63,6 +63,7 @@ export async function uploadFirstDayPhotos(photos: {
   placeName?: string;
   countryName?: string;
   cityName?: string;
+  exif?: Record<string, unknown>;
 }[], options?: {
   tripId?: string;
   dayNumber?: number;
@@ -85,6 +86,7 @@ export async function uploadFirstDayPhotos(photos: {
     formData.append('photo_place_names', photo.placeName ?? '');
     formData.append('photo_country_names', photo.countryName ?? '');
     formData.append('photo_city_names', photo.cityName ?? '');
+    formData.append('photo_exifs', photo.exif ? JSON.stringify(photo.exif) : '');
     if (Platform.OS === 'web') {
       const blob = await fetch(photo.fileUri).then((response) => response.blob());
       formData.append('files', blob, photo.originalFilename);
