@@ -607,6 +607,8 @@ async def upload_first_day_photos(
                     taken_at_utc=draft.taken_at_utc,
                     # 프론트가 미리 변환해 보낸 지명. 권한 없거나 GPS 없으면 None.
                     location_name=draft.place_name,
+                    country_name=draft.country_name,
+                    city_name=draft.city_name,
                     display_order=display_order,
                     created_at=datetime.now(),
                 )

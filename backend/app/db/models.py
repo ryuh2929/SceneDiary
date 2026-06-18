@@ -216,6 +216,9 @@ class Photo(Base):
     latitude: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     longitude: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     location_name: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    # 역지오코딩으로 얻은 사진 단위 국가/도시명
+    country_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    city_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     # 외부 장소 ID (Google Places 등)
     place_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     # 타임존 / UTC 오프셋
