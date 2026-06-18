@@ -35,6 +35,7 @@ from app.schemas.diary import (
     TripStatusUpdate,
 )
 from app.services.travel_style_analysis import run_travel_style_analysis
+from app.utils.country_flags import country_to_flag
 
 router = APIRouter(tags=["diary"])
 
@@ -269,8 +270,11 @@ def update_trip_day(
     # picker 가 알려준 국가/도시로 trip.destination 자동 보강(비어있을 때만).
     if body.countryName and body.cityName:
         trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
-        if trip and not trip.destination:
-            trip.destination = f"{body.countryName}/{body.cityName}"
+        if trip:
+            if not trip.destination:
+                trip.destination = f"{body.countryName}/{body.cityName}"
+            if not trip.flag:
+                trip.flag = country_to_flag(body.countryName)
     db.commit()
     db.refresh(trip_day)
     return _build_day(db, trip_day, _base_url(request))

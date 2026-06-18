@@ -18,6 +18,7 @@ from app.db.models import DiaryGeneration, Photo, Trip, TripDay
 from app.db.session import get_db
 from app.routers.diary import _abs_url, _base_url, _gen_status, _run_generation
 from app.services.image_processor import extract_image_gps_coordinates, extract_image_taken_date, process_upload_image
+from app.utils.country_flags import country_to_flag
 
 
 # add.tsx -> loading.tsx 흐름에서 사용하는 업로드/생성 API입니다.
@@ -577,7 +578,7 @@ async def upload_first_day_photos(
         )
         if first_draft:
             trip.destination = f"{first_draft.country_name}/{first_draft.city_name}"
-            trip.flag = COUNTRY_FLAG_MAP.get(first_draft.country_name, "1f30d") # 존재하지 않을 경우를 대비해 .get() 사용
+            trip.flag = country_to_flag(first_draft.country_name)
             print(f"{first_draft.country_name}의 코드: {trip.flag}")
 
     db.commit()
