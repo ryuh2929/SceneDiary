@@ -35,6 +35,7 @@ from app.schemas.diary import (
     TripStatusUpdate,
 )
 from app.services.travel_style_analysis import run_travel_style_analysis
+from app.utils.country_flags import country_to_flag
 
 router = APIRouter(tags=["diary"])
 
@@ -269,8 +270,11 @@ def update_trip_day(
     # picker 가 알려준 국가/도시로 trip.destination 자동 보강(비어있을 때만).
     if body.countryName and body.cityName:
         trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
-        if trip and not trip.destination:
-            trip.destination = f"{body.countryName}/{body.cityName}"
+        if trip:
+            if not trip.destination:
+                trip.destination = f"{body.countryName}/{body.cityName}"
+            if not trip.flag:
+                trip.flag = country_to_flag(body.countryName)
     db.commit()
     db.refresh(trip_day)
     return _build_day(db, trip_day, _base_url(request))
@@ -400,9 +404,45 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                     }
                     for d in all_days
                 ]
-                title_dict = write_trip_title(days_payload, destination=trip.destination or "", path_list=image_path)
+                trip_photos = (
+                    db.query(Photo)
+                    .join(TripDay, Photo.trip_day_id == TripDay.id)
+                    .filter(
+                        TripDay.trip_id == trip.id,
+                        Photo.deleted_at.is_(None),
+                    )
+                    .order_by(TripDay.day_number, Photo.display_order)
+                    .all()
+                )
+                photo_candidates = []
+                for photo in trip_photos:
+                    latest_analysis = (
+                        db.query(PhotoGeneration)
+                        .filter(
+                            PhotoGeneration.photo_id == photo.id,
+                            PhotoGeneration.status == "success",
+                        )
+                        .order_by(PhotoGeneration.id.desc())
+                        .first()
+                    )
+                    photo_candidates.append(
+                        {
+                            "img_id": photo.id,
+                            "analysis_text": latest_analysis.analysis_text if latest_analysis else "",
+                        }
+                    )
+                title_dict = write_trip_title(
+                    days_payload,
+                    destination=trip.destination or "",
+                    photo_info=photo_candidates,
+                )
                 if title_dict:
-                    trip.title = title_dict.get("title")
+                    generated_title = (title_dict.get("title") or "").strip()
+                    generated_img_id = title_dict.get("img_id")
+                    if generated_title:
+                        trip.title = generated_title
+                    if generated_img_id:
+                        trip.cover_photo_id = generated_img_id
                     db.commit()
                     print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
         except Exception as exc:

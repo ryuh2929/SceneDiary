@@ -22,6 +22,10 @@ import { Trip } from "@/types/api";
 import { useAppThemeColors } from "@/constants/app-colors";
 import { useAppSettings } from "@/contexts/app-settings-context";
 import { useUserStore } from "@/data/userStore";
+import {
+  codepointToEmoji as emojiCodepointToEmoji,
+  resolveTripFlagCodepoint,
+} from "@/utils/emoji";
 
 
 // ─────────────────────────────────────────────
@@ -33,10 +37,7 @@ import { useUserStore } from "@/data/userStore";
  * 예: "1f5fc" -> 타워 이모지, "1f1f0-1f1f7" -> 국기 이모지
  */
 function codepointToEmoji(codepoint: string): string {
-  return codepoint
-    .split("-")
-    .map((cp) => String.fromCodePoint(parseInt(cp, 16)))
-    .join("");
+  return emojiCodepointToEmoji(codepoint);
 }
 
 /**
@@ -298,7 +299,7 @@ export default function HomeScreen() {
                 </View>
 
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  <EmojiIcon codepoint={item.flag} size={26} />
+                  <EmojiIcon codepoint={resolveTripFlagCodepoint(item.flag, item.destination)} size={26} />
                 </View>
               </Pressable>
 
