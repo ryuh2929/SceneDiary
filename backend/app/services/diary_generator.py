@@ -23,13 +23,19 @@ from pathlib import Path
 
 from openai import OpenAI
 import google.generativeai as genai
+from google import genai as vertex_genai
+from google.genai import types as vertex_types
 
 # 환경변수로 덮어쓸 수 있게(없으면 로컬 Ollama 기본값).
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 DIARY_MODEL = os.getenv("DIARY_MODEL", "gemma4:e4b")
+DIARY_MODEL_PROVIDER = os.getenv("DIARY_MODEL_PROVIDER", "openai").strip().lower()
 TITLE_MODEL_PROVIDER = os.getenv("TITLE_MODEL_PROVIDER", "gemini").strip().lower()
 TITLE_MODEL = os.getenv("TITLE_MODEL", DIARY_MODEL)
 TITLE_GEMINI_MODEL = os.getenv("TITLE_GEMINI_MODEL", "models/gemini-3.1-flash-lite")
+GEMINI_PROJECT_ID = os.getenv("GEMINI_PROJECT_ID", "project-19fbb1da-6ea1-4a56-8c1")
+GEMINI_LOCATION = os.getenv("GEMINI_LOCATION", "us-west1")
+DIARY_PERSONAS = {"daily", "playful", "poetic", "romantic"}
 
 GOOGLE_API_KEY= os.getenv("GENAI_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
@@ -46,23 +52,42 @@ API_KEY = os.getenv("OPENAI_API_KEY")
 # api_key 는 SDK가 요구하지만 Ollama는 무시합니다.
 _client = OpenAI(base_url="https://api.openai.com/v1", api_key=API_KEY)
 
-# [1단계 · VLM] 사진을 객관적으로만 묘사하게 하는 프롬프트. 감성 해석은 2단계 작가의 몫.
-_ANALYZE_PROMPT = """당신은 사진을 객관적으로 묘사하는 분석가입니다.
-감성적 해석 없이, 사진에 실제로 보이는 것만 기록하세요.
+# [1단계 · VLM] 사진과 메타데이터를 함께 보고 일기 작성용 단서를 구조화합니다.
+_ANALYZE_PROMPT = """당신은 여행 사진을 분석해 일기 작성에 필요한 사실 기반 단서를 구조화하는 분석가입니다.
+사진에 보이는 장면을 우선으로 기록하고, 제공된 시간/위치 메타데이터는 참고 정보로만 사용하세요.
+사진 내용과 맞지 않으면 장소명, 랜드마크, 활동을 단정하지 마세요.
+감성적인 문장 작성은 하지 말고, 관찰 가능한 정보와 신중한 추정만 JSON으로 반환하세요.
+confidence 값은 0.0~1.0 숫자로 작성하세요.
 반드시 아래 JSON 형식으로만, 다른 말 없이 답하세요.
 
 {
   "description": "사진 속 장면을 1~2문장으로 객관적으로 묘사",
   "objects": ["주요 사물/풍경 키워드 몇 개"],
   "weather": "하늘/날씨가 보이면 한 단어(맑음/흐림/비/눈 등), 실내거나 알 수 없으면 빈 문자열",
-  "mood": "사진의 전반적 분위기를 한 단어로"
+  "mood": "사진의 전반적 분위기를 한 단어로",
+  "place_type": "반드시 landmark, street, nature, restaurant, cafe, hotel, transport, museum, shop, event, unknown 중 하나",
+  "indoor_outdoor": "반드시 indoor, outdoor, mixed, unknown 중 하나",
+  "activity": ["walking", "sightseeing"]처럼 사진에서 보이는 활동 키워드",
+  "landmark_guess": "사진과 메타데이터가 함께 뒷받침할 때만 구체 랜드마크명, 아니면 빈 문자열",
+  "landmark_confidence": 0.0,
+  "landmark_basis": ["visual_match", "gps_context"]처럼 판단 근거 키워드 배열",
+  "people_type": "반드시 selfie, portrait_of_user, group_photo, performance, crowd, stranger, landscape_only, unclear 중 하나",
+  "people_importance": "반드시 main_subject, background, incidental, none, unclear 중 하나",
+  "time_hint": "반드시 early_morning, morning, afternoon, evening, night, unknown 중 하나",
+  "time_confidence": 0.0,
+  "time_basis": ["exif_time", "visual_cues"]처럼 판단 근거 키워드 배열
 }"""
 
 # [2단계 · LLM] 1단계가 적어준 분석 글들만 보고(사진 없이) 감성 일기를 쓰게 하는 프롬프트.
 _WRITE_PROMPT = """당신은 여행 사진 분석 결과를 보고 한국어 여행 일기를 쓰는 작가입니다.
 아래는 같은 날 찍은 사진들을 분석한 결과입니다. 사진을 직접 보지는 못하지만,
 이 분석들을 종합해 그 날의 분위기·장소·감정을 담아 일기를 만드세요.
+입력의 persona 값에 맞는 모델/문체로 작성하되, 입력에 없는 사실을 새로 만들지 마세요.
 반드시 아래 JSON 형식으로만, 다른 말 없이 답하세요.
+사진 분석 내용만 바탕으로 하루의 기록을 일기 형식으로 작성하세요.
+지역 이름을 일일이 나열하지 말고, 장소의 느낌 위주로 서술하세요.
+'한국식' 같은 불필요한 수식어는 빼고, 개인적인 감상과 느낌을 중심으로 작성하세요.
+오늘 하루를 되돌아보는 것처럼 편안하고 자연스러운 구어체로 작성하세요.
 
 [subtitle 규칙]
 1. 구체성: 여행지에서 먹은 음식, 본 풍경, 했던 경험 등 구체적인 소재를 반드시 하나 포함할 것.
@@ -74,7 +99,7 @@ _WRITE_PROMPT = """당신은 여행 사진 분석 결과를 보고 한국어 여
 {
   "subtitle": "여행자가 친구에게 말하듯 간결하게 작성할 것",
   "content": "3~5문장의 평범한 일상을 적는 인스타 감성으로 한국어 일기 본문",
-  "weather": "분석 결과의 날씨를 나타내는 날씨 이모지 1개(예: ☀️ ⛅ ☁️ 🌧️ ❄️). 날씨를 알 수 없으면 빈 문자열",
+  "weather": "반드시 다음 중 하나만 사용하세요 (☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, '')",
   "emotion": "그 날의 감정을 나타내는 이모지 1개"
 }"""
 
@@ -139,7 +164,109 @@ def _emoji_to_codepoint(value: str) -> str:
     return "-".join(f"{ord(c):x}" for c in value)
 
 
-def analyze_photo(path: Path) -> dict:
+def _confidence(value: object) -> float:
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return max(0.0, min(1.0, score))
+
+
+_PLACE_TYPES = {
+    "landmark",
+    "street",
+    "nature",
+    "restaurant",
+    "cafe",
+    "hotel",
+    "transport",
+    "museum",
+    "shop",
+    "event",
+    "unknown",
+}
+_INDOOR_OUTDOOR = {"indoor", "outdoor", "mixed", "unknown"}
+_PEOPLE_TYPES = {
+    "selfie",
+    "portrait_of_user",
+    "group_photo",
+    "performance",
+    "crowd",
+    "stranger",
+    "landscape_only",
+    "unclear",
+}
+_PEOPLE_IMPORTANCE = {"main_subject", "background", "incidental", "none", "unclear"}
+_TIME_HINTS = {"early_morning", "morning", "afternoon", "evening", "night", "unknown"}
+
+
+def _enum_value(value: object, allowed: set[str], fallback: str) -> str:
+    normalized = str(value or "").strip().lower()
+    return normalized if normalized in allowed else fallback
+
+
+def _token_usage_from_response(resp) -> dict[str, int | None]:
+    usage = getattr(resp, "usage", None)
+    if usage is not None:
+        return {
+            "input_tokens": getattr(usage, "prompt_tokens", None),
+            "output_tokens": getattr(usage, "completion_tokens", None),
+            "total_tokens": getattr(usage, "total_tokens", None),
+        }
+
+    usage_metadata = getattr(resp, "usage_metadata", None)
+    if usage_metadata is not None:
+        return {
+            "input_tokens": getattr(usage_metadata, "prompt_token_count", None),
+            "output_tokens": getattr(usage_metadata, "candidates_token_count", None),
+            "total_tokens": getattr(usage_metadata, "total_token_count", None),
+        }
+
+    return {
+        "input_tokens": None,
+        "output_tokens": None,
+        "total_tokens": None,
+    }
+
+
+def _normalize_persona(persona: str | None) -> str:
+    normalized = (persona or "daily").strip().lower()
+    return normalized if normalized in DIARY_PERSONAS else "daily"
+
+
+def _openai_diary_model_for_persona(persona: str) -> str:
+    env_name = f"DIARY_OPENAI_MODEL_{persona.upper()}"
+    return os.getenv(env_name, DIARY_MODEL)
+
+
+def _gemini_diary_endpoint_for_persona(persona: str) -> str:
+    env_name = f"GEMINI_{persona.upper()}_ENDPOINT_ID"
+    endpoint_id = (os.getenv(env_name) or "").strip()
+    if not endpoint_id:
+        raise RuntimeError(f"{env_name} is not configured")
+    return f"projects/{GEMINI_PROJECT_ID}/locations/{GEMINI_LOCATION}/endpoints/{endpoint_id}"
+
+
+def _generate_diary_with_gemini(persona: str, user_text: str) -> dict:
+    vertex_client = vertex_genai.Client(
+        vertexai=True,
+        project=GEMINI_PROJECT_ID,
+        location=GEMINI_LOCATION,
+    )
+    response = vertex_client.models.generate_content(
+        model=_gemini_diary_endpoint_for_persona(persona),
+        contents=f"{_WRITE_PROMPT}\n\n{user_text}",
+        config=vertex_types.GenerateContentConfig(
+            temperature=0.7,
+            max_output_tokens=700,
+            response_mime_type="application/json",
+        ),
+    )
+    print(f"write_diary provider=gemini persona={persona}")
+    return _parse_dict(response.text)
+
+
+def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
     """[1단계 · VLM] 사진 1장을 보고 객관적 분석을 만듭니다(감성 X).
 
     반환: {"analysis_text": 자연어 한 줄 요약, "analysis_json": 구조화 dict}
@@ -147,6 +274,14 @@ def analyze_photo(path: Path) -> dict:
       - analysis_json : 묘사·키워드·날씨·분위기 원본 dict (photo_generations.analysis_json)
     """
     
+    metadata_text = json.dumps(photo_metadata or {}, ensure_ascii=False)
+    user_text = (
+        "이 사진을 분석해 주세요.\n"
+        "아래 photo_metadata는 사진에서 직접 얻은 사실값입니다. 참고만 하고, "
+        "사진 내용과 맞지 않으면 장소/랜드마크/시간대를 단정하지 마세요.\n"
+        f"photo_metadata: {metadata_text}"
+    )
+
     resp = _client.chat.completions.create(
         model=DIARY_MODEL,
         messages=[
@@ -154,7 +289,7 @@ def analyze_photo(path: Path) -> dict:
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "이 사진을 분석해 주세요."},
+                    {"type": "text", "text": user_text},
                     {"type": "image_url", "image_url": {"url": _encode_image(path)}},
                 ],
             },
@@ -164,60 +299,95 @@ def analyze_photo(path: Path) -> dict:
     )
     print(f"analyze_photo 사용한 모델: {resp.model}")
     parsed = _parse_dict(resp.choices[0].message.content)
+    parsed["landmark_confidence"] = _confidence(parsed.get("landmark_confidence"))
+    parsed["time_confidence"] = _confidence(parsed.get("time_confidence"))
+    parsed["place_type"] = _enum_value(parsed.get("place_type"), _PLACE_TYPES, "unknown")
+    parsed["indoor_outdoor"] = _enum_value(parsed.get("indoor_outdoor"), _INDOOR_OUTDOOR, "unknown")
+    parsed["people_type"] = _enum_value(parsed.get("people_type"), _PEOPLE_TYPES, "unclear")
+    parsed["people_importance"] = _enum_value(
+        parsed.get("people_importance"),
+        _PEOPLE_IMPORTANCE,
+        "unclear",
+    )
+    parsed["time_hint"] = _enum_value(parsed.get("time_hint"), _TIME_HINTS, "unknown")
 
     # 작가에게 넘길 한 줄 텍스트로 정리: "묘사 (날씨: .., 분위기: .., 키워드: ..)"
     desc = (parsed.get("description") or "").strip()
     objects = parsed.get("objects") or []
     if isinstance(objects, list):
         objects = ", ".join(str(o) for o in objects)
+    activities = parsed.get("activity") or []
+    if isinstance(activities, list):
+        activities = ", ".join(str(a) for a in activities if str(a).strip())
+    elif activities:
+        activities = str(activities).strip()
     extras = []
     if parsed.get("weather"):
         extras.append(f"날씨: {parsed['weather']}")
     if parsed.get("mood"):
         extras.append(f"분위기: {parsed['mood']}")
+    if parsed.get("place_type"):
+        extras.append(f"장소유형: {parsed['place_type']}")
+    if parsed.get("landmark_guess") and parsed.get("landmark_confidence", 0) >= 0.7:
+        extras.append(f"랜드마크: {parsed['landmark_guess']}")
+    if parsed.get("time_hint") and parsed.get("time_confidence", 0) >= 0.7:
+        extras.append(f"시간대: {parsed['time_hint']}")
+    if parsed.get("people_type"):
+        extras.append(f"인물: {parsed['people_type']}")
+    if activities:
+        extras.append(f"활동: {activities}")
     if objects:
         extras.append(f"키워드: {objects}")
     analysis_text = desc + (f" ({', '.join(extras)})" if extras else "")
     print(resp.choices[0].message.content)
 
-    return {"analysis_text": analysis_text.strip(), "analysis_json": parsed}
+    return {
+        "analysis_text": analysis_text.strip(),
+        "analysis_json": parsed,
+        "token_usage": _token_usage_from_response(resp),
+    }
 
 
 def write_diary(
-    analyses: list[str], *, location: str = "", date: str = ""
+    analyses: list[str], *, location: str = "", date: str = "", persona: str = "daily"
 ) -> dict:
     """[2단계 · LLM] 사진 분석 텍스트들만 보고(사진 없이) 일기를 씁니다.
 
     반환: {"subtitle", "content", "weather"(코드포인트), "emotion"(코드포인트)}
     weather·emotion 은 이모지를 Twemoji 코드포인트(hex)로 변환해 돌려줍니다.
     """
-    hint = ""
-    if location or date:
-        hint = f"\n참고: 장소='{location}', 날짜='{date}'."
+    persona = _normalize_persona(persona)
 
-    # 분석들을 번호 매겨 한 덩어리 텍스트로 (사진 대신 이 글을 모델에 넣음)
-    joined = "\n".join(f"{i}. {a}" for i, a in enumerate(analyses, 1)) or "(분석 없음)"
-    user_text = (
-    f"다음은 같은 날 찍은 사진들의 분석 내용이야:\n{joined}{hint}\n\n"
-    "이 분석 내용을 바탕으로 하루의 기록을 일기 형식으로 작성해 줘.\n\n"
-    "주의사항:\n"
-    "- 지역 이름(동네 이름 등)을 일일이 나열하지 말고, 장소의 느낌 위주로 서술해.\n"
-    "- '한국식' 같은 불필요한 수식어는 빼고, 일기 본연의 개인적인 감상과 느낌을 중심으로 작성해.\n"
-    "- 마치 오늘 하루를 되돌아보는 것처럼 편안하고 자연스러운 구어체 말투로 써 줘.\n"
-    "- 사진 속 상황을 묘사할 때, 마치 그 자리에 있었던 것처럼 생생하게 느껴지도록 작성해."
-)
-
-    resp = _client.chat.completions.create(
-        model=DIARY_MODEL,
-        messages=[
-            {"role": "system", "content": _WRITE_PROMPT},
-            {"role": "user", "content": user_text},
+    # 사진 원본 대신 VLM이 만든 analysis_text 배열을 JSON 입력으로 넘깁니다.
+    payload = {
+        "persona": persona,
+        "location": location or "",
+        "date": date or "",
+        "photo_analyses": [
+            {"order": index, "analysis_text": analysis}
+            for index, analysis in enumerate(analyses, 1)
         ],
-        response_format={"type": "json_object"},  # JSON 으로 받기(프롬프트와 이중 안전장치)
-        temperature=0.2,
+    }
+    user_text = (
+        "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n"
+        f"{json.dumps(payload, ensure_ascii=False)}"
     )
-    print(f"write_diary 사용한 모델: {resp.model}")
-    parsed = _parse_dict(resp.choices[0].message.content)
+
+    if DIARY_MODEL_PROVIDER in {"gemini", "vertex", "vertexai"}:
+        parsed = _generate_diary_with_gemini(persona, user_text)
+    else:
+        model = _openai_diary_model_for_persona(persona)
+        resp = _client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": _WRITE_PROMPT},
+                {"role": "user", "content": user_text},
+            ],
+            response_format={"type": "json_object"},  # JSON 으로 받기(프롬프트와 이중 안전장치)
+            temperature=0.2,
+        )
+        print(f"write_diary provider=openai persona={persona} model={resp.model}")
+        parsed = _parse_dict(resp.choices[0].message.content)
 
     return {
         "subtitle": (parsed.get("subtitle") or "").strip(),

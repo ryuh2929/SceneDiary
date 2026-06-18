@@ -17,11 +17,16 @@ from app.db.neo4j_session import aura_neo4j
 # 2. lifespan 함수 정의 (먼저 정의되어 있어야 함)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 앱 시작 시 실행할 코드 (예: 인덱스 생성)
-    await aura_neo4j.create_Index()
+    # Neo4j는 보조 그래프 저장소라 연결 실패가 API 서버 시작을 막으면 안 됩니다.
+    try:
+        await aura_neo4j.create_Index()
+    except Exception as exc:
+        print(f"[neo4j] startup skipped: {exc}")
     yield
-    # 앱 종료 시 실행할 코드 (예: 드라이버 종료)
-    await aura_neo4j.driver.close()
+    try:
+        await aura_neo4j.driver.close()
+    except Exception as exc:
+        print(f"[neo4j] shutdown skipped: {exc}")
 
 app = FastAPI(lifespan=lifespan)
 
