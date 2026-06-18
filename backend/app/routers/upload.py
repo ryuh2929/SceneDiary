@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import re
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Literal
@@ -18,6 +19,7 @@ from app.db.models import DiaryGeneration, Photo, Trip, TripDay
 from app.db.session import get_db
 from app.routers.diary import _abs_url, _base_url, _gen_status, _run_generation
 from app.services.image_processor import extract_image_gps_coordinates, extract_image_taken_date, process_upload_image
+from app.utils.country_flags import country_to_flag
 
 
 # add.tsx -> loading.tsx 흐름에서 사용하는 업로드/생성 API입니다.
@@ -143,6 +145,9 @@ class UploadDraft:
     place_name: str | None = None
     country_name: str | None = None
     city_name: str | None = None
+    exif: dict | None = None
+    tz: str | None = None
+    taken_at_utc: datetime | None = None
 
 
 def _parse_upload_date(value: str | None) -> date | None:
@@ -313,6 +318,92 @@ def _parse_form_coordinate(values: list[str] | None, index: int) -> Decimal | No
     return _decimal_coordinate(value)
 
 
+def _parse_form_exif(values: list[str] | None, index: int) -> dict | None:
+    if not values or index >= len(values):
+        return None
+    raw = values[index].strip()
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _normalize_exif_tz(value: object) -> str | None:
+    if value is None:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    if raw.upper() == "Z":
+        return "+00:00"
+
+    match = re.match(r"^([+-])(\d{1,2})(?::?(\d{2}))?$", raw)
+    if match:
+        sign, hours_raw, minutes_raw = match.groups()
+        hours = int(hours_raw)
+        minutes = int(minutes_raw or "0")
+        if hours <= 14 and minutes < 60:
+            return f"{sign}{hours:02d}:{minutes:02d}"
+
+    try:
+        hours_float = float(raw)
+    except ValueError:
+        return None
+    if -12 <= hours_float <= 14:
+        sign = "+" if hours_float >= 0 else "-"
+        total_minutes = int(round(abs(hours_float) * 60))
+        return f"{sign}{total_minutes // 60:02d}:{total_minutes % 60:02d}"
+    return None
+
+
+def _parse_exif_local_datetime(value: object) -> datetime | None:
+    if value is None:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+
+    match = re.search(
+        r"(20\d{2})[:/-](\d{2})[:/-](\d{2})[ T](\d{2}):(\d{2}):(\d{2})",
+        raw,
+    )
+    if not match:
+        return None
+    year, month, day, hour, minute, second = map(int, match.groups())
+    try:
+        return datetime(year, month, day, hour, minute, second)
+    except ValueError:
+        return None
+
+
+def _extract_exif_capture_time(exif: dict | None) -> tuple[str | None, datetime | None]:
+    if not exif:
+        return None, None
+
+    tz = _normalize_exif_tz(
+        exif.get("OffsetTimeOriginal")
+        or exif.get("OffsetTime")
+        or exif.get("TimeZoneOffset")
+    )
+    local_dt = (
+        _parse_exif_local_datetime(exif.get("DateTimeOriginal"))
+        or _parse_exif_local_datetime(exif.get("DateTimeDigitized"))
+        or _parse_exif_local_datetime(exif.get("DateTime"))
+    )
+    if not tz or not local_dt:
+        return tz, None
+
+    sign = 1 if tz[0] == "+" else -1
+    hours = int(tz[1:3])
+    minutes = int(tz[4:6])
+    offset = timezone(sign * timedelta(hours=hours, minutes=minutes))
+    taken_at_utc = local_dt.replace(tzinfo=offset).astimezone(timezone.utc)
+    return tz, taken_at_utc
+
+
 def _valid_coordinates(latitude: Decimal, longitude: Decimal) -> bool:
     return (
         Decimal("-90") <= latitude <= Decimal("90")
@@ -333,6 +424,7 @@ async def upload_first_day_photos(
     photo_place_names: list[str] | None = Form(None),
     photo_country_names: list[str] | None = Form(None),
     photo_city_names: list[str] | None = Form(None),
+    photo_exifs: list[str] | None = Form(None),
     user_id: int = Form(1),
     trip_id: int | None = Form(None),
     day_number: int = Form(1),
@@ -382,7 +474,13 @@ async def upload_first_day_photos(
                 return None
             raw = values[idx].strip()
             return raw or None
-        
+        print(f"DEBUG: 현재 인덱스: {index}")
+        print(f"DEBUG: photo_country_names 리스트 상태: {photo_country_names}")
+        print(f"DEBUG: photo_city_names 리스트 상태: {photo_city_names}")
+        print(f"DEBUG: 추출된 country_name: {_form_str_at(photo_country_names, index)}")
+
+        exif = _parse_form_exif(photo_exifs, index)
+        tz, taken_at_utc = _extract_exif_capture_time(exif)
 
         drafts.append(
             UploadDraft(
@@ -400,6 +498,9 @@ async def upload_first_day_photos(
                 place_name=_form_str_at(photo_place_names, index),
                 country_name=_form_str_at(photo_country_names, index),
                 city_name=_form_str_at(photo_city_names, index),
+                exif=exif,
+                tz=tz,
+                taken_at_utc=taken_at_utc,
             )
         )
 
@@ -500,8 +601,13 @@ async def upload_first_day_photos(
                     height=processed.height,
                     latitude=draft.latitude,
                     longitude=draft.longitude,
+                    exif=draft.exif,
+                    tz=draft.tz,
+                    taken_at_utc=draft.taken_at_utc,
                     # 프론트가 미리 변환해 보낸 지명. 권한 없거나 GPS 없으면 None.
                     location_name=draft.place_name,
+                    country_name=draft.country_name,
+                    city_name=draft.city_name,
                     display_order=display_order,
                     created_at=datetime.now(),
                 )
@@ -573,14 +679,15 @@ async def upload_first_day_photos(
         )
         if first_draft:
             trip.destination = f"{first_draft.country_name}/{first_draft.city_name}"
-            trip.flag = COUNTRY_FLAG_MAP.get(first_draft.country_name, "1f30d") # 존재하지 않을 경우를 대비해 .get() 사용
+            trip.flag = country_to_flag(first_draft.country_name)
             print(f"{first_draft.country_name}의 코드: {trip.flag}")
 
     db.commit()
     print("AI가 사진 분석 하기2")
     
-    # 제목을 만들기            
-    if trip is not None and (not trip.title or trip.title == "새 여행"):
+    # 제목을 만들기
+            
+    if False and trip is not None and (not trip.title or trip.title == "새 여행"):
         from app.services.diary_generator import write_trip_title
 
         all_days = (
@@ -599,8 +706,15 @@ async def upload_first_day_photos(
         ]
         title_dict = write_trip_title(days_payload, destination=trip.destination or "", path_list=None,photo_info=photo_id_list)
         if title_dict:
-            trip.title = title_dict.get("title")
-            trip.cover_photo_id= title_dict.get("img_id")
+            generated_title = (title_dict.get("title") or "").strip()
+            generated_img_id = title_dict.get("img_id")
+            if generated_title:
+                trip.title = generated_title
+            if generated_img_id:
+                try:
+                    trip.cover_photo_id = int(generated_img_id)
+                except (TypeError, ValueError):
+                    pass
             db.commit()
             print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
     

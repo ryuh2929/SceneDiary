@@ -16,6 +16,10 @@ import Twemoji from "react-native-twemoji";
 import { getDetailPage } from "@/api/detail";
 import { DetailPage, Days } from "@/types/api";
 import { useAppThemeColors } from "@/constants/app-colors";
+import {
+  codepointToEmoji as emojiCodepointToEmoji,
+  resolveTripFlagCodepoint,
+} from "@/utils/emoji";
 
 // ─────────────────────────────────────────────
 // 🔧 유틸 함수 섹션
@@ -27,14 +31,7 @@ import { useAppThemeColors } from "@/constants/app-colors";
  * "-"로 연결된 복합 코드포인트도 처리
  */
 function codepointToEmoji(codepoint: string): string {
-  return codepoint
-    .split("-")
-    .filter((cp) => cp.length > 0)
-    .map((cp) => {
-      const code = parseInt(cp, 16);
-      return isNaN(code) ? "" : String.fromCodePoint(code);
-    })
-    .join("");
+  return emojiCodepointToEmoji(codepoint);
 }
 
 // ─────────────────────────────────────────────
@@ -342,7 +339,7 @@ export default function TravelDetailUI() {
               {/* 여행 대표 이모지: trip.flag가 있을 때만 표시 (테스트용 폴백: "1f1f0-1f1f7" = 한국국기) */}
               {(trip.flag) && (
                 <View className="absolute right-3 w-10 h-10 items-center justify-center overflow-hidden">
-                  <EmojiIcon codepoint={trip.flag} size={26} />
+                  <EmojiIcon codepoint={resolveTripFlagCodepoint(trip.flag, destination)} size={26} />
                 </View>
               )}
             </View>

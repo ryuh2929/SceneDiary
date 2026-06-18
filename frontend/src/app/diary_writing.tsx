@@ -36,6 +36,11 @@ import {
 import LocationPicker from "@/components/ui/GoogleMap/LocationPicker";
 import {useAppThemeColors} from "@/constants/app-colors";
 import type {DayPage, TripDiary} from "@/types/diary_writing";
+import {
+  codepointToEmoji as emojiCodepointToEmoji,
+  DEFAULT_FLAG_CODEPOINT,
+  getFlagCodepoint,
+} from "@/utils/emoji";
 
 // "YYYY-MM-DD" → "YYYY.MM.DD (요일)". (목업의 날짜 표기와 동일)
 // new Date(연, 월-1, 일) 로 만들어 시간대(UTC) 때문에 날짜가 밀리는 문제를 피합니다.
@@ -48,10 +53,7 @@ function formatDate(dateStr: string): string {
 
 // Twemoji 코드포인트(hex) → 실제 이모지 문자. 예: "1f5fc"→🗼, "1f1f0-1f1f7"→🇰🇷
 function codepointToEmoji(codepoint: string): string {
-  return codepoint
-    .split("-")
-    .map((cp) => String.fromCodePoint(parseInt(cp, 16)))
-    .join("");
+  return emojiCodepointToEmoji(codepoint);
 }
 
 // 감정·상징·날씨 이모지를 Twemoji(그림) 로 그립니다.
@@ -404,10 +406,23 @@ export default function DiaryWritingScreen() {
         context?.countryName,
         context?.cityName,
       );
+      if (context?.countryName) {
+        const nextFlag = getFlagCodepoint(context.countryName);
+        setTrip((prev) =>
+          prev && (!prev.flag || prev.flag === DEFAULT_FLAG_CODEPOINT)
+            ? {...prev, flag: nextFlag}
+            : prev,
+        );
+      }
       // 저장 성공 → 스냅샷 갱신. handleNext 가 동일 값으로 또 PATCH 하지 않도록.
       setOriginalLocations((prev) => ({
         ...prev,
-        [day.tripDayId]: {name: placeName, lat, lon},
+        [day.tripDayId]: {
+          name: placeName,
+          lat,
+          lon,
+          representImage: day.representImage,
+        },
       }));
     } catch (e) {
       console.error(e);
