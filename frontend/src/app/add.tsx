@@ -28,6 +28,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { uploadFirstDayPhotos } from "@/api/diary";
 import { useAppThemeColors } from "@/constants/app-colors";
+import { getShortPlaceName } from "@/utils/location";
 
 type PendingPhoto = {
   id: string;
@@ -377,14 +378,7 @@ async function reverseGeocode(
     });
     const first = results[0];
     if (!first) return undefined;
-    // 일차 대표 지명: district(구/동급) 우선, 없으면 city, 그것도 없으면 region.
-    // 예) "신주쿠", "오다이바", "강남구"
-    const placeName =
-      first.district ||
-      first.city ||
-      first.subregion ||
-      first.region ||
-      undefined;
+    const placeName = getShortPlaceName(first);
     // trip 단위 destination 의 "국가/도시" 부분. city 가 비어있는 한국식 주소는 region 로 폴백.
     const countryName = first.country || undefined;
     const cityName = first.city || first.region || undefined;
