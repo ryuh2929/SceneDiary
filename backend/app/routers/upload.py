@@ -6,7 +6,7 @@ import os
 import re
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Literal
@@ -146,6 +146,8 @@ class UploadDraft:
     country_name: str | None = None
     city_name: str | None = None
     exif: dict | None = None
+    tz: str | None = None
+    taken_at_utc: datetime | None = None
 
 
 def _parse_upload_date(value: str | None) -> date | None:
@@ -329,6 +331,79 @@ def _parse_form_exif(values: list[str] | None, index: int) -> dict | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+def _normalize_exif_tz(value: object) -> str | None:
+    if value is None:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    if raw.upper() == "Z":
+        return "+00:00"
+
+    match = re.match(r"^([+-])(\d{1,2})(?::?(\d{2}))?$", raw)
+    if match:
+        sign, hours_raw, minutes_raw = match.groups()
+        hours = int(hours_raw)
+        minutes = int(minutes_raw or "0")
+        if hours <= 14 and minutes < 60:
+            return f"{sign}{hours:02d}:{minutes:02d}"
+
+    try:
+        hours_float = float(raw)
+    except ValueError:
+        return None
+    if -12 <= hours_float <= 14:
+        sign = "+" if hours_float >= 0 else "-"
+        total_minutes = int(round(abs(hours_float) * 60))
+        return f"{sign}{total_minutes // 60:02d}:{total_minutes % 60:02d}"
+    return None
+
+
+def _parse_exif_local_datetime(value: object) -> datetime | None:
+    if value is None:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+
+    match = re.search(
+        r"(20\d{2})[:/-](\d{2})[:/-](\d{2})[ T](\d{2}):(\d{2}):(\d{2})",
+        raw,
+    )
+    if not match:
+        return None
+    year, month, day, hour, minute, second = map(int, match.groups())
+    try:
+        return datetime(year, month, day, hour, minute, second)
+    except ValueError:
+        return None
+
+
+def _extract_exif_capture_time(exif: dict | None) -> tuple[str | None, datetime | None]:
+    if not exif:
+        return None, None
+
+    tz = _normalize_exif_tz(
+        exif.get("OffsetTimeOriginal")
+        or exif.get("OffsetTime")
+        or exif.get("TimeZoneOffset")
+    )
+    local_dt = (
+        _parse_exif_local_datetime(exif.get("DateTimeOriginal"))
+        or _parse_exif_local_datetime(exif.get("DateTimeDigitized"))
+        or _parse_exif_local_datetime(exif.get("DateTime"))
+    )
+    if not tz or not local_dt:
+        return tz, None
+
+    sign = 1 if tz[0] == "+" else -1
+    hours = int(tz[1:3])
+    minutes = int(tz[4:6])
+    offset = timezone(sign * timedelta(hours=hours, minutes=minutes))
+    taken_at_utc = local_dt.replace(tzinfo=offset).astimezone(timezone.utc)
+    return tz, taken_at_utc
+
+
 def _valid_coordinates(latitude: Decimal, longitude: Decimal) -> bool:
     return (
         Decimal("-90") <= latitude <= Decimal("90")
@@ -405,6 +480,9 @@ async def upload_first_day_photos(
         print(f"DEBUG: photo_city_names 리스트 상태: {photo_city_names}")
         print(f"DEBUG: 추출된 country_name: {_form_str_at(photo_country_names, index)}")
 
+        exif = _parse_form_exif(photo_exifs, index)
+        tz, taken_at_utc = _extract_exif_capture_time(exif)
+
         drafts.append(
             UploadDraft(
                 raw_bytes=raw_bytes,
@@ -421,7 +499,9 @@ async def upload_first_day_photos(
                 place_name=_form_str_at(photo_place_names, index),
                 country_name=_form_str_at(photo_country_names, index),
                 city_name=_form_str_at(photo_city_names, index),
-                exif=_parse_form_exif(photo_exifs, index),
+                exif=exif,
+                tz=tz,
+                taken_at_utc=taken_at_utc,
             )
         )
 
@@ -523,6 +603,8 @@ async def upload_first_day_photos(
                     latitude=draft.latitude,
                     longitude=draft.longitude,
                     exif=draft.exif,
+                    tz=draft.tz,
+                    taken_at_utc=draft.taken_at_utc,
                     # 프론트가 미리 변환해 보낸 지명. 권한 없거나 GPS 없으면 None.
                     location_name=draft.place_name,
                     display_order=display_order,
