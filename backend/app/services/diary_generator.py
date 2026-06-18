@@ -194,6 +194,30 @@ def _enum_value(value: object, allowed: set[str], fallback: str) -> str:
     return normalized if normalized in allowed else fallback
 
 
+def _token_usage_from_response(resp) -> dict[str, int | None]:
+    usage = getattr(resp, "usage", None)
+    if usage is not None:
+        return {
+            "input_tokens": getattr(usage, "prompt_tokens", None),
+            "output_tokens": getattr(usage, "completion_tokens", None),
+            "total_tokens": getattr(usage, "total_tokens", None),
+        }
+
+    usage_metadata = getattr(resp, "usage_metadata", None)
+    if usage_metadata is not None:
+        return {
+            "input_tokens": getattr(usage_metadata, "prompt_token_count", None),
+            "output_tokens": getattr(usage_metadata, "candidates_token_count", None),
+            "total_tokens": getattr(usage_metadata, "total_token_count", None),
+        }
+
+    return {
+        "input_tokens": None,
+        "output_tokens": None,
+        "total_tokens": None,
+    }
+
+
 def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
     """[1단계 · VLM] 사진 1장을 보고 객관적 분석을 만듭니다(감성 X).
 
@@ -262,7 +286,11 @@ def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
     analysis_text = desc + (f" ({', '.join(extras)})" if extras else "")
     print(resp.choices[0].message.content)
 
-    return {"analysis_text": analysis_text.strip(), "analysis_json": parsed}
+    return {
+        "analysis_text": analysis_text.strip(),
+        "analysis_json": parsed,
+        "token_usage": _token_usage_from_response(resp),
+    }
 
 
 def write_diary(
