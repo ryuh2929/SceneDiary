@@ -117,6 +117,18 @@ def _photo_url(db: Session, base: str, photo_id: int | None) -> str:
     return _abs_url(base, photo.file_url) if photo else ""
 
 
+def _photo_metadata_for_vlm(photo: Photo) -> dict:
+    return {
+        "taken_at_utc": photo.taken_at_utc.isoformat() if photo.taken_at_utc else "",
+        "tz": photo.tz or "",
+        "latitude": float(photo.latitude) if photo.latitude is not None else None,
+        "longitude": float(photo.longitude) if photo.longitude is not None else None,
+        "location_name": photo.location_name or "",
+        "city_name": getattr(photo, "city_name", None) or "",
+        "country_name": getattr(photo, "country_name", None) or "",
+    }
+
+
 def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
     """trip_day(일기 내용 포함) + 사진들을 묶어 DayPage 로 만듭니다.
     합치기 후: 일기 본문·상징이 trip_day 에 직접 있어 별도 diary 조회가 없습니다."""
@@ -325,7 +337,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             if not path.exists():
                 continue  # 파일이 없으면 그 사진은 건너뜀
             try:
-                analysis = analyze_photo(path)
+                analysis = analyze_photo(path, photo_metadata=_photo_metadata_for_vlm(p))
                 db.add(
                     PhotoGeneration(
                         photo_id=p.id,

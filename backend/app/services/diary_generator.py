@@ -46,16 +46,30 @@ API_KEY = os.getenv("OPENAI_API_KEY")
 # api_key 는 SDK가 요구하지만 Ollama는 무시합니다.
 _client = OpenAI(base_url="https://api.openai.com/v1", api_key=API_KEY)
 
-# [1단계 · VLM] 사진을 객관적으로만 묘사하게 하는 프롬프트. 감성 해석은 2단계 작가의 몫.
-_ANALYZE_PROMPT = """당신은 사진을 객관적으로 묘사하는 분석가입니다.
-감성적 해석 없이, 사진에 실제로 보이는 것만 기록하세요.
+# [1단계 · VLM] 사진과 메타데이터를 함께 보고 일기 작성용 단서를 구조화합니다.
+_ANALYZE_PROMPT = """당신은 여행 사진을 분석해 일기 작성에 필요한 사실 기반 단서를 구조화하는 분석가입니다.
+사진에 보이는 장면을 우선으로 기록하고, 제공된 시간/위치 메타데이터는 참고 정보로만 사용하세요.
+사진 내용과 맞지 않으면 장소명, 랜드마크, 활동을 단정하지 마세요.
+감성적인 문장 작성은 하지 말고, 관찰 가능한 정보와 신중한 추정만 JSON으로 반환하세요.
+confidence 값은 0.0~1.0 숫자로 작성하세요.
 반드시 아래 JSON 형식으로만, 다른 말 없이 답하세요.
 
 {
   "description": "사진 속 장면을 1~2문장으로 객관적으로 묘사",
   "objects": ["주요 사물/풍경 키워드 몇 개"],
   "weather": "하늘/날씨가 보이면 한 단어(맑음/흐림/비/눈 등), 실내거나 알 수 없으면 빈 문자열",
-  "mood": "사진의 전반적 분위기를 한 단어로"
+  "mood": "사진의 전반적 분위기를 한 단어로",
+  "place_type": "landmark/street/nature/restaurant/cafe/hotel/transport/museum/shop/event/unknown 중 하나",
+  "indoor_outdoor": "indoor/outdoor/mixed/unknown 중 하나",
+  "activity": ["walking", "sightseeing"]처럼 사진에서 보이는 활동 키워드",
+  "landmark_guess": "사진과 메타데이터가 함께 뒷받침할 때만 구체 랜드마크명, 아니면 빈 문자열",
+  "landmark_confidence": 0.0,
+  "landmark_basis": ["visual_match", "gps_context"]처럼 판단 근거 키워드 배열",
+  "people_type": "selfie/portrait_of_user/group_photo/performance/crowd/stranger/landscape_only/unclear 중 하나",
+  "people_importance": "main_subject/background/incidental/none/unclear 중 하나",
+  "time_hint": "early_morning/morning/afternoon/evening/night/unknown 중 하나",
+  "time_confidence": 0.0,
+  "time_basis": ["exif_time", "visual_cues"]처럼 판단 근거 키워드 배열
 }"""
 
 # [2단계 · LLM] 1단계가 적어준 분석 글들만 보고(사진 없이) 감성 일기를 쓰게 하는 프롬프트.
@@ -139,7 +153,15 @@ def _emoji_to_codepoint(value: str) -> str:
     return "-".join(f"{ord(c):x}" for c in value)
 
 
-def analyze_photo(path: Path) -> dict:
+def _confidence(value: object) -> float:
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return max(0.0, min(1.0, score))
+
+
+def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
     """[1단계 · VLM] 사진 1장을 보고 객관적 분석을 만듭니다(감성 X).
 
     반환: {"analysis_text": 자연어 한 줄 요약, "analysis_json": 구조화 dict}
@@ -147,6 +169,14 @@ def analyze_photo(path: Path) -> dict:
       - analysis_json : 묘사·키워드·날씨·분위기 원본 dict (photo_generations.analysis_json)
     """
     
+    metadata_text = json.dumps(photo_metadata or {}, ensure_ascii=False)
+    user_text = (
+        "이 사진을 분석해 주세요.\n"
+        "아래 photo_metadata는 사진에서 직접 얻은 사실값입니다. 참고만 하고, "
+        "사진 내용과 맞지 않으면 장소/랜드마크/시간대를 단정하지 마세요.\n"
+        f"photo_metadata: {metadata_text}"
+    )
+
     resp = _client.chat.completions.create(
         model=DIARY_MODEL,
         messages=[
@@ -154,7 +184,7 @@ def analyze_photo(path: Path) -> dict:
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "이 사진을 분석해 주세요."},
+                    {"type": "text", "text": user_text},
                     {"type": "image_url", "image_url": {"url": _encode_image(path)}},
                 ],
             },
@@ -164,6 +194,8 @@ def analyze_photo(path: Path) -> dict:
     )
     print(f"analyze_photo 사용한 모델: {resp.model}")
     parsed = _parse_dict(resp.choices[0].message.content)
+    parsed["landmark_confidence"] = _confidence(parsed.get("landmark_confidence"))
+    parsed["time_confidence"] = _confidence(parsed.get("time_confidence"))
 
     # 작가에게 넘길 한 줄 텍스트로 정리: "묘사 (날씨: .., 분위기: .., 키워드: ..)"
     desc = (parsed.get("description") or "").strip()
@@ -175,6 +207,14 @@ def analyze_photo(path: Path) -> dict:
         extras.append(f"날씨: {parsed['weather']}")
     if parsed.get("mood"):
         extras.append(f"분위기: {parsed['mood']}")
+    if parsed.get("place_type"):
+        extras.append(f"장소유형: {parsed['place_type']}")
+    if parsed.get("landmark_guess") and parsed.get("landmark_confidence", 0) >= 0.7:
+        extras.append(f"랜드마크: {parsed['landmark_guess']}")
+    if parsed.get("time_hint") and parsed.get("time_hint") != "unknown":
+        extras.append(f"시간대: {parsed['time_hint']}")
+    if parsed.get("people_type"):
+        extras.append(f"인물: {parsed['people_type']}")
     if objects:
         extras.append(f"키워드: {objects}")
     analysis_text = desc + (f" ({', '.join(extras)})" if extras else "")
