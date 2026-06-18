@@ -312,6 +312,11 @@ def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
     objects = parsed.get("objects") or []
     if isinstance(objects, list):
         objects = ", ".join(str(o) for o in objects)
+    activities = parsed.get("activity") or []
+    if isinstance(activities, list):
+        activities = ", ".join(str(a) for a in activities if str(a).strip())
+    elif activities:
+        activities = str(activities).strip()
     extras = []
     if parsed.get("weather"):
         extras.append(f"날씨: {parsed['weather']}")
@@ -325,6 +330,8 @@ def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
         extras.append(f"시간대: {parsed['time_hint']}")
     if parsed.get("people_type"):
         extras.append(f"인물: {parsed['people_type']}")
+    if activities:
+        extras.append(f"활동: {activities}")
     if objects:
         extras.append(f"키워드: {objects}")
     analysis_text = desc + (f" ({', '.join(extras)})" if extras else "")
