@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 # 합치기 후: 일기 본문은 trip_days 에 들어가서 Diary 모델은 더 이상 없음.
 # PhotoGeneration = 사진별 VLM 분석 이력(2단계화에서 사용).
-from app.db.models import DiaryGeneration, Photo, PhotoGeneration, Trip, TripDay
+from app.db.models import DiaryGeneration, Photo, PhotoGeneration, Trip, TripDay, User
 from app.db.session import SessionLocal, get_db
 from app.schemas.diary import (
     DayPage,
@@ -388,10 +388,14 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
         db.commit()  # 분석 이력 먼저 저장(2단계가 실패해도 분석은 남도록)
 
         # ── 2단계: 모은 분석으로 일기 작성(사진 없이 텍스트만) ──
+        trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
+        user = db.query(User).filter(User.id == trip.user_id).first() if trip else None
+        persona = (user.writing_persona if user else None) or "daily"
         result = write_diary(
             analyses,
             location=trip_day.location_summary or "",
             date=trip_day.date.isoformat(),
+            persona=persona,
         )
 
         # 결과 저장: 합치기 후 일기 내용이 trip_day 에 직접 들어감

@@ -23,13 +23,19 @@ from pathlib import Path
 
 from openai import OpenAI
 import google.generativeai as genai
+from google import genai as vertex_genai
+from google.genai import types as vertex_types
 
 # 환경변수로 덮어쓸 수 있게(없으면 로컬 Ollama 기본값).
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 DIARY_MODEL = os.getenv("DIARY_MODEL", "gemma4:e4b")
+DIARY_MODEL_PROVIDER = os.getenv("DIARY_MODEL_PROVIDER", "openai").strip().lower()
 TITLE_MODEL_PROVIDER = os.getenv("TITLE_MODEL_PROVIDER", "gemini").strip().lower()
 TITLE_MODEL = os.getenv("TITLE_MODEL", DIARY_MODEL)
 TITLE_GEMINI_MODEL = os.getenv("TITLE_GEMINI_MODEL", "models/gemini-3.1-flash-lite")
+GEMINI_PROJECT_ID = os.getenv("GEMINI_PROJECT_ID", "project-19fbb1da-6ea1-4a56-8c1")
+GEMINI_LOCATION = os.getenv("GEMINI_LOCATION", "us-west1")
+DIARY_PERSONAS = {"daily", "playful", "poetic", "romantic"}
 
 GOOGLE_API_KEY= os.getenv("GENAI_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
@@ -76,6 +82,7 @@ confidence 값은 0.0~1.0 숫자로 작성하세요.
 _WRITE_PROMPT = """당신은 여행 사진 분석 결과를 보고 한국어 여행 일기를 쓰는 작가입니다.
 아래는 같은 날 찍은 사진들을 분석한 결과입니다. 사진을 직접 보지는 못하지만,
 이 분석들을 종합해 그 날의 분위기·장소·감정을 담아 일기를 만드세요.
+입력의 persona 값에 맞는 모델/문체로 작성하되, 입력에 없는 사실을 새로 만들지 마세요.
 반드시 아래 JSON 형식으로만, 다른 말 없이 답하세요.
 
 [subtitle 규칙]
@@ -218,6 +225,43 @@ def _token_usage_from_response(resp) -> dict[str, int | None]:
     }
 
 
+def _normalize_persona(persona: str | None) -> str:
+    normalized = (persona or "daily").strip().lower()
+    return normalized if normalized in DIARY_PERSONAS else "daily"
+
+
+def _openai_diary_model_for_persona(persona: str) -> str:
+    env_name = f"DIARY_OPENAI_MODEL_{persona.upper()}"
+    return os.getenv(env_name, DIARY_MODEL)
+
+
+def _gemini_diary_endpoint_for_persona(persona: str) -> str:
+    env_name = f"GEMINI_{persona.upper()}_ENDPOINT_ID"
+    endpoint_id = (os.getenv(env_name) or "").strip()
+    if not endpoint_id:
+        raise RuntimeError(f"{env_name} is not configured")
+    return f"projects/{GEMINI_PROJECT_ID}/locations/{GEMINI_LOCATION}/endpoints/{endpoint_id}"
+
+
+def _generate_diary_with_gemini(persona: str, user_text: str) -> dict:
+    vertex_client = vertex_genai.Client(
+        vertexai=True,
+        project=GEMINI_PROJECT_ID,
+        location=GEMINI_LOCATION,
+    )
+    response = vertex_client.models.generate_content(
+        model=_gemini_diary_endpoint_for_persona(persona),
+        contents=f"{_WRITE_PROMPT}\n\n{user_text}",
+        config=vertex_types.GenerateContentConfig(
+            temperature=0.7,
+            max_output_tokens=700,
+            response_mime_type="application/json",
+        ),
+    )
+    print(f"write_diary provider=gemini persona={persona}")
+    return _parse_dict(response.text)
+
+
 def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
     """[1단계 · VLM] 사진 1장을 보고 객관적 분석을 만듭니다(감성 X).
 
@@ -294,13 +338,14 @@ def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
 
 
 def write_diary(
-    analyses: list[str], *, location: str = "", date: str = ""
+    analyses: list[str], *, location: str = "", date: str = "", persona: str = "daily"
 ) -> dict:
     """[2단계 · LLM] 사진 분석 텍스트들만 보고(사진 없이) 일기를 씁니다.
 
     반환: {"subtitle", "content", "weather"(코드포인트), "emotion"(코드포인트)}
     weather·emotion 은 이모지를 Twemoji 코드포인트(hex)로 변환해 돌려줍니다.
     """
+    persona = _normalize_persona(persona)
     hint = ""
     if location or date:
         hint = f"\n참고: 장소='{location}', 날짜='{date}'."
@@ -308,26 +353,31 @@ def write_diary(
     # 분석들을 번호 매겨 한 덩어리 텍스트로 (사진 대신 이 글을 모델에 넣음)
     joined = "\n".join(f"{i}. {a}" for i, a in enumerate(analyses, 1)) or "(분석 없음)"
     user_text = (
-    f"다음은 같은 날 찍은 사진들의 분석 내용이야:\n{joined}{hint}\n\n"
-    "이 분석 내용을 바탕으로 하루의 기록을 일기 형식으로 작성해 줘.\n\n"
-    "주의사항:\n"
-    "- 지역 이름(동네 이름 등)을 일일이 나열하지 말고, 장소의 느낌 위주로 서술해.\n"
-    "- '한국식' 같은 불필요한 수식어는 빼고, 일기 본연의 개인적인 감상과 느낌을 중심으로 작성해.\n"
-    "- 마치 오늘 하루를 되돌아보는 것처럼 편안하고 자연스러운 구어체 말투로 써 줘.\n"
-    "- 사진 속 상황을 묘사할 때, 마치 그 자리에 있었던 것처럼 생생하게 느껴지도록 작성해."
-)
-
-    resp = _client.chat.completions.create(
-        model=DIARY_MODEL,
-        messages=[
-            {"role": "system", "content": _WRITE_PROMPT},
-            {"role": "user", "content": user_text},
-        ],
-        response_format={"type": "json_object"},  # JSON 으로 받기(프롬프트와 이중 안전장치)
-        temperature=0.2,
+        f"persona: {persona}\n"
+        f"다음은 같은 날 찍은 사진들의 분석 내용이야:\n{joined}{hint}\n\n"
+        "이 분석 내용을 바탕으로 하루의 기록을 일기 형식으로 작성해 줘.\n\n"
+        "주의사항:\n"
+        "- 지역 이름(동네 이름 등)을 일일이 나열하지 말고, 장소의 느낌 위주로 서술해.\n"
+        "- '한국식' 같은 불필요한 수식어는 빼고, 일기 본연의 개인적인 감상과 느낌을 중심으로 작성해.\n"
+        "- 마치 오늘 하루를 되돌아보는 것처럼 편안하고 자연스러운 구어체 말투로 써 줘.\n"
+        "- 사진 속 상황을 묘사할 때, 마치 그 자리에 있었던 것처럼 생생하게 느껴지도록 작성해."
     )
-    print(f"write_diary 사용한 모델: {resp.model}")
-    parsed = _parse_dict(resp.choices[0].message.content)
+
+    if DIARY_MODEL_PROVIDER in {"gemini", "vertex", "vertexai"}:
+        parsed = _generate_diary_with_gemini(persona, user_text)
+    else:
+        model = _openai_diary_model_for_persona(persona)
+        resp = _client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": _WRITE_PROMPT},
+                {"role": "user", "content": user_text},
+            ],
+            response_format={"type": "json_object"},  # JSON 으로 받기(프롬프트와 이중 안전장치)
+            temperature=0.2,
+        )
+        print(f"write_diary provider=openai persona={persona} model={resp.model}")
+        parsed = _parse_dict(resp.choices[0].message.content)
 
     return {
         "subtitle": (parsed.get("subtitle") or "").strip(),
