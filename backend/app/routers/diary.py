@@ -348,6 +348,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             try:
                 analysis = analyze_photo(path, photo_metadata=_photo_metadata_for_vlm(p))
                 analysis_json = analysis["analysis_json"]
+                token_usage = analysis.get("token_usage") or {}
                 db.add(
                     PhotoGeneration(
                         photo_id=p.id,
@@ -366,6 +367,9 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                         time_confidence=_confidence_decimal(
                             analysis_json.get("time_confidence")
                         ),
+                        input_tokens=token_usage.get("input_tokens"),
+                        output_tokens=token_usage.get("output_tokens"),
+                        total_tokens=token_usage.get("total_tokens"),
                         status="success",
                         created_at=datetime.now(),
                     )

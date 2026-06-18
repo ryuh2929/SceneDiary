@@ -317,6 +317,7 @@ class PhotoGeneration(Base):
 
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     status: Mapped[str] = mapped_column(String(20))
 
