@@ -43,6 +43,7 @@ type PendingPhoto = {
   placeName?: string; // 일차 대표 지명 (district 우선)
   countryName?: string; // 국가명 — trip destination "국가/도시" 의 앞부분
   cityName?: string; // 도시명 — trip destination "국가/도시" 의 뒷부분
+  exif?: Record<string, unknown>;
   fileSizeBytes?: number;
   width: number;
   height: number;
@@ -196,6 +197,77 @@ function parseExifGps(
   if (Math.abs(signedLat) > 90 || Math.abs(signedLon) > 180) return undefined;
 
   return { latitude: signedLat, longitude: signedLon };
+}
+
+function firstStringValue(
+  exif: Record<string, unknown>,
+  keys: string[],
+): string | undefined {
+  for (const key of keys) {
+    const value = exif[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+  }
+  return undefined;
+}
+
+function firstNumberValue(
+  exif: Record<string, unknown>,
+  keys: string[],
+): number | undefined {
+  for (const key of keys) {
+    const parsed = parseGpsCoordinateValue(exif[key]);
+    if (parsed !== undefined && Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+function normalizePhotoExif(
+  exif: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | undefined {
+  if (!exif) return undefined;
+
+  const gps = parseExifGps(exif);
+  const normalized: Record<string, unknown> = {};
+  const takenOriginal = firstStringValue(exif, [
+    "DateTimeOriginal",
+    "SubSecDateTimeOriginal",
+    "CompositeSubSecDateTimeOriginal",
+    "Composite:SubSecDateTimeOriginal",
+    "TimeStamp",
+    "SamsungTimeStamp",
+    "Samsung:TimeStamp",
+  ]);
+  const takenDigitized = firstStringValue(exif, ["DateTimeDigitized"]);
+  const dateTime = firstStringValue(exif, ["DateTime", "CreateDate", "ModifyDate"]);
+  const offsetOriginal = firstStringValue(exif, [
+    "OffsetTimeOriginal",
+    "OffsetTime",
+    "TimeZoneOffset",
+  ]);
+  const gpsAltitude = firstNumberValue(exif, ["GPSAltitude", "GPS:GPSAltitude"]);
+  const make = firstStringValue(exif, ["Make", "TIFF:Make"]);
+  const model = firstStringValue(exif, ["Model", "TIFF:Model"]);
+
+  if (takenOriginal) normalized.DateTimeOriginal = takenOriginal;
+  if (takenDigitized) normalized.DateTimeDigitized = takenDigitized;
+  if (dateTime) normalized.DateTime = dateTime;
+  if (offsetOriginal) normalized.OffsetTimeOriginal = offsetOriginal;
+  if (gps) {
+    normalized.GPSLatitude = gps.latitude;
+    normalized.GPSLongitude = gps.longitude;
+  }
+  if (gpsAltitude !== undefined) normalized.GPSAltitude = gpsAltitude;
+  if (make) normalized.Make = make;
+  if (model) normalized.Model = model;
+
+  return Object.keys(normalized).length ? normalized : undefined;
 }
 
 function parseFilenameDate(
@@ -365,6 +437,7 @@ async function buildPendingPhoto(
     placeName: geo?.placeName,
     countryName: geo?.countryName,
     cityName: geo?.cityName,
+    exif: normalizePhotoExif(asset.exif),
     fileSizeBytes,
     width: uploadImage.width,
     height: uploadImage.height,

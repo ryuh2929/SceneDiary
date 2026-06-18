@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import re
 from collections import Counter
@@ -144,6 +145,7 @@ class UploadDraft:
     place_name: str | None = None
     country_name: str | None = None
     city_name: str | None = None
+    exif: dict | None = None
 
 
 def _parse_upload_date(value: str | None) -> date | None:
@@ -314,6 +316,19 @@ def _parse_form_coordinate(values: list[str] | None, index: int) -> Decimal | No
     return _decimal_coordinate(value)
 
 
+def _parse_form_exif(values: list[str] | None, index: int) -> dict | None:
+    if not values or index >= len(values):
+        return None
+    raw = values[index].strip()
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
 def _valid_coordinates(latitude: Decimal, longitude: Decimal) -> bool:
     return (
         Decimal("-90") <= latitude <= Decimal("90")
@@ -334,6 +349,7 @@ async def upload_first_day_photos(
     photo_place_names: list[str] | None = Form(None),
     photo_country_names: list[str] | None = Form(None),
     photo_city_names: list[str] | None = Form(None),
+    photo_exifs: list[str] | None = Form(None),
     user_id: int = Form(1),
     trip_id: int | None = Form(None),
     day_number: int = Form(1),
@@ -405,6 +421,7 @@ async def upload_first_day_photos(
                 place_name=_form_str_at(photo_place_names, index),
                 country_name=_form_str_at(photo_country_names, index),
                 city_name=_form_str_at(photo_city_names, index),
+                exif=_parse_form_exif(photo_exifs, index),
             )
         )
 
@@ -505,6 +522,7 @@ async def upload_first_day_photos(
                     height=processed.height,
                     latitude=draft.latitude,
                     longitude=draft.longitude,
+                    exif=draft.exif,
                     # 프론트가 미리 변환해 보낸 지명. 권한 없거나 GPS 없으면 None.
                     location_name=draft.place_name,
                     display_order=display_order,
