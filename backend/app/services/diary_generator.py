@@ -321,7 +321,7 @@ def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
         extras.append(f"장소유형: {parsed['place_type']}")
     if parsed.get("landmark_guess") and parsed.get("landmark_confidence", 0) >= 0.7:
         extras.append(f"랜드마크: {parsed['landmark_guess']}")
-    if parsed.get("time_hint") and parsed.get("time_hint_confidence", 0) >= 0.7:
+    if parsed.get("time_hint") and parsed.get("time_confidence", 0) >= 0.7:
         extras.append(f"시간대: {parsed['time_hint']}")
     if parsed.get("people_type"):
         extras.append(f"인물: {parsed['people_type']}")
