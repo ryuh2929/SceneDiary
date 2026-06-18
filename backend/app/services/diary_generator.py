@@ -95,7 +95,7 @@ _WRITE_PROMPT = """당신은 여행 사진 분석 결과를 보고 한국어 여
 {
   "subtitle": "여행자가 친구에게 말하듯 간결하게 작성할 것",
   "content": "3~5문장의 평범한 일상을 적는 인스타 감성으로 한국어 일기 본문",
-  "weather": "분석 결과의 날씨를 나타내는 날씨 이모지 1개(예: ☀️ ⛅ ☁️ 🌧️ ❄️). 날씨를 알 수 없으면 빈 문자열",
+  "weather": "반드시 다음 중 하나만 사용하세요 (☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, '')",
   "emotion": "그 날의 감정을 나타내는 이모지 1개"
 }"""
 
@@ -321,7 +321,7 @@ def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
         extras.append(f"장소유형: {parsed['place_type']}")
     if parsed.get("landmark_guess") and parsed.get("landmark_confidence", 0) >= 0.7:
         extras.append(f"랜드마크: {parsed['landmark_guess']}")
-    if parsed.get("time_hint") and parsed.get("time_hint") != "unknown":
+    if parsed.get("time_hint") and parsed.get("time_hint_confidence", 0) >= 0.7:
         extras.append(f"시간대: {parsed['time_hint']}")
     if parsed.get("people_type"):
         extras.append(f"인물: {parsed['people_type']}")
