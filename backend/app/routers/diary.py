@@ -129,6 +129,15 @@ def _photo_metadata_for_vlm(photo: Photo) -> dict:
     }
 
 
+def _confidence_decimal(value: object) -> Decimal | None:
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return None
+    score = max(0.0, min(1.0, score))
+    return Decimal(str(round(score, 3)))
+
+
 def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
     """trip_day(일기 내용 포함) + 사진들을 묶어 DayPage 로 만듭니다.
     합치기 후: 일기 본문·상징이 trip_day 에 직접 있어 별도 diary 조회가 없습니다."""
@@ -338,12 +347,25 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                 continue  # 파일이 없으면 그 사진은 건너뜀
             try:
                 analysis = analyze_photo(path, photo_metadata=_photo_metadata_for_vlm(p))
+                analysis_json = analysis["analysis_json"]
                 db.add(
                     PhotoGeneration(
                         photo_id=p.id,
                         model_used=_MODEL_NAME,
                         analysis_text=analysis["analysis_text"],
-                        analysis_json=analysis["analysis_json"],
+                        analysis_json=analysis_json,
+                        place_type=analysis_json.get("place_type"),
+                        indoor_outdoor=analysis_json.get("indoor_outdoor"),
+                        landmark_guess=analysis_json.get("landmark_guess") or None,
+                        landmark_confidence=_confidence_decimal(
+                            analysis_json.get("landmark_confidence")
+                        ),
+                        people_type=analysis_json.get("people_type"),
+                        people_importance=analysis_json.get("people_importance"),
+                        time_hint=analysis_json.get("time_hint"),
+                        time_confidence=_confidence_decimal(
+                            analysis_json.get("time_confidence")
+                        ),
                         status="success",
                         created_at=datetime.now(),
                     )
