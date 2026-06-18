@@ -605,8 +605,15 @@ async def upload_first_day_photos(
         ]
         title_dict = write_trip_title(days_payload, destination=trip.destination or "", path_list=None,photo_info=photo_id_list)
         if title_dict:
-            trip.title = title_dict.get("title")
-            trip.cover_photo_id= title_dict.get("img_id")
+            generated_title = (title_dict.get("title") or "").strip()
+            generated_img_id = title_dict.get("img_id")
+            if generated_title:
+                trip.title = generated_title
+            if generated_img_id:
+                try:
+                    trip.cover_photo_id = int(generated_img_id)
+                except (TypeError, ValueError):
+                    pass
             db.commit()
             print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
     

@@ -406,7 +406,9 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                 ]
                 title_dict = write_trip_title(days_payload, destination=trip.destination or "", path_list=image_path)
                 if title_dict:
-                    trip.title = title_dict.get("title")
+                    generated_title = (title_dict.get("title") or "").strip()
+                    if generated_title:
+                        trip.title = generated_title
                     db.commit()
                     print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
         except Exception as exc:
