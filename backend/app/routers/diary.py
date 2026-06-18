@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 # 합치기 후: 일기 본문은 trip_days 에 들어가서 Diary 모델은 더 이상 없음.
 # PhotoGeneration = 사진별 VLM 분석 이력(2단계화에서 사용).
-from app.db.models import DiaryGeneration, Photo, PhotoGeneration, Trip, TripDay
+from app.db.models import DiaryGeneration, Photo, PhotoGeneration, Trip, TripDay, User
 from app.db.session import SessionLocal, get_db
 from app.schemas.diary import (
     DayPage,
@@ -115,6 +115,27 @@ def _photo_url(db: Session, base: str, photo_id: int | None) -> str:
         return ""
     photo = db.query(Photo).filter(Photo.id == photo_id).first()
     return _abs_url(base, photo.file_url) if photo else ""
+
+
+def _photo_metadata_for_vlm(photo: Photo) -> dict:
+    return {
+        "taken_at_utc": photo.taken_at_utc.isoformat() if photo.taken_at_utc else "",
+        "tz": photo.tz or "",
+        "latitude": float(photo.latitude) if photo.latitude is not None else None,
+        "longitude": float(photo.longitude) if photo.longitude is not None else None,
+        "location_name": photo.location_name or "",
+        "city_name": getattr(photo, "city_name", None) or "",
+        "country_name": getattr(photo, "country_name", None) or "",
+    }
+
+
+def _confidence_decimal(value: object) -> Decimal | None:
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return None
+    score = max(0.0, min(1.0, score))
+    return Decimal(str(round(score, 3)))
 
 
 def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
@@ -325,13 +346,30 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             if not path.exists():
                 continue  # 파일이 없으면 그 사진은 건너뜀
             try:
-                analysis = analyze_photo(path)
+                analysis = analyze_photo(path, photo_metadata=_photo_metadata_for_vlm(p))
+                analysis_json = analysis["analysis_json"]
+                token_usage = analysis.get("token_usage") or {}
                 db.add(
                     PhotoGeneration(
                         photo_id=p.id,
                         model_used=_MODEL_NAME,
                         analysis_text=analysis["analysis_text"],
-                        analysis_json=analysis["analysis_json"],
+                        analysis_json=analysis_json,
+                        place_type=analysis_json.get("place_type"),
+                        indoor_outdoor=analysis_json.get("indoor_outdoor"),
+                        landmark_guess=analysis_json.get("landmark_guess") or None,
+                        landmark_confidence=_confidence_decimal(
+                            analysis_json.get("landmark_confidence")
+                        ),
+                        people_type=analysis_json.get("people_type"),
+                        people_importance=analysis_json.get("people_importance"),
+                        time_hint=analysis_json.get("time_hint"),
+                        time_confidence=_confidence_decimal(
+                            analysis_json.get("time_confidence")
+                        ),
+                        input_tokens=token_usage.get("input_tokens"),
+                        output_tokens=token_usage.get("output_tokens"),
+                        total_tokens=token_usage.get("total_tokens"),
                         status="success",
                         created_at=datetime.now(),
                     )
@@ -350,10 +388,14 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
         db.commit()  # 분석 이력 먼저 저장(2단계가 실패해도 분석은 남도록)
 
         # ── 2단계: 모은 분석으로 일기 작성(사진 없이 텍스트만) ──
+        trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
+        user = db.query(User).filter(User.id == trip.user_id).first() if trip else None
+        persona = (user.writing_persona if user else None) or "daily"
         result = write_diary(
             analyses,
             location=trip_day.location_summary or "",
             date=trip_day.date.isoformat(),
+            persona=persona,
         )
 
         # 결과 저장: 합치기 후 일기 내용이 trip_day 에 직접 들어감

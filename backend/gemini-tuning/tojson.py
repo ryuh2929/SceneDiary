@@ -3,8 +3,8 @@ from pathlib import Path
 
 # 이 스크립트가 있는 폴더를 기준으로 파일 경로를 잡습니다.
 base_dir = Path(__file__).resolve().parent
-input_file = base_dir / 'daily-persona-preference.jsonl'
-output_file = base_dir / 'my_data.json'
+input_file = base_dir / 'example_data.jsonl'
+output_file = base_dir / 'example_data.json'
 
 data = []
 with open(input_file, 'r', encoding='utf-8') as f:

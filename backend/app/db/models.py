@@ -305,8 +305,19 @@ class PhotoGeneration(Base):
     # 분석 결과: 구조화된 JSON (객체 인식, 분위기, 색감 등)
     analysis_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
+    # 자주 조회하는 VLM 구조화 결과
+    place_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    indoor_outdoor: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    landmark_guess: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    landmark_confidence: Mapped[Decimal | None] = mapped_column(Numeric(4, 3), nullable=True)
+    people_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    people_importance: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    time_hint: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    time_confidence: Mapped[Decimal | None] = mapped_column(Numeric(4, 3), nullable=True)
+
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     status: Mapped[str] = mapped_column(String(20))
 

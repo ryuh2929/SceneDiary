@@ -29,6 +29,7 @@ import {
 import MapView, {Marker, PROVIDER_GOOGLE} from "react-native-maps"; // 구글 지도
 import {useSafeAreaInsets} from "react-native-safe-area-context"; // 노치/홈바 여백
 import {useAppThemeColors} from "@/constants/app-colors";
+import {getShortPlaceName} from "@/utils/location";
 
 // 지도 초기 중심(서울) — 기존 지도 탭과 동일한 시작 위치.
 const SEOUL = {latitude: 37.5665, longitude: 126.978};
@@ -59,22 +60,14 @@ type Props = {
   ) => void;
 };
 
-// reverseGeocode(좌표→주소) 결과를 사람이 읽기 좋은 짧은 지명 한 줄로 다듬습니다.
-//   예) {region:"서울특별시", city:"중구", ...} → "서울특별시 중구"
+// reverseGeocode(좌표→주소) 결과를 사진 GPS 업로드와 같은 기준의 짧은 지명으로 다듬습니다.
 //   주소를 못 얻으면(권한 거부 등) 그냥 좌표를 글자로 넣는 안전장치(폴백)로 둡니다.
 function toPlaceName(
   a: Location.LocationGeocodedAddress | undefined,
   c: Coord,
 ): string {
-  if (a) {
-    // 큰 단위→작은 단위 순서로 모아서, 빈 값은 빼고, 중복은 제거해 합칩니다.
-    const parts = [a.region, a.city, a.district, a.street ?? a.name].filter(
-      Boolean,
-    );
-    const name = Array.from(new Set(parts)).join(" ").trim();
-    if (name) return name;
-    if (a.formattedAddress) return a.formattedAddress; // 그래도 비면 전체 주소
-  }
+  const name = getShortPlaceName(a);
+  if (name) return name;
   // 주소 자체를 못 얻었을 때의 최후 폴백: 좌표를 그대로 표시.
   return `위치 (${c.latitude.toFixed(4)}, ${c.longitude.toFixed(4)})`;
 }
