@@ -255,8 +255,26 @@ def _gemini_diary_endpoint_for_persona(persona: str) -> str:
     env_name = f"GEMINI_{persona.upper()}_ENDPOINT_ID"
     endpoint_id = (os.getenv(env_name) or "").strip()
     if not endpoint_id:
-        raise RuntimeError(f"{env_name} is not configured")
+        raise RuntimeError(
+            f"{env_name} is not configured. "
+            f"Set {env_name} or use DIARY_MODEL_PROVIDER=openai for this persona."
+        )
     return f"projects/{GEMINI_PROJECT_ID}/locations/{GEMINI_LOCATION}/endpoints/{endpoint_id}"
+
+
+def _generate_diary_with_openai(persona: str, user_text: str) -> dict:
+    model = _openai_diary_model_for_persona(persona)
+    resp = _client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": _write_prompt_for_persona(persona)},
+            {"role": "user", "content": user_text},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.2,
+    )
+    print(f"write_diary provider=openai persona={persona} model={resp.model}")
+    return _parse_dict(resp.choices[0].message.content)
 
 
 def _generate_diary_with_gemini(persona: str, user_text: str) -> dict:
@@ -388,18 +406,7 @@ def write_diary(
     if DIARY_MODEL_PROVIDER in {"gemini", "vertex", "vertexai"}:
         parsed = _generate_diary_with_gemini(persona, user_text)
     else:
-        model = _openai_diary_model_for_persona(persona)
-        resp = _client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": _write_prompt_for_persona(persona)},
-                {"role": "user", "content": user_text},
-            ],
-            response_format={"type": "json_object"},  # JSON 으로 받기(프롬프트와 이중 안전장치)
-            temperature=0.2,
-        )
-        print(f"write_diary provider=openai persona={persona} model={resp.model}")
-        parsed = _parse_dict(resp.choices[0].message.content)
+        parsed = _generate_diary_with_openai(persona, user_text)
 
     return {
         "subtitle": (parsed.get("subtitle") or "").strip(),
