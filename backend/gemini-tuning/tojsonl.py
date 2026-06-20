@@ -1,13 +1,10 @@
 import json
 from pathlib import Path
 
-# 어떠 컴퓨터든 상관없이 해당 프로젝트가 있는 경로 참조하기
-base_dir = Path(__file__).parent
-
-
-# 읽을 파일(pretty.json)과 저장할 파일(train.jsonl) 경로
-input_file = base_dir / 'playful-persona-dfo-v2.json' 
-output_file = base_dir / 'playful-persona-dfo-v2.jsonl'
+# 이 스크립트가 있는 폴더를 기준으로 파일 경로를 잡습니다.
+base_dir = Path(__file__).resolve().parent
+input_file = base_dir / 'poetic-persona-dfo-v2.json'
+output_file = base_dir / 'poetic-persona-dfo-v2.jsonl'
 
 with open(input_file, 'r', encoding='utf-8') as fin, \
      open(output_file, 'w', encoding='utf-8') as fout:
