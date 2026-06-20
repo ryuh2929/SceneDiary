@@ -2,8 +2,8 @@ from google import genai
 from google.genai import types
 
 PROJECT_ID = "project-19fbb1da-6ea1-4a56-8c1"
-LOCATION = "us-west1"
-ENDPOINT_ID = "72182938363494400"
+LOCATION = "europe-west4"
+ENDPOINT_ID = "3514731854697594880"
 
 client = genai.Client(
     vertexai=True,

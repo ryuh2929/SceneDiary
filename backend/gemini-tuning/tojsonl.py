@@ -16,4 +16,4 @@ with open(input_file, 'r', encoding='utf-8') as fin, \
     for entry in data:
         fout.write(json.dumps(entry, ensure_ascii=False) + '\n')
 
-print("변환 완료! train.jsonl 파일을 사용하세요.")
+print(f"변환 완료: {output_file}")
