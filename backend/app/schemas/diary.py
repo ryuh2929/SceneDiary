@@ -47,6 +47,9 @@ class DayPage(BaseModel):
     subtitle: str  # trip_days.subtitle — 소제목
     emotion: str  # trip_days.emotion — Twemoji 코드포인트(hex)
     content: str  # trip_days.content — 본문
+    # 그날의 대표사진 photo_id. 사용자가 하단 PhotoBar 에서 고를 수 있음.
+    # NULL 이면 프론트는 photos[0] 로 fallback.
+    representImage: int | None = None  # trip_days.represent_image
     photos: list[DayPhoto]  # 그날 다이어리용 사진들
     genStatus: GenStatus  # 위 GenStatus 참고 (출처 = 최신 diary_generations.status 번역)
 
@@ -87,6 +90,9 @@ class DayUpdate(BaseModel):
     # 둘 다 들어오면 trip.destination 이 비어있을 때만 "국가/도시" 형식으로 채워줍니다.
     countryName: str | None = None
     cityName: str | None = None
+    # 사용자가 PhotoBar 에서 고른 그날 대표사진 photo_id.
+    # 핸들러는 이 photo 가 정말 이 trip_day 의 사진인지 검증한 뒤 저장.
+    representImage: int | None = None
 
 
 # 최종 저장(PATCH /trips) 요청 body. 여행 상태를 'completed'로 변경.

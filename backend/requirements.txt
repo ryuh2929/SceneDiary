@@ -9,5 +9,5 @@ python-dotenv
 alembic
 Pillow
 python-multipart
-google-generativeai
 google-genai
+google-generativeai

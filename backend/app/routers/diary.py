@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 # 합치기 후: 일기 본문은 trip_days 에 들어가서 Diary 모델은 더 이상 없음.
 # PhotoGeneration = 사진별 VLM 분석 이력(2단계화에서 사용).
-from app.db.models import DiaryGeneration, Photo, PhotoGeneration, Trip, TripDay
+from app.db.models import DiaryGeneration, Photo, PhotoGeneration, Trip, TripDay, User
 from app.db.session import SessionLocal, get_db
 from app.schemas.diary import (
     DayPage,
@@ -35,6 +35,7 @@ from app.schemas.diary import (
     TripStatusUpdate,
 )
 from app.services.travel_style_analysis import run_travel_style_analysis
+from app.utils.country_flags import country_to_flag
 
 router = APIRouter(tags=["diary"])
 
@@ -116,6 +117,27 @@ def _photo_url(db: Session, base: str, photo_id: int | None) -> str:
     return _abs_url(base, photo.file_url) if photo else ""
 
 
+def _photo_metadata_for_vlm(photo: Photo) -> dict:
+    return {
+        "taken_at_utc": photo.taken_at_utc.isoformat() if photo.taken_at_utc else "",
+        "tz": photo.tz or "",
+        "latitude": float(photo.latitude) if photo.latitude is not None else None,
+        "longitude": float(photo.longitude) if photo.longitude is not None else None,
+        "location_name": photo.location_name or "",
+        "city_name": getattr(photo, "city_name", None) or "",
+        "country_name": getattr(photo, "country_name", None) or "",
+    }
+
+
+def _confidence_decimal(value: object) -> Decimal | None:
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return None
+    score = max(0.0, min(1.0, score))
+    return Decimal(str(round(score, 3)))
+
+
 def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
     """trip_day(일기 내용 포함) + 사진들을 묶어 DayPage 로 만듭니다.
     합치기 후: 일기 본문·상징이 trip_day 에 직접 있어 별도 diary 조회가 없습니다."""
@@ -137,6 +159,7 @@ def _build_day(db: Session, trip_day: TripDay, base: str) -> DayPage:
         subtitle=trip_day.subtitle or "",
         emotion=trip_day.emotion or "",
         content=trip_day.content or "",  # 합치기 후: trip_day 에서 직접
+        representImage=trip_day.represent_image,
         photos=[
             DayPhoto(
                 id=p.id,
@@ -250,11 +273,29 @@ def update_trip_day(
         # Decimal 컬럼에 float 직접 대입이 일부 환경에서 누락되는 사례 방어.
         trip_day.representative_lat = Decimal(str(round(body.lat, 8)))
         trip_day.representative_lon = Decimal(str(round(body.lon, 8)))
+    # 사용자가 고른 그날 대표사진. 검증: 그 photo_id 가 정말 이 trip_day 의 사진인지.
+    # 다른 일차의 사진이나 존재하지 않는 id 가 들어오면 400.
+    if body.representImage is not None:
+        owned = (
+            db.query(Photo.id)
+            .filter(
+                Photo.id == body.representImage,
+                Photo.trip_day_id == trip_day.id,
+                Photo.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if owned is None:
+            raise HTTPException(status_code=400, detail="representImage does not belong to this trip_day")
+        trip_day.represent_image = body.representImage
     # picker 가 알려준 국가/도시로 trip.destination 자동 보강(비어있을 때만).
     if body.countryName and body.cityName:
         trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
-        if trip and not trip.destination:
-            trip.destination = f"{body.countryName}/{body.cityName}"
+        if trip:
+            if not trip.destination:
+                trip.destination = f"{body.countryName}/{body.cityName}"
+            if not trip.flag:
+                trip.flag = country_to_flag(body.countryName)
     db.commit()
     db.refresh(trip_day)
     return _build_day(db, trip_day, _base_url(request))
@@ -305,13 +346,30 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             if not path.exists():
                 continue  # 파일이 없으면 그 사진은 건너뜀
             try:
-                analysis = analyze_photo(path)
+                analysis = analyze_photo(path, photo_metadata=_photo_metadata_for_vlm(p))
+                analysis_json = analysis["analysis_json"]
+                token_usage = analysis.get("token_usage") or {}
                 db.add(
                     PhotoGeneration(
                         photo_id=p.id,
                         model_used=_MODEL_NAME,
                         analysis_text=analysis["analysis_text"],
-                        analysis_json=analysis["analysis_json"],
+                        analysis_json=analysis_json,
+                        place_type=analysis_json.get("place_type"),
+                        indoor_outdoor=analysis_json.get("indoor_outdoor"),
+                        landmark_guess=analysis_json.get("landmark_guess") or None,
+                        landmark_confidence=_confidence_decimal(
+                            analysis_json.get("landmark_confidence")
+                        ),
+                        people_type=analysis_json.get("people_type"),
+                        people_importance=analysis_json.get("people_importance"),
+                        time_hint=analysis_json.get("time_hint"),
+                        time_confidence=_confidence_decimal(
+                            analysis_json.get("time_confidence")
+                        ),
+                        input_tokens=token_usage.get("input_tokens"),
+                        output_tokens=token_usage.get("output_tokens"),
+                        total_tokens=token_usage.get("total_tokens"),
                         status="success",
                         created_at=datetime.now(),
                     )
@@ -330,10 +388,14 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
         db.commit()  # 분석 이력 먼저 저장(2단계가 실패해도 분석은 남도록)
 
         # ── 2단계: 모은 분석으로 일기 작성(사진 없이 텍스트만) ──
+        trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
+        user = db.query(User).filter(User.id == trip.user_id).first() if trip else None
+        persona = (user.writing_persona if user else None) or "daily"
         result = write_diary(
             analyses,
             location=trip_day.location_summary or "",
             date=trip_day.date.isoformat(),
+            persona=persona,
         )
 
         # 결과 저장: 합치기 후 일기 내용이 trip_day 에 직접 들어감
@@ -384,9 +446,45 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                     }
                     for d in all_days
                 ]
-                title_dict = write_trip_title(days_payload, destination=trip.destination or "", path_list=image_path)
+                trip_photos = (
+                    db.query(Photo)
+                    .join(TripDay, Photo.trip_day_id == TripDay.id)
+                    .filter(
+                        TripDay.trip_id == trip.id,
+                        Photo.deleted_at.is_(None),
+                    )
+                    .order_by(TripDay.day_number, Photo.display_order)
+                    .all()
+                )
+                photo_candidates = []
+                for photo in trip_photos:
+                    latest_analysis = (
+                        db.query(PhotoGeneration)
+                        .filter(
+                            PhotoGeneration.photo_id == photo.id,
+                            PhotoGeneration.status == "success",
+                        )
+                        .order_by(PhotoGeneration.id.desc())
+                        .first()
+                    )
+                    photo_candidates.append(
+                        {
+                            "img_id": photo.id,
+                            "analysis_text": latest_analysis.analysis_text if latest_analysis else "",
+                        }
+                    )
+                title_dict = write_trip_title(
+                    days_payload,
+                    destination=trip.destination or "",
+                    photo_info=photo_candidates,
+                )
                 if title_dict:
-                    trip.title = title_dict.get("title")
+                    generated_title = (title_dict.get("title") or "").strip()
+                    generated_img_id = title_dict.get("img_id")
+                    if generated_title:
+                        trip.title = generated_title
+                    if generated_img_id:
+                        trip.cover_photo_id = generated_img_id
                     db.commit()
                     print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
         except Exception as exc:

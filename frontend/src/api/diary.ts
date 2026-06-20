@@ -63,6 +63,7 @@ export async function uploadFirstDayPhotos(photos: {
   placeName?: string;
   countryName?: string;
   cityName?: string;
+  exif?: Record<string, unknown>;
 }[], options?: {
   tripId?: string;
   dayNumber?: number;
@@ -85,6 +86,7 @@ export async function uploadFirstDayPhotos(photos: {
     formData.append('photo_place_names', photo.placeName ?? '');
     formData.append('photo_country_names', photo.countryName ?? '');
     formData.append('photo_city_names', photo.cityName ?? '');
+    formData.append('photo_exifs', photo.exif ? JSON.stringify(photo.exif) : '');
     if (Platform.OS === 'web') {
       const blob = await fetch(photo.fileUri).then((response) => response.blob());
       formData.append('files', blob, photo.originalFilename);
@@ -140,6 +142,7 @@ export function saveDayLocation(
   lon?: number,
   countryName?: string,
   cityName?: string,
+  representImage?: number,
 ) {
   const body: DayUpdate = { locationSummary };
   if (lat !== undefined && lon !== undefined) {
@@ -150,6 +153,10 @@ export function saveDayLocation(
   if (countryName && cityName) {
     body.countryName = countryName;
     body.cityName = cityName;
+  }
+  // 사용자가 그날 대표사진을 바꿨다면 같이 보냄. (다음 누를 때 한꺼번에 저장)
+  if (representImage !== undefined) {
+    body.representImage = representImage;
   }
   return request<DayPage>(`/trip-days/${tripDayId}`, {
     method: 'PATCH',

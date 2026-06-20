@@ -22,6 +22,10 @@ import { Trip } from "@/types/api";
 import { useAppThemeColors } from "@/constants/app-colors";
 import { useAppSettings } from "@/contexts/app-settings-context";
 import { useUserStore } from "@/data/userStore";
+import {
+  codepointToEmoji as emojiCodepointToEmoji,
+  resolveTripFlagCodepoint,
+} from "@/utils/emoji";
 
 // ─────────────────────────────────────────────
 // 🔧 유틸 함수 섹션
@@ -32,10 +36,7 @@ import { useUserStore } from "@/data/userStore";
  * 예: "1f5fc" -> 타워 이모지, "1f1f0-1f1f7" -> 국기 이모지
  */
 function codepointToEmoji(codepoint: string): string {
-  return codepoint
-    .split("-")
-    .map((cp) => String.fromCodePoint(parseInt(cp, 16)))
-    .join("");
+  return emojiCodepointToEmoji(codepoint);
 }
 
 /**
@@ -296,7 +297,7 @@ export default function HomeScreen() {
                 </View>
 
                 <View className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/70 items-center justify-center overflow-hidden">
-                  <EmojiIcon codepoint={item.flag} size={26} />
+                  <EmojiIcon codepoint={resolveTripFlagCodepoint(item.flag, item.destination)} size={26} />
                 </View>
               </Pressable>
 
@@ -342,7 +343,13 @@ export default function HomeScreen() {
 
               {isExpanded && (
                 <View className="bg-muted px-md pb-md pt-sm gap-sm dark:bg-dark-muted">
-                  {item.tripDays.map((detail) => (
+                  {item.tripDays.map((detail) => {
+                    // 그날 대표사진: represent_image(photo_id) 로 매칭. 없으면 photos[0] fallback.
+                    // (지도 탭 map.tsx / simpleView.tsx 와 동일 패턴)
+                    const repPhoto =
+                      detail.photos?.find((p) => p.id === detail.represent_image) ??
+                      detail.photos?.[0];
+                    return (
                     <Pressable
                       key={detail.id}
                       className="flex-row items-center bg-surface p-sm rounded-md shadow-sm dark:bg-dark-surface"
@@ -362,10 +369,10 @@ export default function HomeScreen() {
                         })
                       }
                     >
-                      {detail.photos && detail.photos.length > 0 && (
+                      {repPhoto && (
                         <Image
                           source={{
-                            uri: detail.photos[0].thumbnail_image_url,
+                            uri: repPhoto.thumbnail_image_url,
                           }}
                           className="w-14 h-14 rounded-md mr-md"
                           resizeMode="cover"
@@ -408,7 +415,8 @@ export default function HomeScreen() {
                         </View>
                       </View>
                     </Pressable>
-                  ))}
+                    );
+                  })}
                 </View>
               )}
             </View>
