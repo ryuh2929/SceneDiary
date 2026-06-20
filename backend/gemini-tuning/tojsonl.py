@@ -6,8 +6,8 @@ base_dir = Path(__file__).parent
 
 
 # 읽을 파일(pretty.json)과 저장할 파일(train.jsonl) 경로
-input_file = base_dir / 'persona_happy.json' 
-output_file = base_dir / 'train.jsonl'
+input_file = base_dir / 'playful-persona-dfo-v2.json' 
+output_file = base_dir / 'playful-persona-dfo-v2.jsonl'
 
 with open(input_file, 'r', encoding='utf-8') as fin, \
      open(output_file, 'w', encoding='utf-8') as fout:
