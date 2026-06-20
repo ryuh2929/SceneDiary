@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+# 어떠 컴퓨터든 상관없이 해당 프로젝트가 있는 경로 참조하기
 base_dir = Path(__file__).parent
 
 

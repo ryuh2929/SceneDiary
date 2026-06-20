@@ -246,13 +246,20 @@ function normalizePhotoExif(
     "Samsung:TimeStamp",
   ]);
   const takenDigitized = firstStringValue(exif, ["DateTimeDigitized"]);
-  const dateTime = firstStringValue(exif, ["DateTime", "CreateDate", "ModifyDate"]);
+  const dateTime = firstStringValue(exif, [
+    "DateTime",
+    "CreateDate",
+    "ModifyDate",
+  ]);
   const offsetOriginal = firstStringValue(exif, [
     "OffsetTimeOriginal",
     "OffsetTime",
     "TimeZoneOffset",
   ]);
-  const gpsAltitude = firstNumberValue(exif, ["GPSAltitude", "GPS:GPSAltitude"]);
+  const gpsAltitude = firstNumberValue(exif, [
+    "GPSAltitude",
+    "GPS:GPSAltitude",
+  ]);
   const make = firstStringValue(exif, ["Make", "TIFF:Make"]);
   const model = firstStringValue(exif, ["Model", "TIFF:Model"]);
 
