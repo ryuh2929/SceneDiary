@@ -57,6 +57,11 @@ type Props = {
     lon: number,
     context?: {countryName?: string; cityName?: string},
   ) => void;
+  // 그 날에 이미 검출된 좌표(사진 EXIF/이전 선택). 있으면 피커를 열 때 이 위치에 핀을 박고
+  // 카메라도 그쪽으로 이동합니다. null/undefined(위치 없는 날)면 현재 위치를 기본 핀으로 잡습니다.
+  // 객체가 아닌 원시값으로 받아 useEffect 의존성을 안정적으로 유지합니다.
+  initialLat?: number | null;
+  initialLon?: number | null;
 };
 
 // reverseGeocode(좌표→주소) 결과를 사람이 읽기 좋은 짧은 지명 한 줄로 다듬습니다.
@@ -79,7 +84,13 @@ function toPlaceName(
   return `위치 (${c.latitude.toFixed(4)}, ${c.longitude.toFixed(4)})`;
 }
 
-export default function LocationPicker({visible, onClose, onSelect}: Props) {
+export default function LocationPicker({
+  visible,
+  onClose,
+  onSelect,
+  initialLat,
+  initialLon,
+}: Props) {
   const insets = useSafeAreaInsets(); // 상단 노치/하단 홈바만큼 여백 확보
   const colors = useAppThemeColors(); // 전역 다크모드에 맞춰 아이콘 색상을 바꿉니다.
   // 지도를 코드로 움직이려면(예: 현재 위치로 이동) 지도에 대한 "리모컨"이 필요합니다.
@@ -93,15 +104,50 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
-  // 피커가 새로 열릴 때마다 이전에 찍었던 핀을 지웁니다(다른 날에 다시 열 때 깨끗하게).
-  useEffect(() => {
-    if (visible) setPicked(null);
-  }, [visible]);
+  // 지도가 실제로 그려질 준비가 됐는지. 피커를 닫으면 MapView 가 언마운트되고 다시 열면
+  // 새로 마운트되므로, 매 열기마다 false 로 리셋하고 onMapReady 에서 true 로 바꿉니다.
+  const mapReadyRef = useRef(false);
+  // 카메라를 옮기고 싶은 목표 좌표. 지도가 아직 준비 전이면 여기에 담아뒀다가
+  // onMapReady 시점에 옮깁니다. (준비 전 animateToRegion 호출이 조용히 무시되는 회귀 회피)
+  const targetRef = useRef<Coord | null>(null);
 
-  // 피커를 열 때 사용자의 현재 위치로 지도 카메라를 이동하고 핀도 미리 박아둡니다.
-  // 권한 거부 / GPS 실패 시엔 기본 시작 위치(SEOUL)에서 핀 없이 시작.
+  // 카메라 이동 요청. 지도가 준비됐으면 즉시 이동, 아니면 목표만 저장 → onMapReady 가 처리.
+  const centerOn = (c: Coord) => {
+    targetRef.current = c;
+    if (mapReadyRef.current) {
+      mapRef.current?.animateToRegion({...c, ...DELTA}, 0);
+    }
+  };
+
+  // 지도 준비 완료 → 대기 중인 목표가 있으면 그때 이동.
+  const handleMapReady = () => {
+    mapReadyRef.current = true;
+    if (targetRef.current) {
+      mapRef.current?.animateToRegion({...targetRef.current, ...DELTA}, 0);
+    }
+  };
+
+  // 피커를 열 때 초기 핀/카메라를 잡습니다.
+  //  ① 그 날에 이미 좌표가 있으면(위치 있는 날) → 그 좌표에 핀을 박고 카메라도 그쪽으로.
+  //     (사진 EXIF/이전 선택으로 검출된 여행지를 지도에 그대로 보여줘야 함 — 요구사항 1)
+  //  ② 좌표가 없으면(직접 선택하는 날) → 기기 현재 위치를 기본 핀으로 (요구사항 3).
+  //     권한 거부 / GPS 실패 시엔 기본 시작 위치(SEOUL)에서 핀 없이 시작.
   useEffect(() => {
     if (!visible) return;
+    // 새로 열 때마다 MapView 가 재마운트되므로 준비상태/목표를 초기화.
+    mapReadyRef.current = false;
+    targetRef.current = null;
+
+    // ① 위치 있는 날: 검출된 좌표를 그대로 핀으로.
+    if (initialLat != null && initialLon != null) {
+      const c = {latitude: initialLat, longitude: initialLon};
+      setPicked(c);
+      centerOn(c);
+      return;
+    }
+
+    // ② 위치 없는 날: 이전 핀을 지우고 현재 위치를 기본으로 잡습니다.
+    setPicked(null);
     (async () => {
       try {
         const {status} = await Location.requestForegroundPermissionsAsync();
@@ -112,15 +158,12 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
           longitude: pos.coords.longitude,
         };
         setPicked(c); // 핀 미리 박기 → 하단 "이 위치로 선택" 즉시 활성화
-        mapRef.current?.animateToRegion(
-          {...c, ...DELTA},
-          0, // 0ms = 즉시 이동 (열릴 때라 애니메이션 생략)
-        );
+        centerOn(c); // 지도 준비 여부와 무관하게 안전하게 이동(준비 전이면 onMapReady 가 처리)
       } catch (e) {
         console.error("초기 위치 설정 실패:", e);
       }
     })();
-  }, [visible]);
+  }, [visible, initialLat, initialLon]);
 
   // 안 열려 있으면 아무것도 그리지 않음(화면에서 사라짐).
   // ※ react-native-maps 의 MapView 는 Modal 안에서 Google Maps API key 인식이 실패하는
@@ -260,7 +303,13 @@ export default function LocationPicker({visible, onClose, onSelect}: Props) {
           ref={mapRef} // 위의 "리모컨"을 이 지도에 연결
           provider={PROVIDER_GOOGLE} // 구글 지도 사용(키는 app.json에 설정됨)
           style={{flex: 1}}
-          initialRegion={{...SEOUL, ...DELTA}} // 처음엔 서울 중심
+          // 위치 있는 날은 그 좌표를, 없으면 서울을 중심으로 마운트(이후 effect 가 현재 위치로 이동).
+          initialRegion={{
+            latitude: initialLat ?? SEOUL.latitude,
+            longitude: initialLon ?? SEOUL.longitude,
+            ...DELTA,
+          }}
+          onMapReady={handleMapReady} // 지도 준비 완료 시 대기 중인 목표로 카메라 이동
           onPress={(e) => setPicked(e.nativeEvent.coordinate)} // 탭한 좌표에 핀
         >
           {picked && <Marker coordinate={picked} />}
