@@ -443,7 +443,6 @@ async def upload_first_day_photos(
         raise HTTPException(status_code=400, detail="At least one photo is required")
     if day_number < 1:
         raise HTTPException(status_code=400, detail="day_number must be greater than 0")
-
     fallback_date = trip_date or date.today()
     drafts: list[UploadDraft] = []
     photo_id_list = []

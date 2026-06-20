@@ -86,15 +86,17 @@ _WRITE_PROMPT = """당신은 여행 사진 분석 결과를 보고 한국어 여
 반드시 아래 JSON 형식으로만, 다른 말 없이 답하세요.
 사진 분석 내용만 바탕으로 하루의 기록을 일기 형식으로 작성하세요.
 지역 이름을 일일이 나열하지 말고, 장소의 느낌 위주로 서술하세요.
-'한국식' 같은 불필요한 수식어는 빼고, 개인적인 감상과 느낌을 중심으로 작성하세요.
-오늘 하루를 되돌아보는 것처럼 편안하고 자연스러운 구어체로 작성하세요.
+입력에 없는 관계, 사건, 감정, 장소명은 새로 만들지 마세요.
+오늘 하루를 되돌아보는 일기처럼 자연스럽게 작성하세요.
+사진을 해설하듯 쓰지 말고, 사용자가 그 순간을 다시 떠올리는 일기처럼 작성하세요.
+'사진에는', '장면이었다' 같은 제3자 관찰 표현은 피하세요.
 
 [subtitle 규칙]
 1. 구체성: 여행지에서 먹은 음식, 본 풍경, 했던 경험 등 구체적인 소재를 반드시 하나 포함할 것.
-2. 말투: 친구에게 무심하게 한마디 툭 던지는 듯한 일상적인 구어체 사용. (예: "~하는 길에", "~에서 찾은", "~ 생각보다 좋음")
-3. 감성 금지: '낭만', '심장', '영원히', '눈부신', '잊지 못할' 같은 지나치게 감성적인 단어는 절대 사용하지 말 것.
+2. 말투: persona에 맞는 자연스러운 한국어 제목으로 작성할 것.
+3. 과장 금지: 입력 분석보다 지나치게 큰 의미를 부여하거나 없는 감정을 만들지 말 것.
 4. 길이: 공백 포함 25자 이내로 짧고 간결하게 작성할 것.
-5. 너는 20대 여행자의 일기장을 보고, 가장 자연스러운 한 줄 제목을 뽑아내는 에디터야.
+5. 너는 여행자의 하루 기록을 보고, 가장 자연스러운 한 줄 제목을 뽑아내는 에디터야.
 
 {
   "subtitle": "여행자가 친구에게 말하듯 간결하게 작성할 것",
@@ -102,6 +104,13 @@ _WRITE_PROMPT = """당신은 여행 사진 분석 결과를 보고 한국어 여
   "weather": "반드시 다음 중 하나만 사용하세요 (☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, '')",
   "emotion": "그 날의 감정을 나타내는 이모지 1개"
 }"""
+
+_PERSONA_STYLE_PROMPTS = {
+    "daily": "문체 지시: 담백하고 편안한 구어체로, 과장된 문학 표현과 불필요한 수식어는 피하세요.",
+    "playful": "문체 지시: 가볍고 재치 있는 구어체로 쓰되, 장면에 없는 농담이나 과장은 만들지 마세요.",
+    "poetic": "문체 지시: 실제 사진 분석에 있는 장면을 바탕으로 문학적인 표현을 사용하되, 사실을 꾸며내지는 마세요.",
+    "romantic": "문체 지시: 따뜻하고 다정한 분위기로 쓰되, 입력에 없는 관계성이나 과한 사랑 표현은 만들지 마세요. 사진 분석에 손잡기, 가까이 기대기, 나란히 앉기처럼 친밀한 장면이 명시되어 있으면 그 장면의 온기를 자연스럽게 살려 쓰세요.",
+}
 
 # [3단계 · LLM] 모든 일차가 완료되면, 전체 여행을 아우르는 짧은 제목 한 줄을 만듭니다.
 # write_diary 와 동일한 모델·호출 패턴을 쓰지만 입력은 "여러 날의 subtitle/본문 발췌".
@@ -234,6 +243,11 @@ def _normalize_persona(persona: str | None) -> str:
     return normalized if normalized in DIARY_PERSONAS else "daily"
 
 
+def _write_prompt_for_persona(persona: str) -> str:
+    style_prompt = _PERSONA_STYLE_PROMPTS.get(persona, _PERSONA_STYLE_PROMPTS["daily"])
+    return f"{_WRITE_PROMPT}\n\n{style_prompt}"
+
+
 def _openai_diary_model_for_persona(persona: str) -> str:
     env_name = f"DIARY_OPENAI_MODEL_{persona.upper()}"
     return os.getenv(env_name, DIARY_MODEL)
@@ -243,8 +257,26 @@ def _gemini_diary_endpoint_for_persona(persona: str) -> str:
     env_name = f"GEMINI_{persona.upper()}_ENDPOINT_ID"
     endpoint_id = (os.getenv(env_name) or "").strip()
     if not endpoint_id:
-        raise RuntimeError(f"{env_name} is not configured")
+        raise RuntimeError(
+            f"{env_name} is not configured. "
+            f"Set {env_name} or use DIARY_MODEL_PROVIDER=openai for this persona."
+        )
     return f"projects/{GEMINI_PROJECT_ID}/locations/{GEMINI_LOCATION}/endpoints/{endpoint_id}"
+
+
+def _generate_diary_with_openai(persona: str, user_text: str) -> dict:
+    model = _openai_diary_model_for_persona(persona)
+    resp = _client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": _write_prompt_for_persona(persona)},
+            {"role": "user", "content": user_text},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.2,
+    )
+    print(f"write_diary provider=openai persona={persona} model={resp.model}")
+    return _parse_dict(resp.choices[0].message.content)
 
 
 def _generate_diary_with_gemini(persona: str, user_text: str) -> dict:
@@ -255,7 +287,7 @@ def _generate_diary_with_gemini(persona: str, user_text: str) -> dict:
     )
     response = vertex_client.models.generate_content(
         model=_gemini_diary_endpoint_for_persona(persona),
-        contents=f"{_WRITE_PROMPT}\n\n{user_text}",
+        contents=f"{_write_prompt_for_persona(persona)}\n\n{user_text}",
         config=vertex_types.GenerateContentConfig(
             temperature=0.7,
             max_output_tokens=700,
@@ -376,18 +408,7 @@ def write_diary(
     if DIARY_MODEL_PROVIDER in {"gemini", "vertex", "vertexai"}:
         parsed = _generate_diary_with_gemini(persona, user_text)
     else:
-        model = _openai_diary_model_for_persona(persona)
-        resp = _client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": _WRITE_PROMPT},
-                {"role": "user", "content": user_text},
-            ],
-            response_format={"type": "json_object"},  # JSON 으로 받기(프롬프트와 이중 안전장치)
-            temperature=0.2,
-        )
-        print(f"write_diary provider=openai persona={persona} model={resp.model}")
-        parsed = _parse_dict(resp.choices[0].message.content)
+        parsed = _generate_diary_with_openai(persona, user_text)
 
     return {
         "subtitle": (parsed.get("subtitle") or "").strip(),

@@ -27,6 +27,9 @@ type Props = {
     lon: number,
     context?: {countryName?: string; cityName?: string},
   ) => void;
+  // 웹에선 미사용 — native 와 시그니처 일치 위해 동일하게 선언.
+  initialLat?: number | null;
+  initialLon?: number | null;
 };
 
 export default function LocationPicker({visible, onClose}: Props) {
