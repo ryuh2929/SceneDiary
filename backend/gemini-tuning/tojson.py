@@ -1,8 +1,8 @@
 import json
 
 # 읽을 파일(train.jsonl)과 저장할 파일(pretty.json) 경로
-input_file = r'D:\Project\SceneDiary\docs\gemini-tuning\daily-persona-preference.jsonl'
-output_file = r'D:\Project\SceneDiary\docs\gemini-tuning\my_data.json'
+input_file = r'D:\Project\SceneDiary\docs\gemini-tuning\happy-persona-preference.jsonl'
+output_file = r'D:\Project\SceneDiary\docs\gemini-tuning\persona_happy.json'
 
 data = []
 with open(input_file, 'r', encoding='utf-8') as f:

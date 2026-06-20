@@ -1,8 +1,12 @@
 import json
+from pathlib import Path
+
+base_dir = Path(__file__).parent
+
 
 # 읽을 파일(pretty.json)과 저장할 파일(train.jsonl) 경로
-input_file = r'D:\Project\SceneDiary\docs\gemini-tuning\my_data.json'
-output_file = r'D:\Project\SceneDiary\docs\gemini-tuning\train.jsonl'
+input_file = base_dir / 'persona_happy.json' 
+output_file = base_dir / 'train.jsonl'
 
 with open(input_file, 'r', encoding='utf-8') as fin, \
      open(output_file, 'w', encoding='utf-8') as fout:
@@ -14,4 +18,4 @@ with open(input_file, 'r', encoding='utf-8') as fin, \
     for entry in data:
         fout.write(json.dumps(entry, ensure_ascii=False) + '\n')
 
-print("변환 완료! train.jsonl 파일을 사용하세요.")
+print(f"변환 완료: {output_file}")
