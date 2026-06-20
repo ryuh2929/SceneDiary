@@ -316,13 +316,14 @@ export default function DiaryWritingScreen() {
     }
   };
   // 실패한 날 재생성 요청 → 그 날을 generating으로. 이후 폴링이 다시 ready로 되돌립니다.
-  const handleRegenerate = async () => {
+  // tripDayId 를 인자로 받아 "현재 날"뿐 아니라 "다음 날(실패)" 도 그 자리에서 재생성할 수 있게 합니다.
+  const handleRegenerate = async (tripDayId: number) => {
     setActionError(null);
     try {
-      await regenerateDay(day.tripDayId); // POST /trip-days/{id}/regenerate
+      await regenerateDay(tripDayId); // POST /trip-days/{id}/regenerate
       setDays((prev) =>
         prev.map((d) =>
-          d.tripDayId === day.tripDayId ? {...d, genStatus: "generating"} : d,
+          d.tripDayId === tripDayId ? {...d, genStatus: "generating"} : d,
         ),
       );
     } catch (e) {
@@ -415,6 +416,8 @@ export default function DiaryWritingScreen() {
         );
       }
       // 저장 성공 → 스냅샷 갱신. handleNext 가 동일 값으로 또 PATCH 하지 않도록.
+      // representImage 도 보존해야 flushCurrentDayChanges 의 representChanged 비교가 어긋나지 않음
+      // (빠뜨리면 picker 직후 "다음날로"에서 동일 위치를 또 PATCH 하게 됨).
       setOriginalLocations((prev) => ({
         ...prev,
         [day.tripDayId]: {
@@ -440,7 +443,8 @@ export default function DiaryWritingScreen() {
     );
   }
   // 에러거나 데이터가 없으면 안내 + 다시 시도 버튼.
-  if (error || !trip) {
+  // !day: days 가 비었거나(0일 여행/이상 응답) dayIndex 가 범위를 벗어난 경우 → 아래 day.xxx 접근 크래시 방지.
+  if (error || !trip || !day) {
     return (
       <View className="flex-1 items-center justify-center gap-4 bg-surface px-8 dark:bg-dark-surface">
         <Text className="text-center text-textSecondary dark:text-dark-textSecondary">
@@ -696,7 +700,7 @@ export default function DiaryWritingScreen() {
                   이 날의 일기를 생성하지 못했어요.
                 </Text>
                 <Pressable
-                  onPress={handleRegenerate}
+                  onPress={() => handleRegenerate(day.tripDayId)}
                   className="flex-row items-center gap-2 rounded-2xl bg-primary px-5 py-3"
                 >
                   <RotateCcw size={16} color="#FFFFFF" />
@@ -755,6 +759,17 @@ export default function DiaryWritingScreen() {
                 <Text className="font-sans-bold text-textOnPrimary">다음날로</Text>
                 <ChevronRight size={16} color="#FFFFFF" />
               </Pressable>
+            ) : nextDay?.genStatus === "failed" ? (
+              // 다음 날 생성 실패: "생성중" 스피너로 멈추지 않게, 그 자리에서 다음 날 재생성.
+              <Pressable
+                onPress={() => handleRegenerate(nextDay.tripDayId)}
+                className="flex-row items-center justify-center gap-2 rounded-2xl bg-primary py-4"
+              >
+                <RotateCcw size={16} color="#FFFFFF" />
+                <Text className="font-sans-bold text-textOnPrimary">
+                  다음 날 다시 생성하기
+                </Text>
+              </Pressable>
             ) : (
               // 다음 날 생성중: 비활성
               <View className="flex-row items-center justify-center gap-2 rounded-2xl bg-muted py-4 dark:bg-dark-muted">
@@ -769,10 +784,15 @@ export default function DiaryWritingScreen() {
       )}
 
       {/* 여행지 지도 피커 (앱 전용 오버레이 / 웹은 안내 모달) */}
+      {/* 그 날에 이미 좌표가 있으면 그 위치에 핀을 박고, 없으면 피커가 현재 위치를 기본으로 잡음.
+          객체가 아닌 원시값(number|null)으로 넘겨야 폴링 리렌더마다 피커 effect 가
+          재실행되어 사용자가 새로 찍은 핀을 덮어쓰는 일이 없음. */}
       <LocationPicker
         visible={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onSelect={handlePickLocation}
+        initialLat={day.representativeLat}
+        initialLon={day.representativeLon}
       />
     </View>
   );
