@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import React, { useEffect } from "react";
+import React from "react";
 import { useFonts } from "expo-font";
 import { DancingScript_400Regular } from "@expo-google-fonts/dancing-script";
 import {
@@ -9,14 +9,19 @@ import {
   Hahmlet_700Bold,
 } from "@expo-google-fonts/hahmlet";
 import { View } from "react-native";
+import * as SplashScreen from "expo-splash-screen";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { AppSettingsProvider } from "@/contexts/app-settings-context";
 import { useUserUuidBootstrap } from "@/hooks/use-user-uuid";
 import "../../global.css";
 import "@/api/client";
 
+// JS 로딩이 끝나기 전에 네이티브 스플래시가 먼저 사라지지 않도록 유지합니다.
+// 영상 오버레이가 준비되면 AnimatedSplashOverlay에서 직접 숨깁니다.
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
-  useUserUuidBootstrap()
+  const userReady = useUserUuidBootstrap();
   const [fontsLoaded] = useFonts({
     DancingScript: DancingScript_400Regular,
     Hahmlet: Hahmlet_400Regular,        // 추가
@@ -41,7 +46,7 @@ export default function RootLayout() {
         <Stack.Screen name="detail" />
         <Stack.Screen name="add" />
       </Stack>
-      <AnimatedSplashOverlay />
+      <AnimatedSplashOverlay ready={userReady} />
     </AppSettingsProvider>
   );
 }

@@ -7,6 +7,13 @@
 .antigravity/
 .antigravity*
 
+# Local splash render previews
+preview-splash-fast/
+.splash-render-profile*/
+frontend/src/assets/splash/scenediary-splash-v3*.mp4
+!frontend/src/assets/splash/scenediary-splash-v3-3s.mp4
+!frontend/src/assets/splash/scenediary-splash-v3-3s-dark.mp4
+
 # Runtime uploaded images
 backend/uploads/
 

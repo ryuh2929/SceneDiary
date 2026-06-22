@@ -10,6 +10,7 @@ export default {
     name: "SceneDiary",
     slug: "scenediary",
     version: "1.0.0",
+    userInterfaceStyle: "automatic",
     icon: "./assets/images/icon.png",
     scheme: "frontend",
     updates: {
@@ -56,10 +57,11 @@ export default {
       [
         "expo-splash-screen",
         {
-          backgroundColor: "#208AEF",
+          backgroundColor: "#152538",
           image: "./assets/images/splash-icon.png",
           imageWidth: 76,
           android: {
+            backgroundColor: "#152538",
             image: "./assets/images/splash-icon.png",
             imageWidth: 76,
           },
