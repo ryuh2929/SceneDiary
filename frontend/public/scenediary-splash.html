@@ -349,88 +349,80 @@ function play() {
   init();
 
   // onComplete에 startDust 추가
-  const tl = gsap.timeline();
+  const tl = gsap.timeline({ onComplete: () => startDust() });
 
   // ── 종이 촤르륵 ──
-  tl.to('#paper_group_01', { opacity:1, duration:0.18, ease:'power2.out' })
-    .to({}, { duration:0.22 });
+  tl.to('#paper_group_01', { opacity:1, duration:0.3, ease:'power2.out' })
+    .to({}, { duration:0.5 });
 
   S1.forEach((frame, i) => {
     if (i !== 0) {
-      tl.to(frame, { opacity:1, duration:0.055, ease:'power3.in' }, i === 1 ? '+=0.2' : '>')
+      tl.to(frame, { opacity:1, duration:0.08, ease:'power3.in' }, i === 1 ? '+=0.5' : '>')
         .set(S1[i-1], { opacity:0 });
     }
   });
 
-  tl.addLabel('climax', '+=0.03');
+  tl.addLabel('climax', '+=0.05');
 
   // ── 흰 먼지 폭발 ──
   tl.to('.dust', {
     x:'random(-150,150)', y:'random(-200,50)',
     opacity:'random(0.3,0.6)', scale:'random(0.5,2)',
-    duration:0.35, ease:'power3.out', stagger:0.005,
+    duration:0.6, ease:'power3.out', stagger:0.01,
   }, 'climax-=0.1')
   .to('.dust', {
-    opacity:0, y:'-=40', duration:0.5, ease:'sine.in', stagger:0.006,
-  }, 'climax+=0.2');
+    opacity:0, y:'-=40', duration:1.2, ease:'sine.in', stagger:0.02,
+  }, 'climax+=0.3');
 
   // ── 배경 전환 ──
   tl.to(S1, { opacity:0, duration:0.1 }, 'climax')
-    .to('#bg_layer', { backgroundColor:'#c5d2e3', duration:0.65, ease:'power1.inOut' }, 'climax')
-    .to('#cloud_left',  { opacity:0.6, x:'-50%', z:300, rotationY:40,  scale:2.2, duration:0.45, ease:'power2.out' }, 'climax')
-    .to('#cloud_right', { opacity:0.35, x:'50%', z:200, rotationY:-40, scale:1.8, duration:0.45, ease:'power2.out' }, 'climax')
+    .to('#bg_layer', { backgroundColor:'#c5d2e3', duration:1.8, ease:'power1.inOut' }, 'climax')
+    .to('#cloud_left',  { opacity:0.6, x:'-50%', z:300, rotationY:40,  scale:2.2, duration:3.5, ease:'power2.inOut' }, 'climax')
+    .to('#cloud_right', { opacity:0.35, x:'50%', z:200, rotationY:-40, scale:1.8, duration:3.5, ease:'power2.inOut' }, 'climax')
 
   // ── 보케 피어오름 ──
     .to('.bokeh', {
       opacity:(i) => BOKEH_CONFIG[i].opacity, scale:1,
-      duration:0.75, ease:'power2.out', stagger:0.04,
-    }, 'climax+=0.12')
+      duration:2.8, ease:'power2.out', stagger:0.15,
+    }, 'climax+=0.2')
 
   // ── 스파클 ──
     .to('.sparkle', {
       x:'random(-130,130)', y:'random(-180,80)',
       opacity:'random(0.3,0.6)', scale:'random(0.5,7.5)',
-      duration:0.38, ease:'power1.out', stagger:0.008,
+      duration:2.2, ease:'power1.out', stagger:0.06,
     }, 'climax+=0.1');
 
   // ── 사진 팬 버스트 (PHOTO_FAN, back.out) ──
   tl.to('.photo-particle', {
     x:(i) => PHOTO_FAN[i].x, y:(i) => PHOTO_FAN[i].y,
     rotation:(i) => PHOTO_FAN[i].rotation, scale:(i) => PHOTO_FAN[i].scale,
-    opacity:0.88, duration:0.4, ease:'back.out(0.72)',
-    stagger:{ each:0.035, from:'center' },
+    opacity:0.88, duration:0.58, ease:'back.out(0.72)',
+    stagger:{ each:0.055, from:'center' },
   }, 'climax')
-  .to('.photo-particle', { opacity:0, y:'-=20', duration:0.22, ease:'sine.in' }, 'climax+=0.38');
+  .to('.photo-particle', { opacity:0, y:'-=20', duration:0.3, ease:'sine.in' }, 'climax+=0.55');
 
-  // 전체 동작은 약 2.1초에 끝내고, 남은 시간에는 로고가 안정적으로 보이게 합니다.
-  tl.addLabel('aftermath', 'climax+=0.45');
+  // ── 보케 float 시작 ──
+  tl.call(() => startBokehFloat(), [], 'climax+=0.5');
+
+  tl.addLabel('aftermath', 'climax+=1.8');
 
   // ── 구름 걷힘 + 파티클 사라짐 ──
-  tl.to('#cloud_left', { autoAlpha:0, x:'-130%', duration:0.4, ease:'power2.in' }, 'aftermath')
-    .to('#cloud_right', { autoAlpha:0, x:'130%', duration:0.4, ease:'power2.in' }, 'aftermath')
-    .to('.sparkle', { opacity:0, y:'-=20', duration:0.55, ease:'sine.inOut', stagger:0.006 }, 'climax+=0.55')
-    .to('.bokeh', { opacity:(i) => BOKEH_CONFIG[i].opacity * 0.4, duration:0.35, ease:'sine.inOut' }, 'aftermath')
+  tl.to(['#cloud_left','#cloud_right'], { opacity:0, duration:1.8, ease:'power2.inOut' }, 'aftermath')
+    .to('.sparkle', { opacity:0, y:'-=20', duration:1.2, ease:'sine.inOut', stagger:0.04 }, 'aftermath')
+    .to('.bokeh', { opacity:(i) => BOKEH_CONFIG[i].opacity * 0.4, duration:1.5, ease:'sine.inOut' }, 'aftermath')
 
   // ── 로고 + 텍스트 스며듦 ──
-    .to('#logo_group_00', { opacity:1,    duration:0.5,  ease:'power2.out' }, 'aftermath')
-    .to('#text_group_01', { opacity:0.15, duration:0.25, ease:'sine.out'   }, 'aftermath+=0.05')
-    .to('#text_group_02', { opacity:0.4,  duration:0.25, ease:'sine.out'   }, 'aftermath+=0.1')
-    .to('#text_group_03', { opacity:0.8,  duration:0.25, ease:'sine.out'   }, 'aftermath+=0.15')
+    .to('#logo_group_00', { opacity:1,    duration:1.2, ease:'power2.out'  }, 'aftermath')
+    .to('#text_group_01', { opacity:0.15, duration:0.6, ease:'sine.out'    }, 'aftermath+=0.2')
+    .to('#text_group_02', { opacity:0.4,  duration:0.6, ease:'sine.out'    }, 'aftermath+=0.35')
+    .to('#text_group_03', { opacity:0.8,  duration:0.6, ease:'sine.out'    }, 'aftermath+=0.5')
     .to('#dust_container .final-glow', {
       opacity:(i) => 0.26 + Math.random()*0.28,
-      duration:0.35, ease:'sine.out', stagger:0.006,
+      duration:1.65, ease:'sine.out', stagger:0.028,
     }, 'aftermath');
 }
 
-window.addEventListener('message', (event) => {
-  if (event.data?.type !== 'scenediary-splash-photos' || !Array.isArray(event.data.photos)) return;
-  document.querySelectorAll('.photo-particle').forEach((el, i) => {
-    el.src = event.data.photos[i % event.data.photos.length];
-    el.alt = '';
-  });
-});
-
-window.parent?.postMessage({ type: 'scenediary-splash-ready' }, '*');
 window.addEventListener('load', () => play());
 </script>
 </body>
