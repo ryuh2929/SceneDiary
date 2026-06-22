@@ -1,4 +1,4 @@
-import React, { useState,useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import {
 } from "lucide-react-native";
 import Twemoji from "react-native-twemoji";
 import { DarkModeBackground } from "@/components/dark-mode-background";
-import { getTrips} from "@/api/home";
+import { getTrips } from "@/api/home";
 import { Trip } from "@/types/api";
 import { useAppThemeColors } from "@/constants/app-colors";
 import { useAppSettings } from "@/contexts/app-settings-context";
@@ -26,7 +26,6 @@ import {
   codepointToEmoji as emojiCodepointToEmoji,
   resolveTripFlagCodepoint,
 } from "@/utils/emoji";
-
 
 // ─────────────────────────────────────────────
 // 🔧 유틸 함수 섹션
@@ -106,7 +105,7 @@ export default function HomeScreen() {
   const userProfile = useUserStore((state) => state.userProfile);
   const loadTripData = async () => {
     // 🌟 [안전장치] 혹시라도 userId가 없으면 즉시 종료
-    if (!userProfile?.userId|| currentYear === null) return;
+    if (!userProfile?.userId || currentYear === null) return;
     try {
       setIsLoading(true); // 로딩 시작
       setError(null); // 이전 에러 초기화
@@ -115,19 +114,21 @@ export default function HomeScreen() {
       const data = await getTrips(currentYear, userProfile?.userId);
       console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
       console.log("데이터 불러옴");
-      
+
       //받아온 전체 데이터 중, 실제 start_date의 연도가 currentYear와 일치하는 것만
-      const filteredData = data.filter(item => {
-      return new Date(item.start_date).getFullYear() === currentYear;
-    });
+      const filteredData = data.filter((item) => {
+        return new Date(item.start_date).getFullYear() === currentYear;
+      });
       setTripData(filteredData); // 필터링된 진짜 해당 연도 데이터만 화면 리스트에 세팅
 
-      // [화살표 잠금 연동]: 데이터가 '진짜로 존재하는 연도들'을 수집할 때도 
+      // [화살표 잠금 연동]: 데이터가 '진짜로 존재하는 연도들'을 수집할 때도
       // filteredData가 아니라 원본 data(전체 데이터)를 활용하면 유저가 작성한 모든 연도가 자동으로 수집
       if (data && data.length > 0) {
-      const allYears = data.map(item => new Date(item.start_date).getFullYear());
-      setHasDataYears(Array.from(new Set(allYears))); // ex) [2025, 2026]이 자동으로 들어감!
-    }
+        const allYears = data.map((item) =>
+          new Date(item.start_date).getFullYear(),
+        );
+        setHasDataYears(Array.from(new Set(allYears))); // ex) [2025, 2026]이 자동으로 들어감!
+      }
     } catch (err: any) {
       setTripData([]);
       console.log("API 에러 전체:", err);
@@ -150,13 +151,12 @@ export default function HomeScreen() {
         /* 필요 시 정리 작업 */
       };
     }, [currentYear, userProfile]), //의존성 배열에 userProfile을 반드시 추가해야 값이 들어온 순간 반응
-    
   );
 
   // ─────────────────────────────────────────────
   // ⚙️ 화살표 제어 및 연도 건너뛰기(Jump) 계산 구역
   // ─────────────────────────────────────────────
-  
+
   // 1. 유효한 연도 목록을 오름차순으로 정렬합니다 (예: [2016, 2025, 2026])
   const sortedAvailableYears = [...hasDataYears].sort((a, b) => a - b);
 
@@ -167,7 +167,8 @@ export default function HomeScreen() {
   // 배열의 맨 첫 칸이거나 배열에 존재하지 않으면 왼쪽 잠금
   const isLeftDisabled = currentIdx <= 0 || currentIdx === -1;
   // 배열의 맨 마지막 칸이거나 배열에 존재하지 않으면 오른쪽 잠금
-  const isRightDisabled = currentIdx >= sortedAvailableYears.length - 1 || currentIdx === -1;
+  const isRightDisabled =
+    currentIdx >= sortedAvailableYears.length - 1 || currentIdx === -1;
 
   // 4. 껑충껑충 건너뛰는 화살표 핸들러 함수
   const handlePrevYear = () => {
@@ -193,7 +194,6 @@ export default function HomeScreen() {
     setExpandedId(expandedId === id ? null : id);
   };
 
- 
   // 🌟 4. [기다리기 처리] 유저 ID가 아직 안 들어왔다면 화면 자체를 홀딩합니다.
   if (!userProfile?.userId) {
     return (
@@ -203,8 +203,6 @@ export default function HomeScreen() {
       </View>
     );
   }
-
-  
 
   // ─────────────────────────────────────────────
   // 🖥️ UI 렌더링
@@ -216,41 +214,41 @@ export default function HomeScreen() {
       <View className="bg-surface pt-safe pb-md items-center border-b border-border shadow-sm dark:border-dark-border dark:bg-dark-surface">
         <Text className="text-xl font-logo text-logo mt-sm">SceneDiary</Text>
 
-      {!isLoading && sortedAvailableYears.length > 0 && (
-        <View className="flex-row items-center justify-center gap-xl mt-md">
-          <Pressable
-            // onPress={() => setCurrentYear((prev) => prev - 1)}
-            onPress={handlePrevYear}
-            className="p-xs"
-            disabled={isLeftDisabled}
-            style={{
-              // 잠겼을 때는 25% 투명도로 흐리게 만들고, 누를 수 있을 때는 100%(1) 쨍하게 만듭니다.
-              opacity: isLeftDisabled ? 0.25 : 1
-            }}
-          >
-            <ChevronLeft size={20} color={colors.textSecondary} />
-          </Pressable>
+        {!isLoading && sortedAvailableYears.length > 0 && (
+          <View className="flex-row items-center justify-center gap-xl mt-md">
+            <Pressable
+              // onPress={() => setCurrentYear((prev) => prev - 1)}
+              onPress={handlePrevYear}
+              className="p-xs"
+              disabled={isLeftDisabled}
+              style={{
+                // 잠겼을 때는 25% 투명도로 흐리게 만들고, 누를 수 있을 때는 100%(1) 쨍하게 만듭니다.
+                opacity: isLeftDisabled ? 0.25 : 1,
+              }}
+            >
+              <ChevronLeft size={20} color={colors.textSecondary} />
+            </Pressable>
 
-          <Text className="text-lg text-textPrimary font-sans-bold dark:text-dark-textPrimary">
-            {currentYear}
-          </Text>
+            <Text className="text-lg text-textPrimary font-sans-bold dark:text-dark-textPrimary">
+              {currentYear}
+            </Text>
 
-        <Pressable
-          // onPress={() => setCurrentYear((prev) => prev + 1)}
-          onPress={handleNextYear}
-          className="p-xs"
-          // 🎯 앞서 계산한 최대 연도 조건(isRightDisabled)을 여기에 대입합니다.
-          disabled={isRightDisabled}
-          style={{
-            opacity: isRightDisabled ? 0.25 : 1
-          }}
-        >
-            <ChevronRight size={20} color={colors.textSecondary} />
-          </Pressable>
-        </View>
-           )}
+            <Pressable
+              // onPress={() => setCurrentYear((prev) => prev + 1)}
+              onPress={handleNextYear}
+              className="p-xs"
+              // 🎯 앞서 계산한 최대 연도 조건(isRightDisabled)을 여기에 대입합니다.
+              disabled={isRightDisabled}
+              style={{
+                opacity: isRightDisabled ? 0.25 : 1,
+              }}
+            >
+              <ChevronRight size={20} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+        )}
       </View>
-       
+
       <FlatList
         className="flex-1"
         data={tripData}

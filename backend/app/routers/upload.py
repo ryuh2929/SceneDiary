@@ -443,8 +443,6 @@ async def upload_first_day_photos(
         raise HTTPException(status_code=400, detail="At least one photo is required")
     if day_number < 1:
         raise HTTPException(status_code=400, detail="day_number must be greater than 0")
-    # photo_gps_latitudes = "37.363595"
-    # photo_gps_longitudes = "126.96334666666667"
     fallback_date = trip_date or date.today()
     drafts: list[UploadDraft] = []
     photo_id_list = []
@@ -476,6 +474,7 @@ async def upload_first_day_photos(
             raw = values[idx].strip()
             return raw or None
         print(f"DEBUG: 현재 인덱스: {index}")
+        print(f"DEBUG: photo_place_names 리스트 상태: {photo_place_names}")
         print(f"DEBUG: photo_country_names 리스트 상태: {photo_country_names}")
         print(f"DEBUG: photo_city_names 리스트 상태: {photo_city_names}")
         print(f"DEBUG: 추출된 country_name: {_form_str_at(photo_country_names, index)}")
@@ -508,6 +507,7 @@ async def upload_first_day_photos(
     photo_taken_dates = sorted({draft.photo_date for draft in drafts})
     effective_start = photo_taken_dates[0]
     effective_end = photo_taken_dates[-1]
+    print("DEBUG:","trip 데이터 가져오기")
     trip = _get_or_create_trip(
         db,
         trip_id=trip_id,
@@ -531,7 +531,6 @@ async def upload_first_day_photos(
         for index, grouped_date in enumerate(photo_taken_dates)
     }
     _renumber_trip_days_by_date(db, trip.id)
-    
     base = _base_url(request)
     uploaded: list[UploadedPhoto] = []
     uploaded_by_day_id: dict[int, list[UploadedPhoto]] = {}
@@ -553,7 +552,6 @@ async def upload_first_day_photos(
                 status_code=400,
                 detail=f"Photos are limited to {MAX_UPLOAD_PHOTOS_PER_DAY} per day",
             )
-
         uploaded_by_day_id[trip_day.id] = []
         processing_items = [
             (index, draft, existing_count + index)
@@ -583,6 +581,7 @@ async def upload_first_day_photos(
                     )
                 )
             except Exception as exc:
+                print("어디서 튕기는거야 대체")
                 failed_filename = next((draft.original_filename for _, draft, _ in batch), None)
                 raise HTTPException(
                     status_code=400,
@@ -612,6 +611,7 @@ async def upload_first_day_photos(
                     display_order=display_order,
                     created_at=datetime.now(),
                 )
+                print("location_name 확인하기:",draft.place_name)
                 db.add(photo)
                 db.flush()
                 new_photo = {"img_id": photo.id, "file_url": photo.file_url}
@@ -648,8 +648,6 @@ async def upload_first_day_photos(
                 trip_day.location_summary = Counter(place_candidates).most_common(1)[0][0]
                 print(trip_day.location_summary)
                 
-                
-
     generation_jobs: list[tuple[int, int]] = []
     for trip_day in trip_days_by_date.values():
         running = (

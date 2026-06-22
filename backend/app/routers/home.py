@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy.orm import Session , joinedload
 from sqlalchemy import extract
 from fastapi.encoders import jsonable_encoder
@@ -57,7 +57,8 @@ def get_mainlList(
     tripList = _get_tripList(db, year, user_id)
 
     if not tripList:  # None(데이터 없음) 일 때 
-        return {"message": "해당 여행 정보를 찾을 수 없습니다."} 
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+
     
     
     # 각 여행 객체를 순회하며 일차별 상세 스케줄을 동적으로 주입
