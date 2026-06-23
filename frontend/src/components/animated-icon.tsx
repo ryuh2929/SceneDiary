@@ -1,17 +1,18 @@
+import * as SplashScreen from 'expo-splash-screen';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
-import { BackHandler, Modal, Platform, StyleSheet, View } from 'react-native';
+import { BackHandler, Modal, StyleSheet, View } from 'react-native';
 import { useAppSettings } from '@/contexts/app-settings-context';
 
 const MIN_SHOW_MS = 3000;
 const MAX_WAIT_MS = 3000;
 
-// 네이티브 스플래시는 플랫폼 기본 동작으로 자동 종료하고,
-// 이 컴포넌트는 3초 영상 오버레이만 담당합니다.
 export function AnimatedSplashOverlay({ ready = false }: { ready?: boolean }) {
   const { isDarkMode, isLoaded } = useAppSettings();
   const [visible, setVisible] = useState(true);
   const fadeStartedRef = useRef(false);
+  const nativeSplashHiddenRef = useRef(false);
+  const nativeSplashFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startTimeRef = useRef(Date.now());
 
   // 앱 설정이 준비되기 전에는 라이트 영상을 사용하고, 준비된 뒤 현재 테마를 반영합니다.
@@ -26,6 +27,33 @@ export function AnimatedSplashOverlay({ ready = false }: { ready?: boolean }) {
     videoPlayer.muted = true;
     videoPlayer.play();
   });
+
+  const hideNativeSplash = () => {
+    if (nativeSplashHiddenRef.current) return;
+    nativeSplashHiddenRef.current = true;
+
+    if (nativeSplashFallbackRef.current) {
+      clearTimeout(nativeSplashFallbackRef.current);
+      nativeSplashFallbackRef.current = null;
+    }
+
+    void SplashScreen.hideAsync();
+  };
+
+  const handleModalShow = () => {
+    if (nativeSplashHiddenRef.current || nativeSplashFallbackRef.current) return;
+
+    // 영상 첫 프레임 이벤트가 오지 않더라도 앱이 네이티브 스플래시에 갇히지 않게 합니다.
+    nativeSplashFallbackRef.current = setTimeout(hideNativeSplash, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (nativeSplashFallbackRef.current) {
+        clearTimeout(nativeSplashFallbackRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const h = BackHandler.addEventListener('hardwareBackPress', () => true);
@@ -59,6 +87,7 @@ export function AnimatedSplashOverlay({ ready = false }: { ready?: boolean }) {
       statusBarTranslucent
       transparent
       visible={visible}
+      onShow={handleModalShow}
     >
       <View style={styles.overlay}>
         <VideoView
@@ -66,7 +95,8 @@ export function AnimatedSplashOverlay({ ready = false }: { ready?: boolean }) {
           style={styles.video}
           nativeControls={false}
           contentFit="cover"
-          {...(Platform.OS === 'android' ? { surfaceType: 'textureView' } : {})}
+          surfaceType="textureView"
+          onFirstFrameRender={hideNativeSplash}
         />
       </View>
     </Modal>
