@@ -18,19 +18,18 @@ import "@/api/client";
 
 // JS 로딩이 끝나기 전에 네이티브 스플래시가 먼저 사라지지 않도록 유지합니다.
 // 영상 오버레이가 준비되면 AnimatedSplashOverlay에서 직접 숨깁니다.
-SplashScreen.preventAutoHideAsync();
+// SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const userReady = useUserUuidBootstrap();
   const [fontsLoaded] = useFonts({
     DancingScript: DancingScript_400Regular,
-    Hahmlet: Hahmlet_400Regular,        // 추가
-    HahmletBold: Hahmlet_600SemiBold,       // 추가
+    Hahmlet: Hahmlet_400Regular, // 추가
+    HahmletBold: Hahmlet_600SemiBold, // 추가
     // Hahmlet은 굵기별 파일명이 따로 있어서 화면에서 쓰는 weight를 명시적으로 로드합니다.
     HahmletMedium: Hahmlet_500Medium,
     HahmletSemiBold: Hahmlet_600SemiBold,
     HahmletRealBold: Hahmlet_700Bold,
-
   });
 
   if (!fontsLoaded) {

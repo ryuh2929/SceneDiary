@@ -112,7 +112,7 @@ export default function HomeScreen() {
       setTripData([]); // 이전 데이터 초기화
 
       const data = await getTrips(currentYear, userProfile?.userId);
-      console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+      // console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
       console.log("데이터 불러옴");
 
       //받아온 전체 데이터 중, 실제 start_date의 연도가 currentYear와 일치하는 것만
