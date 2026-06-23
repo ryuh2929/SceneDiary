@@ -1,12 +1,13 @@
-import * as SplashScreen from 'expo-splash-screen';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
-import { BackHandler, Modal, StyleSheet, View } from 'react-native';
+import { BackHandler, Modal, Platform, StyleSheet, View } from 'react-native';
 import { useAppSettings } from '@/contexts/app-settings-context';
 
 const MIN_SHOW_MS = 3000;
 const MAX_WAIT_MS = 3000;
 
+// 네이티브 스플래시는 플랫폼 기본 동작으로 자동 종료하고,
+// 이 컴포넌트는 3초 영상 오버레이만 담당합니다.
 export function AnimatedSplashOverlay({ ready = false }: { ready?: boolean }) {
   const { isDarkMode, isLoaded } = useAppSettings();
   const [visible, setVisible] = useState(true);
@@ -25,10 +26,6 @@ export function AnimatedSplashOverlay({ ready = false }: { ready?: boolean }) {
     videoPlayer.muted = true;
     videoPlayer.play();
   });
-
-  useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
 
   useEffect(() => {
     const h = BackHandler.addEventListener('hardwareBackPress', () => true);
@@ -69,7 +66,7 @@ export function AnimatedSplashOverlay({ ready = false }: { ready?: boolean }) {
           style={styles.video}
           nativeControls={false}
           contentFit="cover"
-          surfaceType="textureView"
+          {...(Platform.OS === 'android' ? { surfaceType: 'textureView' } : {})}
         />
       </View>
     </Modal>

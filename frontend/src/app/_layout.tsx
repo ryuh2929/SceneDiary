@@ -9,16 +9,11 @@ import {
   Hahmlet_700Bold,
 } from "@expo-google-fonts/hahmlet";
 import { View } from "react-native";
-import * as SplashScreen from "expo-splash-screen";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { AppSettingsProvider } from "@/contexts/app-settings-context";
 import { useUserUuidBootstrap } from "@/hooks/use-user-uuid";
 import "../../global.css";
 import "@/api/client";
-
-// JS 로딩이 끝나기 전에 네이티브 스플래시가 먼저 사라지지 않도록 유지합니다.
-// 영상 오버레이가 준비되면 AnimatedSplashOverlay에서 직접 숨깁니다.
-SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const userReady = useUserUuidBootstrap();
@@ -34,7 +29,9 @@ export default function RootLayout() {
   });
 
   if (!fontsLoaded) {
-    return <View className="flex-1 bg-background" />;
+    // 네이티브 스플래시가 자동으로 닫힌 뒤 영상 오버레이가 준비되기 전까지
+    // 같은 배경색을 유지해 순간적인 흰 화면 노출을 최소화합니다.
+    return <View style={{ flex: 1, backgroundColor: "#152538" }} />;
   }
   return (
     <AppSettingsProvider>
