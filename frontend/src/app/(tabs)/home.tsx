@@ -327,7 +327,7 @@ export default function HomeScreen() {
                   <Text className="text-sm text-primary font-sans">
                     {isExpanded
                       ? "접기"
-                      : `여행 상세 (${item.tripDays.length}일)`}
+                      : `${item.tripDays.length}일간의 기록`}
                   </Text>
 
                   <ChevronDown
