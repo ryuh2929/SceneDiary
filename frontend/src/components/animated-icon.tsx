@@ -37,7 +37,7 @@ export function AnimatedSplashOverlay({ ready = false }: { ready?: boolean }) {
       nativeSplashFallbackRef.current = null;
     }
 
-    void SplashScreen.hideAsync();
+    // void SplashScreen.hideAsync();
   };
 
   const handleModalShow = () => {
