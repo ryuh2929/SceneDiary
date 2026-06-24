@@ -56,9 +56,10 @@ export function AnimatedSplashOverlay({ ready = false }: { ready?: boolean }) {
   }, []);
 
   useEffect(() => {
+    if (!visible) return;
     const h = BackHandler.addEventListener('hardwareBackPress', () => true);
     return () => h.remove();
-  }, []);
+  }, [visible]);
 
   const startFadeOut = () => {
     if (fadeStartedRef.current) return;
