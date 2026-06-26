@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 """
-Compare Gemini base vs DFO-tuned diary model outputs.
+Compare Gemini base vs DPO-tuned diary model outputs.
 
 이 스크립트가 하는 일은 단순합니다.
 1. eval-cases-*.json의 중립 입력을 읽습니다.
 2. 실행 시점에 persona와 실제 앱 시스템 프롬프트를 붙입니다.
-3. 같은 입력을 base 모델과 DFO 파인튜닝 endpoint에 넣습니다.
+3. 같은 입력을 base 모델과 DPO 파인튜닝 endpoint에 넣습니다.
 4. 두 출력을 보여주고 사람이 더 나은 쪽을 고릅니다.
 5. 선택 결과와 간단한 통계를 JSON으로 저장합니다.
 
