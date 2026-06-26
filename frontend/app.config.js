@@ -37,6 +37,7 @@ export default {
       "expo-router",
       "expo-font",
       "expo-web-browser",
+      "expo-video",
       [
         "expo-media-library",
         {
@@ -76,7 +77,7 @@ export default {
       EXPO_PUBLIC_GOOGLE_MAPS_API_KEY:
         process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       eas: {
-        // projectId: "7a721926-fa9a-470f-ace4-f4aa3666005c",
+         projectId: "7a721926-fa9a-470f-ace4-f4aa3666005c",
       },
     },
   },
