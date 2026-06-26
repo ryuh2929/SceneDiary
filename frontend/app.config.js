@@ -39,6 +39,16 @@ export default {
       "expo-web-browser",
       "expo-video",
       [
+        "expo-build-properties",
+        {
+          android: {
+            // 개발/테스트용: 백엔드가 http(평문 LAN)라서 release(preview) 빌드에서도
+            // 평문 통신을 허용해야 연결됨. (debug/Expo Go 는 원래 허용이라 지금까진 됐던 것)
+            usesCleartextTraffic: true,
+          },
+        },
+      ],
+      [
         "expo-media-library",
         {
           photosPermission:
