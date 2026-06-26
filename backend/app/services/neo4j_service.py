@@ -1,99 +1,57 @@
 from app.db.neo4j_session import aura_neo4j
 import uuid
-from datetime import datetime
+from datetime import datetime,date, timezone
 import json
+from typing import List, Optional, Any
+from pydantic import BaseModel, Field
+from datetime import datetime, timezone
 
 
-async def extract_trip_graph_seed(image_content: list[dict]) -> dict:
-    system_prompt = """
-당신은 여행 사진들을 분석해 지식그래프 저장에 필요한 구조화 데이터를 추출하는 VLM 분석가입니다.
+# 스키마 정의
+class Place(BaseModel):
+    name: Optional[str] = None # 장소 명
+    type: Optional[str] = None  #"landmark|restaurant|cafe|beach|street|unknown"
+    country: Optional[str] = None # 나라명 
+    city: Optional[str] = None # 도시명
+    lat: Optional[float] = None # 위치
+    lng: Optional[float] = None # 위치
+    confidence: Optional[float] = 0.0 # 사진 분석 정확도
 
-사진 1~10장을 하나의 여행 기록으로 보고 아래 JSON만 반환하세요.
+class Keyword(BaseModel):
+    name: List[str] = Field(default_factory=list) # 키워드 명 "밥", "치즈", "사람들", "영화관 좌석"
+    type: List[str] = Field(default_factory=list)  # 장소 유형 "landmark|restaurant|unknown"
+    weight: Optional[float] = 0.0
 
-규칙:
-- 확실하지 않은 정보는 null 또는 빈 배열로 둡니다.
-- 장소는 국가/도시/장소명으로 분리합니다.
-- keywords는 GraphRAG 검색에 쓸 수 있게 구체적인 명사 중심으로 추출합니다.
-- memories는 사진에서 보이는 장면/사건 단위로 2~6개 생성합니다.
-- 과장하지 말고 사진에서 관찰 가능한 내용 위주로 작성합니다.
-- summaryShort는 다음 과거 회상을 위해 (누가, 어디서, 무엇을, 어떻게) 짧게 10~20자 내외로 작성합니다. 
-- 한국어로 답변합니다.
+class Day_Memory(BaseModel):
+    title: Optional[str] = None # 당일 제목
+    description: Optional[str] = None # 당일 내용
+    day_number: Optional[int] = 1 # 일차
+    mood: Optional[str] = None # 당일 기분
+    weather: Optional[str] = None # 당일 날씨
+    keywords: Optional[Keyword] = None #당일 키워드
+    place: List[Place] = Field(default_factory=list) # 당일 장소
+    emotions: Optional[str] = None  # 당일 기분
+    summaryShort: Optional[str] = None # 당일 내용 요약
 
-출력 JSON:
-{
-  "trip": {
-    "title": "string",
-    "summary": "string",
-    "mood": "string",
-    "travelType": "string",
-    "summaryShort": "string"
-    "startDate": null,
-    "endDate": null
-  },
-  "places": [
-    {
-      "name": "string",
-      "type": "country|city|landmark|restaurant|cafe|beach|street|unknown",
-      "country": "string|null",
-      "city": "string|null",
-      "lat": null,
-      "lng": null,
-      "confidence": 0.0
-    }
-  ],
-  "keywords": [
-    {
-      "name": "string",
-      "type": "place|food|activity|emotion|object|mood",
-      "weight": 0.0
-    }
-  ],
-  "memories": [
-    {
-      "title": "string",
-      "description": "string",
-      "sequence": 1,
-      "mood": "string",
-      "confidence": 0.0,
-      "placeName": "string|null",
-      "keywords": ["string"],
-      "foods": ["string"],
-      "activities": ["string"],
-      "emotions": ["string"]
-    }
-  ]
-}
-"""
+class TripData(BaseModel):
+    title: Optional[str] = None # 여행 제목
+    mood_persona: Optional[str] = None # 작성 페르소나
+    travelType: Optional[str] = None # 국기(국냉여행, 해외여행)
+    startDate: Optional[date] = None
+    endDate: Optional[date] = None
 
-    content = [
-        {"type": "text", "text": "이 여행 사진들을 분석해서 지식그래프 저장용 JSON을 만들어줘."},
-        *image_content
-    ]
-
-    response = get_VisionLLM(prompt=system_prompt, content=content, preferred_model="llava:latest")
-    raw = response["content"]
-    print("비전 provider:", response["provider"])
-    print("비전 model:", response["model"])
-    print("비전 content:", response["content"])
-    print("=" * 50)
-    return safe_json_loads(raw)
-
-def safe_json_loads(raw: str) -> dict:
-    raw = raw.strip()
-    if raw.startswith("```json"):
-        raw = raw.removeprefix("```json").removesuffix("```").strip()
-    elif raw.startswith("```"):
-        raw = raw.removeprefix("```").removesuffix("```").strip()
-    return json.loads(raw)
+class Seed(BaseModel):
+    trip: TripData # 여행
+    days: List[Day_Memory] = Field(default_factory=list)# 여행 상세
 
 # seed에서 과거 데이터의 카테고리를 찾아내기
 async def fetch_past_graph_context(
         user_id: str,
-        seed: dict,
+        seed: Seed,
         limit: int = 3
 ) -> list[dict]:
-    keyword_names = [k["name"] for k in seed.get("keywords", []) if k.get("name")]
-    place_names = [p["name"] for p in seed.get("places", []) if p.get("name")]
+    keyword_names = [k.name for k in (seed.keywords or []) if k.name]
+    place_names = [p.name for p in (seed.places or []) if p.name]
 
     query = """
     MATCH (u:User {userId: $userId})-[:WENT_ON]->(pastTrip:Trip)
@@ -155,24 +113,17 @@ async def fetch_past_graph_context(
 
 
 
-async def save_trip_graph(
+def save_trip_graph(
         user_id: str,
         user_name:str,
-        seed: dict,
-        diary: dict,
-        photos: list[dict],
-        start_date,end_date,
-        trip_id:int,
-        diary_id:int
-) -> str:
+        seed: Seed,
+        trip_id:int
+) -> bool:
     trip_id = str(trip_id)
-    diary_id = str(diary_id)
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
 
-    trip = seed.get("trip", {})
-    places = seed.get("places", [])
-    keywords = seed.get("keywords", [])
-    memories = seed.get("memories", [])
+    trip = seed.trip
+    days = [mem.model_dump() for mem in seed.days]
 
     query = """
     MERGE (u:User {userId: $userId})
@@ -183,14 +134,12 @@ async def save_trip_graph(
       t.startDate = CASE WHEN $startDate IS NULL THEN null ELSE date($startDate) END,
       t.endDate = CASE WHEN $endDate IS NULL THEN null ELSE date($endDate) END,
       t.title = $title,
-      t.summary = $summary,
-      t.mood = $mood,
+      t.mood_persona = $mood_persona,
       t.travelType = $travelType,
       t.createdAt = datetime($createdAt)
     ON MATCH SET
       t.title = $title,
-      t.summary = $summary,
-      t.mood = $mood,
+      t.mood_persona = $mood_persona,
       t.travelType = $travelType,
       t.updatedAt = datetime($createdAt)
 
@@ -198,84 +147,70 @@ async def save_trip_graph(
 
     WITH t
 
-    UNWIND $keywords AS keyword
-      MERGE (k:Keyword {normalizedName: toLower(trim(keyword.name))})
-      ON CREATE SET
-        k.name = keyword.name,
-        k.type = keyword.type
-      MERGE (t)-[hk:HAS_KEYWORD]->(k)
-      ON CREATE SET hk.weight = keyword.weight
-      ON MATCH SET hk.weight = CASE
-        WHEN hk.weight IS NULL THEN keyword.weight
-        WHEN keyword.weight > hk.weight THEN keyword.weight
-        ELSE hk.weight
-      END
-
-    WITH t
-
-    UNWIND $memories AS memory
+    UNWIND $days_memories AS memory
       MERGE (m:Memory {
         tripId: $tripId,
-        sequence: memory.sequence
+        day_number: memory.day_number
       })
       ON CREATE SET
         m.memoryId = randomUUID(),
         m.title = memory.title,
         m.description = memory.description,
         m.mood = memory.mood,
-        m.confidence = memory.confidence
+        m.weather = memory.weather,
+        m.emotions = memory.emotions,
+        m.summaryShort = memory.summaryShort
+        
       ON MATCH SET
         m.title = memory.title,
         m.description = memory.description,
         m.mood = memory.mood,
-        m.confidence = memory.confidence
+        m.weather = memory.weather,
+        m.emotions = memory.emotions,
+        m.summaryShort = memory.summaryShort
 
       MERGE (t)-[hm:HAS_MEMORY]->(m)
-      ON CREATE SET hm.sequence = memory.sequence
+      SET hm.day_number = memory.day_number
 
       WITH t, m, memory
 
-      FOREACH (kw IN coalesce(memory.keywords, []) |
-        MERGE (mk:Keyword {normalizedName: toLower(trim(kw))})
-        ON CREATE SET mk.name = kw
-        MERGE (m)-[:HAS_KEYWORD {weight: 0.8}]->(mk)
+      OPTIONAL MATCH (m)-[oldKw:HAS_KEYWORD]->(:Keyword)
+      DELETE oldKw
+
+      WITH t, m, memory
+
+      OPTIONAL MATCH (m)-[oldPlace:ATE]->(:Place)
+      DELETE oldPlace
+
+      WITH t, m, memory
+
+      FOREACH (kwName IN CASE
+        WHEN memory.keywords IS NULL THEN []
+        ELSE coalesce(memory.keywords.name, [])
+      END |
+        MERGE (mk:Keyword {normalizedName: toLower(trim(kwName))})
+        ON CREATE SET 
+          mk.name = kwName,
+          mk.type = CASE
+            WHEN size(coalesce(memory.keywords.type, [])) > 0
+            THEN memory.keywords.type[0]
+            ELSE "unknown"
+          END
+        MERGE (m)-[hk:HAS_KEYWORD]->(mk)
+        SET hk.weight = coalesce(memory.keywords.weight, 0.8)
       )
 
-      FOREACH (foodName IN coalesce(memory.foods, []) |
-        MERGE (f:Food {normalizedName: toLower(trim(foodName))})
-        ON CREATE SET f.name = foodName
-        MERGE (m)-[ate:ATE]->(f)
-        ON CREATE SET ate.confidence = memory.confidence
-      )
-
-      FOREACH (activityName IN coalesce(memory.activities, []) |
-        MERGE (a:Activity {normalizedName: toLower(trim(activityName))})
-        ON CREATE SET a.name = activityName
-        MERGE (m)-[did:DID]->(a)
-        ON CREATE SET did.confidence = memory.confidence
-      )
-
-      FOREACH (emotionName IN coalesce(memory.emotions, []) |
-        MERGE (e:Emotion {normalizedName: toLower(trim(emotionName))})
-        ON CREATE SET
-          e.name = emotionName,
-          e.polarity = "unknown"
-        MERGE (m)-[felt:FELT]->(e)
-        ON CREATE SET felt.intensity = memory.mood
-      )
-
-      FOREACH (_ IN CASE WHEN memory.placeName IS NULL THEN [] ELSE [1] END |
-        MERGE (mp:Place {
-          normalizedName: toLower(trim(memory.placeName)),
-          type: "unknown"
-        })
-        ON CREATE SET
-          mp.placeId = randomUUID(),
-          mp.name = memory.placeName
-        MERGE (m)-[ha:HAPPENED_AT]->(mp)
-        ON CREATE SET
-          ha.source = "vlm",
-          ha.confidence = memory.confidence
+      FOREACH (p_obj IN [p IN coalesce(memory.place, []) WHERE p.name IS NOT NULL] |
+        MERGE (p:Place {normalizedName: toLower(trim(p_obj.name))})
+        ON CREATE SET 
+          p.name = p_obj.name,
+          p.type = p_obj.type,
+          p.country = p_obj.country,
+          p.city = p_obj.city,
+          p.lat = toFloat(p_obj.lat),
+          p.lng = toFloat(p_obj.lng),
+          p.confidence = p_obj.confidence
+        MERGE (m)-[ate:ATE]->(p)
       )
     """
 
@@ -283,18 +218,75 @@ async def save_trip_graph(
         "userId": user_id,
         "userName": user_name,
         "tripId": trip_id,
-        "startDate": start_date,
-        "endDate": end_date,
-        "title": diary.get("title") or trip.get("title"),
-        "summary": diary.get("summary") or trip.get("summary"),
-        "mood": diary.get("mood") or trip.get("mood"),
-        "travelType": trip.get("travelType"),
+        "startDate": trip.startDate.isoformat() if trip.startDate else None,
+        "endDate": trip.endDate.isoformat() if trip.endDate else None,
+        "title": trip.title,
+        "mood_persona": trip.mood_persona,
+        "travelType": trip.travelType,
         "createdAt": now,
-        "keywords": keywords,
-        "memories": memories,
+        "days_memories": days,
     }
 
-    async with aura_neo4j.get_session() as session:
-        await session.run(query, **params)
+    try:
+      with aura_neo4j.get_session() as session:
+          result = session.run(query, **params)
+          result.consume()
 
-    return trip_id
+      print("neo4j 저장 성공")
+      return True
+
+    except Exception as exc:
+        print("neo4j 저장 실패")
+        print(f"[neo4j] save_trip_graph failed: {exc}")
+        return False
+
+
+from app.db.models import TripDay, Trip  # 💡 경로와 파일명은 실제 프로젝트 구조에 맞게 수정하세요.
+def update_trip_day_graph(trip_day: TripDay, trip: Trip) -> bool:
+    query = """
+    MERGE (t:Trip {tripId: $tripId})
+    SET
+      t.title = $tripTitle,
+      t.travelType = $travelType,
+      t.updatedAt = datetime($updatedAt)
+
+    MERGE (m:Memory {
+      tripId: $tripId,
+      day_number: $dayNumber
+    })
+    ON CREATE SET
+      m.memoryId = randomUUID()
+    SET
+      m.title = $title,
+      m.description = $description,
+      m.weather = $weather,
+      m.emotions = $emotions,
+      m.summaryShort = $summaryShort,
+      m.locationSummary = $locationSummary,
+      m.updatedAt = datetime($updatedAt)
+
+    MERGE (t)-[hm:HAS_MEMORY]->(m)
+    SET hm.day_number = $dayNumber
+    """
+
+    params = {
+        "tripId": str(trip.id),
+        "tripTitle": trip.title,
+        "travelType": trip.flag,
+        "dayNumber": trip_day.day_number,
+        "title": trip_day.subtitle,
+        "description": trip_day.content,
+        "weather": trip_day.weather,
+        "emotions": trip_day.emotion,
+        # "summaryShort": trip_day.content,
+        "locationSummary": trip_day.location_summary,
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+    }
+
+    try:
+        with aura_neo4j.get_session() as session:
+            session.run(query, **params).consume()
+        return True
+    except Exception as exc:
+        print(f"[neo4j] update_trip_day_graph failed: {exc}")
+        return False

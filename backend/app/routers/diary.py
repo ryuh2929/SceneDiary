@@ -36,6 +36,7 @@ from app.schemas.diary import (
 )
 from app.services.travel_style_analysis import run_travel_style_analysis
 from app.utils.country_flags import country_to_flag
+from collections import Counter
 
 router = APIRouter(tags=["diary"])
 
@@ -256,6 +257,7 @@ def update_trip_day(
 ) -> DayPage:
     # 진단용 로그 — 어떤 필드가 들어왔는지 확인. 안정화되면 제거.
     print(
+        f"데이터 저장하기: "
         f"[trip-day PATCH] id={trip_day_id} "
         f"loc={body.locationSummary!r} content_len={len(body.content) if body.content is not None else None} "
         f"lat={body.lat} lon={body.lon} "
@@ -298,6 +300,11 @@ def update_trip_day(
                 trip.flag = country_to_flag(body.countryName)
     db.commit()
     db.refresh(trip_day)
+    trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
+    if trip:
+        from app.services.neo4j_service import update_trip_day_graph
+        ok = update_trip_day_graph(trip_day, trip)
+        print("neo4j trip_day update result:", ok)
     return _build_day(db, trip_day, _base_url(request))
 
 
@@ -309,12 +316,21 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
     """
     # openai 의존을 서버 시작과 분리하려고 여기서 지연 import.
     from app.services.diary_generator import analyze_photo, write_diary
+    from app.services.neo4j_service import (Seed,Place,Keyword,Day_Memory,TripData,save_trip_graph,update_trip_day_graph)
+    graph_trip = TripData()
+    graph_dayMemory: list[Day_Memory] = []
+    graph_place: list[Place] = []
+    graph_keyword = Keyword()
+    mood_list = []
 
     db = SessionLocal()
     started = time.monotonic()
     image_path = []
     try:
         trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
+        trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
+        user = db.query(User).filter(User.id == trip.user_id).first() if trip else None
+        
         photos = (
             db.query(Photo)
             .filter(Photo.trip_day_id == trip_day_id, Photo.deleted_at.is_(None))
@@ -375,6 +391,28 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                     )
                 )
                 analyses.append(analysis["analysis_text"])
+                print("사진속 기분?:",analysis_json.get("mood"))
+                mood_list.append(analysis_json.get("mood"))
+
+                # 2. 이중 for문을 사용하여 objects 내부의 아이템들을 set에 추가
+                # .get()을 사용해 "objects" 키가 없거나 비어있어도 안전하게 처리
+                objects_list = analysis_json.get("objects") or []
+
+                for obj in objects_list:
+                    graph_keyword.name.append(str(obj))
+
+                graph_keyword.type.append(analysis_json.get("place_type") or "unknown")
+                
+                photo_place = Place(
+                    name=analysis_json.get("landmark_guess") or "unknown",
+                    type=analysis_json.get("place_type") or "unknown",
+                    country=p.country_name,
+                    city=p.city_name,
+                    lat=float(p.latitude) if p.latitude else None,
+                    lng=float(p.longitude) if p.longitude else None,
+                    confidence=float(analysis_json.get("landmark_confidence") or 0.0)
+                )
+                graph_place.append(photo_place)
             except Exception as exc:  # 사진 1장 분석 실패는 기록만 하고 계속 진행
                 db.add(
                     PhotoGeneration(
@@ -386,10 +424,9 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                 )
                 print(f"[diary-gen] photo analyze FAILED: photo={p.id}: {exc}")
         db.commit()  # 분석 이력 먼저 저장(2단계가 실패해도 분석은 남도록)
-
+        
         # ── 2단계: 모은 분석으로 일기 작성(사진 없이 텍스트만) ──
-        trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
-        user = db.query(User).filter(User.id == trip.user_id).first() if trip else None
+        
         persona = (user.writing_persona if user else None) or "daily"
         result = write_diary(
             analyses,
@@ -397,7 +434,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             date=trip_day.date.isoformat(),
             persona=persona,
         )
-
+        
         # 결과 저장: 합치기 후 일기 내용이 trip_day 에 직접 들어감
         trip_day.content = result["content"]
         trip_day.word_count = len(result["content"])
@@ -410,6 +447,35 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
         gen.status = "success"
         gen.response_text = json.dumps(result, ensure_ascii=False)
         db.commit()
+
+        # 그래프 디비를 위한 DTO 처리 
+        graph_dayMemory.append(
+                    Day_Memory(
+                        title=trip_day.subtitle,
+                        description=trip_day.content,
+                        day_number=trip_day.day_number,
+                        weather=trip_day.weather,
+                        keywords=graph_keyword,
+                        mood=Counter(mood_list).most_common(1)[0][0] if mood_list else None,
+                        place=graph_place,
+                        emotions=trip_day.emotion,
+                        summaryShort=result["summaryShort"] # 요약내용
+                    )
+                )
+        graph_trip.title = trip.title
+        graph_trip.mood_persona = persona
+        graph_trip.travelType=trip.flag
+        graph_trip.startDate=trip.start_date
+        graph_trip.endDate=trip.end_date
+
+        graph_seed = Seed(
+            trip=graph_trip,
+            days=graph_dayMemory
+        )
+        ok = save_trip_graph(user.id,user.nickname,graph_seed,trip.id)
+        print("neo4j 저장 결과: ",ok)
+
+
         elapsed = time.monotonic() - started
         print(
             f"[diary-gen] done: trip_day={trip_day_id} in {elapsed:.1f}s "
@@ -486,6 +552,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                     if generated_img_id:
                         trip.cover_photo_id = generated_img_id
                     db.commit()
+                    ok = update_trip_day_graph(trip_day, trip)
                     print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
         except Exception as exc:
             # 제목 생성 실패해도 일기 본문 흐름엔 영향 없게 — 로그만.
@@ -525,7 +592,6 @@ def regenerate_trip_day(
     )
     db.add(gen)
     db.commit()
-
     # 느린 생성은 응답 후 백그라운드에서. (사진 여러 장이면 수십 초)
     background_tasks.add_task(_run_generation, trip_day_id, gen.id)
     return DayStatus(tripDayId=trip_day.id, genStatus="generating")
@@ -539,6 +605,7 @@ def update_trip_status(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> TripStatusUpdate:
+    print("여기가 진짜 저장 하는곳:",trip_id)
     trip = _get_trip_or_404(db, trip_id)
     previous_status = trip.status
     trip.status = body.status
