@@ -1,5 +1,24 @@
 from __future__ import annotations
 
+"""
+Create persona-neutral diary evaluation cases from photo_generations rows.
+
+이 스크립트는 DB의 photo_generations.id 범위를 받아서, 사람이 모델 비교 평가에 쓸
+중립 JSON 파일을 만듭니다.
+
+중요한 점:
+  - 이 파일은 학습셋을 만들지 않습니다.
+  - persona, system prompt, 기존 생성 일기 결과를 넣지 않습니다.
+  - 출력 JSON에는 location/date/photo_analyses와 추적용 id만 들어갑니다.
+  - persona별 payload 조립은 run_pairwise_diary_eval.py가 실행 시점에 합니다.
+
+실행 예:
+  docker exec -w /app -e PYTHONPATH=/app scenediary-backend \
+    python gemini-tuning/export_diary_inputs_from_photo_generations.py \
+      --start-id 660 --end-id 685 \
+      --output-prefix /app/gemini-tuning/eval-cases-photo-generation-660-685
+"""
+
 import argparse
 import json
 import os
@@ -8,7 +27,16 @@ from pathlib import Path
 from sqlalchemy import create_engine, text
 
 def build_records(start_id: int, end_id: int) -> list[dict]:
+    """photo_generations 범위를 trip_day 단위 평가 케이스로 묶습니다.
+
+    photo_generations는 사진 1장 단위 분석 결과이고, write_diary()는 하루치 사진 분석
+    여러 개를 한 번에 받습니다. 그래서 photo_id -> trip_day_id를 따라가서 같은
+    trip_day에 속한 분석들을 하나의 case로 그룹핑합니다.
+    """
     engine = create_engine(os.environ["DATABASE_URL"])
+
+    # 기존 ChatGPT/Gemini가 만든 일기 결과는 의도적으로 조회하지 않습니다.
+    # 평가셋 원본에는 모델 출력이 섞이면 안 되고, 오직 입력 데이터만 있어야 합니다.
     sql = text(
         """
         SELECT
@@ -44,6 +72,7 @@ def build_records(start_id: int, end_id: int) -> list[dict]:
 
     groups: dict[int, dict] = {}
     for row in rows:
+        # 실패한 사진 분석이나 빈 분석은 write_diary 입력으로 쓸 수 없어 제외합니다.
         if row["photo_generation_status"] != "success" or not row["analysis_text"]:
             continue
 
@@ -63,6 +92,8 @@ def build_records(start_id: int, end_id: int) -> list[dict]:
             },
         )
         group = groups[key]
+
+        # source_* 필드는 나중에 어떤 DB row에서 만들어진 평가 케이스인지 추적하기 위한 정보입니다.
         group["source_photo_generation_ids"].append(row["photo_generation_id"])
         group["source_photo_ids"].append(row["photo_id"])
         group["source_photos"].append(
@@ -83,6 +114,7 @@ def build_records(start_id: int, end_id: int) -> list[dict]:
 
     records = []
     for group in groups.values():
+        # write_diary()가 받는 photo_analyses 형식과 동일하게 order를 1부터 다시 매깁니다.
         analyses = [
             {"order": index, "analysis_text": analysis}
             for index, analysis in enumerate(group.pop("_analyses"), 1)
@@ -99,6 +131,7 @@ def build_records(start_id: int, end_id: int) -> list[dict]:
 
 
 def main() -> None:
+    """CLI 인자를 받아 JSON 평가셋 파일을 생성합니다."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--start-id", type=int, required=True)
     parser.add_argument("--end-id", type=int, required=True)
@@ -117,6 +150,7 @@ def main() -> None:
     )
     jsonl_path = None
     if args.jsonl:
+        # 기본 목적은 JSON 평가셋이지만, 외부 배치 도구가 JSONL을 요구할 때만 선택적으로 만듭니다.
         jsonl_path = output_prefix.with_suffix(".jsonl")
         jsonl_path.write_text(
             "\n".join(json.dumps(record, ensure_ascii=False) for record in records) + "\n",
