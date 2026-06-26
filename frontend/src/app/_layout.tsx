@@ -18,7 +18,7 @@ import "@/api/client";
 
 // JS 로딩이 끝나기 전에 네이티브 스플래시가 먼저 사라지지 않도록 유지합니다.
 // 영상 오버레이가 준비되면 AnimatedSplashOverlay에서 직접 숨깁니다.
-SplashScreen.preventAutoHideAsync();
+// SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const userReady = useUserUuidBootstrap();

@@ -25,6 +25,7 @@ from openai import OpenAI
 import google.generativeai as genai
 from google import genai as vertex_genai
 from google.genai import types as vertex_types
+from app.services.diary_prompts import write_prompt_for_persona as shared_write_prompt_for_persona
 
 # 환경변수로 덮어쓸 수 있게(없으면 로컬 Ollama 기본값).
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
@@ -248,8 +249,7 @@ def _normalize_persona(persona: str | None) -> str:
 
 
 def _write_prompt_for_persona(persona: str) -> str:
-    style_prompt = _PERSONA_STYLE_PROMPTS.get(persona, _PERSONA_STYLE_PROMPTS["daily"])
-    return f"{_WRITE_PROMPT}\n\n{style_prompt}"
+    return shared_write_prompt_for_persona(persona)
 
 
 def _openai_diary_model_for_persona(persona: str) -> str:
