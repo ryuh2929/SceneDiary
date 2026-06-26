@@ -22,9 +22,19 @@ Create persona-neutral diary evaluation cases from photo_generations rows.
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
+
+# 직접 실행할 때도 backend 기준 import/env 처리가 되도록 경로를 고정합니다.
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+PROJECT_DIR = BACKEND_DIR.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+load_dotenv(PROJECT_DIR / ".env")
 
 def build_records(start_id: int, end_id: int) -> list[dict]:
     """photo_generations 범위를 trip_day 단위 평가 케이스로 묶습니다.
