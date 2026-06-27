@@ -24,13 +24,12 @@ export default function RootLayout() {
   const userReady = useUserUuidBootstrap();
   const [fontsLoaded] = useFonts({
     DancingScript: DancingScript_400Regular,
-    Hahmlet: Hahmlet_400Regular,        // 추가
-    HahmletBold: Hahmlet_600SemiBold,       // 추가
+    Hahmlet: Hahmlet_400Regular, // 추가
+    HahmletBold: Hahmlet_600SemiBold, // 추가
     // Hahmlet은 굵기별 파일명이 따로 있어서 화면에서 쓰는 weight를 명시적으로 로드합니다.
     HahmletMedium: Hahmlet_500Medium,
     HahmletSemiBold: Hahmlet_600SemiBold,
     HahmletRealBold: Hahmlet_700Bold,
-
   });
 
   if (!fontsLoaded) {
