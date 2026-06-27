@@ -316,7 +316,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
     """
     # openai 의존을 서버 시작과 분리하려고 여기서 지연 import.
     from app.services.diary_generator import analyze_photo, write_diary
-    from app.services.neo4j_service import (Seed,Place,Keyword,Day_Memory,TripData,save_trip_graph,update_trip_day_graph)
+    from app.services.neo4j_service import (Seed,Place,Keyword,Day_Memory,TripData,save_trip_graph,update_trip_day_graph,past_graph_context)
     graph_trip = TripData()
     graph_dayMemory: list[Day_Memory] = []
     graph_place: list[Place] = []
@@ -472,6 +472,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             trip=graph_trip,
             days=graph_dayMemory
         )
+        past_graph_context(user.id,graph_seed)
         ok = save_trip_graph(user.id,user.nickname,graph_seed,trip.id)
         print("neo4j 저장 결과: ",ok)
 

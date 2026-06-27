@@ -45,41 +45,57 @@ class Seed(BaseModel):
     days: List[Day_Memory] = Field(default_factory=list)# 여행 상세
 
 # seed에서 과거 데이터의 카테고리를 찾아내기
-async def fetch_past_graph_context(
+def past_graph_context(
         user_id: str,
         seed: Seed,
         limit: int = 3
 ) -> list[dict]:
-    keyword_names = [k.name for k in (seed.keywords or []) if k.name]
-    place_names = [p.name for p in (seed.places or []) if p.name]
+    keyword_names = [
+        name
+        for day in seed.days
+        if day.keywords
+        for name in (day.keywords.name or [])
+        if name
+    ]
+    place_names = [
+        place.name
+        for day in seed.days
+        for place in (day.place or [])
+        if place.name
+    ]
 
+    keyword_names = list(dict.fromkeys(keyword_names))
+    place_names = list(dict.fromkeys(place_names))
+    print("입력 키워드:",keyword_names)
+    print("입력 장소:",place_names)
     query = """
     MATCH (u:User {userId: $userId})-[:WENT_ON]->(pastTrip:Trip)
 
-    OPTIONAL MATCH (pastTrip)-[:HAS_KEYWORD]->(k:Keyword)
-    OPTIONAL MATCH (pastTrip)-[:VISITED]->(p:Place)
     OPTIONAL MATCH (pastTrip)-[:HAS_MEMORY]->(m:Memory)
     OPTIONAL MATCH (m)-[:HAS_KEYWORD]->(mk:Keyword)
-    OPTIONAL MATCH (pastTrip)-[:HAS_DIARY]->(d:DiaryEntry)
+    OPTIONAL MATCH (pastTrip)-[:VISITED]->(p:Place)
 
-    WITH pastTrip, d,
-         collect(DISTINCT k.name) + collect(DISTINCT mk.name) AS allKeywords,
-         collect(DISTINCT p.name) AS allPlaces,
-         collect(DISTINCT {
-            title: m.title,
-            description: m.description,
-            mood: m.mood,
-            sequence: m.sequence
-         }) AS memories
+    WITH pastTrip,
+     collect(DISTINCT mk.name) AS allKeywords,
+     collect(DISTINCT p.name) AS allPlaces,
+     collect(DISTINCT {
+        title: m.title,
+        description: m.description,
+        mood: m.mood,
+        day_number: m.day_number,
+        weather: m.weather,
+        emotions: m.emotions,
+        summaryShort: m.summaryShort
+     }) AS memories
 
-    WITH pastTrip, d, allKeywords, allPlaces, memories,
-         size([x IN allKeywords WHERE x IN $keywordNames]) AS keywordScore,
-         size([x IN allPlaces WHERE x IN $placeNames]) AS placeScore
+    WITH pastTrip, allKeywords, allPlaces, memories,
+        size([x IN allKeywords WHERE x IN $keywordNames]) AS keywordScore,
+        size([x IN allPlaces WHERE x IN $placeNames]) AS placeScore
 
-    WITH pastTrip, d, allKeywords, allPlaces, memories,
-         keywordScore,
-         placeScore,
-         keywordScore + placeScore * 2 AS totalScore
+    WITH pastTrip, allKeywords, allPlaces, memories,
+        keywordScore,
+        placeScore,
+        keywordScore + placeScore * 2 AS totalScore
 
     WHERE totalScore > 0
 
@@ -88,9 +104,8 @@ async def fetch_past_graph_context(
       pastTrip.title AS title,
       pastTrip.startDate AS startDate,
       pastTrip.endDate AS endDate,
-      pastTrip.summary AS summary,
-      pastTrip.mood AS mood,
-      d.content AS diaryContent,
+      pastTrip.travelType AS travelType,
+      pastTrip.mood_persona AS mood_persona,
       allKeywords AS matchedKeywords,
       allPlaces AS matchedPlaces,
       memories AS memories,
@@ -100,16 +115,23 @@ async def fetch_past_graph_context(
     LIMIT $limit
     """
 
-    async with aura_neo4j.get_session() as session:
-        result = await session.run(
+    with aura_neo4j.get_session() as session:
+        result = session.run(
             query,
             userId=user_id,
             keywordNames=keyword_names,
             placeNames=place_names,
             limit=limit
         )
-        return [record.data() async for record in result]
-    
+        records = [record.data() for record in result]
+
+        print("조회 키워드:", keyword_names)
+        print("조회 장소:", place_names)
+        print("조회 내용:")
+        for record in records:
+            print(record)
+            
+        return records
 
 
 
@@ -179,7 +201,7 @@ def save_trip_graph(
 
       WITH t, m, memory
 
-      OPTIONAL MATCH (m)-[oldPlace:ATE]->(:Place)
+      OPTIONAL MATCH (m)-[oldPlace:VISITED]->(:Place)
       DELETE oldPlace
 
       WITH t, m, memory
@@ -210,7 +232,7 @@ def save_trip_graph(
           p.lat = toFloat(p_obj.lat),
           p.lng = toFloat(p_obj.lng),
           p.confidence = p_obj.confidence
-        MERGE (m)-[ate:ATE]->(p)
+        MERGE (m)-[visited:VISITED]->(p)
       )
     """
 
@@ -241,7 +263,7 @@ def save_trip_graph(
         return False
 
 
-from app.db.models import TripDay, Trip  # 💡 경로와 파일명은 실제 프로젝트 구조에 맞게 수정하세요.
+from app.db.models import TripDay, Trip
 def update_trip_day_graph(trip_day: TripDay, trip: Trip) -> bool:
     query = """
     MERGE (t:Trip {tripId: $tripId})
@@ -261,7 +283,6 @@ def update_trip_day_graph(trip_day: TripDay, trip: Trip) -> bool:
       m.description = $description,
       m.weather = $weather,
       m.emotions = $emotions,
-      m.summaryShort = $summaryShort,
       m.locationSummary = $locationSummary,
       m.updatedAt = datetime($updatedAt)
 
@@ -278,7 +299,6 @@ def update_trip_day_graph(trip_day: TripDay, trip: Trip) -> bool:
         "description": trip_day.content,
         "weather": trip_day.weather,
         "emotions": trip_day.emotion,
-        # "summaryShort": trip_day.content,
         "locationSummary": trip_day.location_summary,
         "updatedAt": datetime.now(timezone.utc).isoformat(),
     }
