@@ -457,7 +457,7 @@ def write_trip_title(
             if item.get("img_id") is not None
         ],
     }
-
+    print("제목 생성할때 참고하는것들: ",payload)
     user_text = (
         "다음 여행 일기 요약과 후보 사진을 보고 여행 제목과 대표사진을 정해줘.\n"
         "반드시 JSON 객체 하나만 반환해.\n"
@@ -471,7 +471,7 @@ def write_trip_title(
         f"입력 데이터:\n{json.dumps(payload, ensure_ascii=False)}"
     )
     print("AI에게 보내는 대표사진 후보:", candidate_img_ids)
-
+    print("제목 AI 모델명:",TITLE_MODEL_PROVIDER)
     if TITLE_MODEL_PROVIDER in {"openai", "chatgpt", "gpt"}:
         resp = _client.chat.completions.create(
             model=TITLE_MODEL,

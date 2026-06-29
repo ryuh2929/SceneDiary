@@ -36,6 +36,7 @@ _MODEL_NAME = os.getenv("DIARY_MODEL", "gemma4:e4b")
 MAX_UPLOAD_PHOTOS_PER_DAY = 8
 MAX_UPLOAD_BYTES = 12 * 1024 * 1024
 IMAGE_PROCESSING_CONCURRENCY = 3
+DEAFULT_TRIP_TITLE = "제목 생성 중..."
 
 LoadingStep = Literal[
     "uploading",
@@ -429,7 +430,7 @@ async def upload_first_day_photos(
     trip_id: int | None = Form(None),
     day_number: int = Form(1),
     trip_date: date | None = Form(None),
-    title: str = Form("새 여행"),
+    title: str = Form(DEAFULT_TRIP_TITLE),
     destination: str | None = Form(None),
     db: Session = Depends(get_db),
 ) -> FirstDayUploadResponse:
@@ -437,6 +438,7 @@ async def upload_first_day_photos(
     # EXIF 촬영일이 있으면 날짜별로 trip_day를 나누고, 없으면 요청 날짜를 fallback으로 씁니다.
     # GPS는 프론트가 리사이즈 전에 추출해서 form으로 보낸 값을 우선 사용하고, 없으면 raw_bytes에서 fallback합니다.
     print("업로드 시작")
+    print("업로드 생성 시작 title:",title)
     print(f"DEBUG: 프론트에서 넘어온 국가 리스트: {photo_country_names}")
     print(f"DEBUG: 프론트에서 넘어온 도시 리스트: {photo_city_names}")
     if not files:
@@ -508,6 +510,8 @@ async def upload_first_day_photos(
     effective_start = photo_taken_dates[0]
     effective_end = photo_taken_dates[-1]
     print("DEBUG:","trip 데이터 가져오기")
+    print("DEBUG:","trip title 확인하기",title)
+
     trip = _get_or_create_trip(
         db,
         trip_id=trip_id,
@@ -683,39 +687,6 @@ async def upload_first_day_photos(
 
     db.commit()
     print("AI가 사진 분석 하기2")
-    
-    # 제목을 만들기
-            
-    if False and trip is not None and (not trip.title or trip.title == "새 여행"):
-        from app.services.diary_generator import write_trip_title
-
-        all_days = (
-            db.query(TripDay)
-            .filter(TripDay.trip_id == trip.id)
-            .order_by(TripDay.day_number)
-            .all()
-        )
-        days_payload = [
-            {
-                "subtitle": d.subtitle or "",
-                # 너무 길면 토큰 낭비. 앞 200자만 발췌해 분위기 전달.
-                "content_excerpt": (d.content or "")[:200],
-            }
-            for d in all_days
-        ]
-        title_dict = write_trip_title(days_payload, destination=trip.destination or "", path_list=None,photo_info=photo_id_list)
-        if title_dict:
-            generated_title = (title_dict.get("title") or "").strip()
-            generated_img_id = title_dict.get("img_id")
-            if generated_title:
-                trip.title = generated_title
-            if generated_img_id:
-                try:
-                    trip.cover_photo_id = int(generated_img_id)
-                except (TypeError, ValueError):
-                    pass
-            db.commit()
-            print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
     
     # 일차 데이터 api호출
     for trip_day_id, gen_id in generation_jobs:

@@ -1,8 +1,8 @@
 // 일기 작성/검토 화면 (읽기 전용 멀티데이 뷰어)
 //
 
-import {Image} from "expo-image";
-import {useLocalSearchParams, useRouter} from "expo-router";
+import { Image } from "expo-image";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   AlertCircle,
   Calendar,
@@ -12,7 +12,7 @@ import {
   Pencil,
   RotateCcw,
 } from "lucide-react-native";
-import React, {useCallback, useEffect, useRef, useState} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -21,7 +21,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import {useSafeAreaInsets} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Twemoji from "react-native-twemoji";
 
 import {
@@ -29,13 +29,14 @@ import {
   fetchDayStatuses,
   fetchTripDay,
   fetchTripDiary,
+  getTripTitle,
   regenerateDay,
   saveDayContent,
   saveDayLocation,
 } from "@/api/diary";
 import LocationPicker from "@/components/ui/GoogleMap/LocationPicker";
-import {useAppThemeColors} from "@/constants/app-colors";
-import type {DayPage, TripDiary} from "@/types/diary_writing";
+import { useAppThemeColors } from "@/constants/app-colors";
+import type { DayPage, TripDiary } from "@/types/diary_writing";
 import {
   codepointToEmoji as emojiCodepointToEmoji,
   DEFAULT_FLAG_CODEPOINT,
@@ -60,13 +61,13 @@ function codepointToEmoji(codepoint: string): string {
 // react-native-twemoji 는 size prop이 없어서 style 로 크기를 줘야 합니다.
 // 이 라이브러리에 없는(최신) 이모지는 시스템 이모지로 자동 대체합니다.
 // 빈 문자열(예: symbol 미설정)이면 아무것도 그리지 않습니다.
-function EmojiIcon({codepoint, size}: {codepoint: string; size: number}) {
+function EmojiIcon({ codepoint, size }: { codepoint: string; size: number }) {
   if (!codepoint) return null;
   const char = codepointToEmoji(codepoint);
   if (Twemoji.supportedEmojis.includes(char)) {
-    return <Twemoji style={{width: size, height: size}}>{char}</Twemoji>;
+    return <Twemoji style={{ width: size, height: size }}>{char}</Twemoji>;
   }
-  return <Text style={{fontSize: size}}>{char}</Text>;
+  return <Text style={{ fontSize: size }}>{char}</Text>;
 }
 
 export default function DiaryWritingScreen() {
@@ -76,8 +77,11 @@ export default function DiaryWritingScreen() {
 
   // 어떤 여행을 불러올지: 앞 화면(loading)이 router.replace 로 넘겨준 tripId 를 사용합니다.
   // 직접 진입처럼 tripId 가 없거나 숫자로 못 바꾸면 NaN → loadTrip 가드에서 에러 화면으로.
-  const routeParams = useLocalSearchParams<{tripId?: string | string[], path?:string }>();
-  console.log("누가 다이어리로 왔는가", routeParams.path)
+  const routeParams = useLocalSearchParams<{
+    tripId?: string | string[];
+    path?: string;
+  }>();
+  console.log("누가 다이어리로 왔는가", routeParams.path);
   const tripIdRaw = Array.isArray(routeParams.tripId)
     ? routeParams.tripId[0]
     : routeParams.tripId;
@@ -131,7 +135,7 @@ export default function DiaryWritingScreen() {
     setError(null);
     try {
       const data = await fetchTripDiary(TRIP_ID); // GET /trips/{tripId}
-      console.log("승은이가 요청한 데이터: ", JSON.stringify(data,null,2))
+      console.log("승은이가 요청한 데이터: ", JSON.stringify(data, null, 2));
       setTrip(data);
       setDays(data.days);
       // 서버 진본 값을 스냅샷으로 보관 → handleNext 가 "바뀐 게 있을 때만" PATCH 하도록.
@@ -183,7 +187,7 @@ export default function DiaryWritingScreen() {
         setDays((prev) =>
           prev.map((d) => {
             const s = statuses.find((x) => x.tripDayId === d.tripDayId);
-            return s ? {...d, genStatus: s.genStatus} : d;
+            return s ? { ...d, genStatus: s.genStatus } : d;
           }),
         );
       } catch (e) {
@@ -193,6 +197,28 @@ export default function DiaryWritingScreen() {
 
     return () => clearInterval(timer); // 다 ready거나 화면을 떠나면 폴링 정지
   }, [hasGenerating, TRIP_ID]);
+
+  const [title, setTitle] = useState("제목 생성 중...");
+
+  useEffect(() => {
+    const eventSource = getTripTitle(TRIP_ID);
+    if (!eventSource) return;
+
+    eventSource.addEventListener("message", (event: any) => {
+      console.log("AI 제목 수신 완료:", event.data);
+      setTitle(event.data);
+      eventSource.close();
+    });
+
+    eventSource.addEventListener("error", (error: any) => {
+      console.error("SSE 연결 에러:", error);
+      eventSource.close();
+    });
+
+    return () => {
+      eventSource.close();
+    };
+  }, [TRIP_ID]);
 
   // [5-3] 막 ready가 됐는데 본문이 아직 비어 있는 날은, 그 날 전체 내용을 한 번 가져옵니다.
   // (폴링은 genStatus만 갱신하므로, 본문·사진은 여기서 따로 채웁니다.)
@@ -260,7 +286,8 @@ export default function DiaryWritingScreen() {
       orig.name !== day.locationSummary ||
       orig.lat !== day.representativeLat ||
       orig.lon !== day.representativeLon;
-    const representChanged = !orig || orig.representImage !== day.representImage;
+    const representChanged =
+      !orig || orig.representImage !== day.representImage;
 
     if (!locationChanged && !representChanged) return;
 
@@ -272,7 +299,7 @@ export default function DiaryWritingScreen() {
       undefined, // countryName
       undefined, // cityName
       // 사용자가 PhotoBar 에서 고른 그날 대표사진. 안 바꿨으면 안 보냄.
-      representChanged ? day.representImage ?? undefined : undefined,
+      representChanged ? (day.representImage ?? undefined) : undefined,
     );
     setOriginalLocations((prev) => ({
       ...prev,
@@ -306,9 +333,12 @@ export default function DiaryWritingScreen() {
       await flushCurrentDayChanges();
       await completeTrip(TRIP_ID); // PATCH /trips/{id}  { status: 'completed' }
       if (routeParams.path === "detail")
-        router.replace({pathname: "/detail", params: {id: String(TRIP_ID)}});
-      else{
-        router.replace({pathname: "/home"});
+        router.replace({
+          pathname: "/detail",
+          params: { id: String(TRIP_ID) },
+        });
+      else {
+        router.replace({ pathname: "/home" });
       }
     } catch (e) {
       console.error(e);
@@ -323,7 +353,7 @@ export default function DiaryWritingScreen() {
       await regenerateDay(tripDayId); // POST /trip-days/{id}/regenerate
       setDays((prev) =>
         prev.map((d) =>
-          d.tripDayId === tripDayId ? {...d, genStatus: "generating"} : d,
+          d.tripDayId === tripDayId ? { ...d, genStatus: "generating" } : d,
         ),
       );
     } catch (e) {
@@ -339,7 +369,7 @@ export default function DiaryWritingScreen() {
   const handleSelectRepresentImage = (photoId: number) => {
     setDays((prev) =>
       prev.map((d, i) =>
-        i === dayIndex ? {...d, representImage: photoId} : d,
+        i === dayIndex ? { ...d, representImage: photoId } : d,
       ),
     );
   };
@@ -363,7 +393,7 @@ export default function DiaryWritingScreen() {
       await saveDayContent(day.tripDayId, draftContent); // PATCH /trip-days/{id} { content }
       setDays((prev) =>
         prev.map((d, i) =>
-          i === dayIndex ? {...d, content: draftContent} : d,
+          i === dayIndex ? { ...d, content: draftContent } : d,
         ),
       );
       setIsEditingContent(false);
@@ -381,7 +411,7 @@ export default function DiaryWritingScreen() {
     placeName: string,
     lat: number,
     lon: number,
-    context?: {countryName?: string; cityName?: string},
+    context?: { countryName?: string; cityName?: string },
   ) => {
     setPickerOpen(false);
     setActionError(null);
@@ -411,7 +441,7 @@ export default function DiaryWritingScreen() {
         const nextFlag = getFlagCodepoint(context.countryName);
         setTrip((prev) =>
           prev && (!prev.flag || prev.flag === DEFAULT_FLAG_CODEPOINT)
-            ? {...prev, flag: nextFlag}
+            ? { ...prev, flag: nextFlag }
             : prev,
         );
       }
@@ -438,7 +468,9 @@ export default function DiaryWritingScreen() {
     return (
       <View className="flex-1 items-center justify-center bg-surface dark:bg-dark-surface">
         <ActivityIndicator color={colors.primary} />
-        <Text className="mt-3 text-textSecondary dark:text-dark-textSecondary">불러오는 중…</Text>
+        <Text className="mt-3 text-textSecondary dark:text-dark-textSecondary">
+          불러오는 중…
+        </Text>
       </View>
     );
   }
@@ -464,7 +496,7 @@ export default function DiaryWritingScreen() {
   return (
     <View className="flex-1 bg-surface dark:bg-dark-surface">
       {/* ===== 헤더: 일차 표시 (뒤로가기 없음 — 순방향 일방통행) ===== */}
-      <View style={{paddingTop: insets.top}}>
+      <View style={{ paddingTop: insets.top }}>
         <View className="mx-auto w-full max-w-[420px] px-5 py-4">
           <Text className="text-center text-base font-sans-bold text-primary">
             {day.dayNumber}일차 · 총 {trip.days.length}일
@@ -481,18 +513,18 @@ export default function DiaryWritingScreen() {
             {/* 1. 왼쪽 이미지 구역 */}
             <View className="h-16 w-16 overflow-hidden rounded-2xl">
               <Image
-                source={{uri: trip.representImage}}
+                source={{ uri: trip.representImage }}
                 contentFit="cover"
-                style={{width: "100%", height: "100%"}}
+                style={{ width: "100%", height: "100%" }}
               />
             </View>
-              {/* 2. 중앙 텍스트 + 국기 통합 구역 (absolute 제거) */}
+            {/* 2. 중앙 텍스트 + 국기 통합 구역 (absolute 제거) */}
             <View className="flex-1 flex-row items-center justify-center gap-xs px-2">
-              <Text 
+              <Text
                 numberOfLines={1} // 글자가 너무 길어지면 국기를 가리지 않고 알아서 '...' 처리
                 className="text-lg font-sans-bold text-textPrimary dark:text-dark-textPrimary text-center"
               >
-                {trip.title}
+                {title}
               </Text>
               {/* 국기가 글자 바로 뒤에 찰떡처럼 붙어 다님 */}
               <View className="w-8 h-8 items-center justify-center">
@@ -507,7 +539,8 @@ export default function DiaryWritingScreen() {
               {/* --- 여행지(편집 O) / 날짜(읽기전용) ---
                   좌표가 있으면: 기존 좌우 2칸 (여행지 | 날짜)
                   좌표가 없으면: 강조 카드 + 날짜 한 줄 (사용자에게 "위치를 알려주세요" 적극 유도) */}
-              {day.representativeLat !== null && day.representativeLon !== null ? (
+              {day.representativeLat !== null &&
+              day.representativeLon !== null ? (
                 // 좌표 있음: 기존 가로 2칸 레이아웃
                 <View className="flex-row gap-4">
                   <View className="flex-1 gap-2">
@@ -634,7 +667,7 @@ export default function DiaryWritingScreen() {
                   ) : (
                     <Text
                       className="font-sans text-md text-textPrimary dark:text-dark-textPrimary"
-                      style={{lineHeight: 22}}
+                      style={{ lineHeight: 22 }}
                     >
                       {day.content}
                     </Text>
@@ -718,7 +751,7 @@ export default function DiaryWritingScreen() {
       {/* ===== 하단 버튼 (ready 상태에서만 노출, 하단 고정) ===== */}
       {day.genStatus === "ready" && (
         <View
-          style={{paddingBottom: insets.bottom + 12}}
+          style={{ paddingBottom: insets.bottom + 12 }}
           className="border-t border-muted bg-surface px-5 pt-3 dark:border-dark-muted dark:bg-dark-surface"
         >
           <View className="mx-auto w-full max-w-[420px]">
@@ -738,10 +771,12 @@ export default function DiaryWritingScreen() {
               <Pressable
                 onPress={handleSave}
                 disabled={isEditingContent}
-                style={{opacity: isEditingContent ? 0.4 : 1}}
+                style={{ opacity: isEditingContent ? 0.4 : 1 }}
                 className="flex-row items-center justify-center gap-2 rounded-2xl bg-primary py-4"
               >
-                <Text className="font-sans-bold text-textOnPrimary">저장하기</Text>
+                <Text className="font-sans-bold text-textOnPrimary">
+                  저장하기
+                </Text>
                 <FileText size={16} color="#FFFFFF" />
               </Pressable>
             ) : canGoNext ? (
@@ -749,10 +784,12 @@ export default function DiaryWritingScreen() {
               <Pressable
                 onPress={handleNext}
                 disabled={isEditingContent}
-                style={{opacity: isEditingContent ? 0.4 : 1}}
+                style={{ opacity: isEditingContent ? 0.4 : 1 }}
                 className="flex-row items-center justify-center gap-2 rounded-2xl bg-primary py-4"
               >
-                <Text className="font-sans-bold text-textOnPrimary">다음날로</Text>
+                <Text className="font-sans-bold text-textOnPrimary">
+                  다음날로
+                </Text>
                 <ChevronRight size={16} color="#FFFFFF" />
               </Pressable>
             ) : nextDay?.genStatus === "failed" ? (
@@ -802,7 +839,7 @@ function PhotoBar({
   representImageId,
   onSelect,
 }: {
-  photos: {id: number; thumbnailUrl: string}[];
+  photos: { id: number; thumbnailUrl: string }[];
   representImageId: number | null;
   onSelect: (photoId: number) => void;
 }) {
@@ -831,9 +868,9 @@ function PhotoBar({
               }`}
             >
               <Image
-                source={{uri: p.thumbnailUrl}}
+                source={{ uri: p.thumbnailUrl }}
                 contentFit="cover"
-                style={{width: "100%", height: "100%"}}
+                style={{ width: "100%", height: "100%" }}
               />
             </Pressable>
           );
