@@ -198,15 +198,24 @@ export default function DiaryWritingScreen() {
     return () => clearInterval(timer); // 다 ready거나 화면을 떠나면 폴링 정지
   }, [hasGenerating, TRIP_ID]);
 
-  const [title, setTitle] = useState("제목 생성 중...");
-
   useEffect(() => {
     const eventSource = getTripTitle(TRIP_ID);
     if (!eventSource) return;
 
     eventSource.addEventListener("message", (event: any) => {
       console.log("AI 제목 수신 완료:", event.data);
-      setTitle(event.data);
+      const data = JSON.parse(event.data);
+      setTrip((prev) => {
+        // 이전 상태가 없다면 아무것도 하지 않음
+        if (!prev) return null;
+
+        return {
+          ...prev, // 기존의 모든 속성을 그대로 복사해오고
+          title: data.title, // title만 덮어씌움
+          representImage: data.representImage, // resentimage만 덮어씌움
+        };
+      });
+      // setTitle(event.data);
       eventSource.close();
     });
 
@@ -524,7 +533,7 @@ export default function DiaryWritingScreen() {
                 numberOfLines={1} // 글자가 너무 길어지면 국기를 가리지 않고 알아서 '...' 처리
                 className="text-lg font-sans-bold text-textPrimary dark:text-dark-textPrimary text-center"
               >
-                {title}
+                {trip.title}
               </Text>
               {/* 국기가 글자 바로 뒤에 찰떡처럼 붙어 다님 */}
               <View className="w-8 h-8 items-center justify-center">

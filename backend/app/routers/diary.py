@@ -627,8 +627,9 @@ def update_trip_status(
     return body
 
 @router.get("/trips/{trip_id}/title-stream")
-async def stream_trip_title(trip_id: int, db: Session = Depends(get_db)):
-    
+async def stream_trip_title(trip_id: int, request: Request, db: Session = Depends(get_db)):
+    base = _base_url(request)
+
     async def event_generator():
         # 3초마다 반복하면서 값이 바뀌었는지 체크
         while True:
@@ -646,9 +647,13 @@ async def stream_trip_title(trip_id: int, db: Session = Depends(get_db)):
             
             # 3. 생성이 완료되어 값이 바뀌었으면 루프 탈출 후 데이터 전송
             else:
+                response_data = {
+                    "title": trip.title,
+                    "representImage": _photo_url(db, base, trip.cover_photo_id)
+                }
                 yield {
                     "event": "message",
-                    "data": trip.title
+                    "data": json.dumps(response_data, ensure_ascii=False) # JSON 문자열로 변환
                 }
                 break # 전송 후 제너레이터 종료 (SSE 연결도 자연스럽게 닫힘)
 
