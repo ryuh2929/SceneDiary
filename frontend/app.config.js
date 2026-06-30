@@ -87,7 +87,10 @@ export default {
       EXPO_PUBLIC_GOOGLE_MAPS_API_KEY:
         process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       eas: {
-         projectId: "7a721926-fa9a-470f-ace4-f4aa3666005c",
+        // 로컬 .env에 EXPO_PUBLIC_EAS_PROJECT_ID가 있으면 그 값(개인 계정), 없으면 팀 공유 ID 사용
+        projectId:
+          process.env.EXPO_PUBLIC_EAS_PROJECT_ID ||
+          "7a721926-fa9a-470f-ace4-f4aa3666005c",
       },
     },
   },
