@@ -794,6 +794,7 @@ def get_trip_day_generation_status(
     trip_day_id: int,
     db: Session = Depends(get_db),
 ) -> GenerationStatusResponse:
+    print("일차별로 저장중입니다.......",trip_day_id)
     # 로딩 화면 폴링용 API.
     # status/progress는 화면 표시용 응답값이며, 최종 성공/실패 판단은 diary_generations 상태를 사용합니다.
     trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
