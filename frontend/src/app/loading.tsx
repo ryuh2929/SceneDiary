@@ -441,10 +441,8 @@ export default function LoadingScreen() {
   const [pollingAttempt, setPollingAttempt] = useState(0);
   const [failedDayId, setFailedDayId] = useState<number | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
-  const [completedDayIds, setCompletedDayIds] = useState<Set<number>>(new Set());
 
   const totalDayCount     = allDays.length || (tripDayId ? 1 : 0);
-  const completedDayCount = completedDayIds.size;
 
   // ── 현재 보여줄 문구 계산 ────────────────────────────────────────────────────
 
@@ -470,10 +468,10 @@ export default function LoadingScreen() {
     if (loadingStep === 'failed') return errorMessage ?? '잠시 후 다시 시도해 주세요';
     if (progress >= 100) return '';
     if (isNextDayMode) return `${day}일차 기록을 준비 중이에요`;
-    const multiLabel = totalDayCount > 1 ? ` (${completedDayCount}/${totalDayCount}일차)` : '';
     const countLabel = photos.length > 0 ? `${photos.length}장의 사진` : '선택한 사진';
-    return `${countLabel}으로 하루 기록을 준비 중이에요${multiLabel}`;
-  }, [loadingStep, progress, isNextDayMode, day, totalDayCount, completedDayCount, photos.length, errorMessage]);
+    const firstDayLabel = totalDayCount > 1 ? ' 첫 일차를 먼저 열 준비를 하고 있어요' : ' 하루 기록을 준비 중이에요';
+    return `${countLabel}으로${firstDayLabel}`;
+  }, [loadingStep, progress, isNextDayMode, day, totalDayCount, photos.length, errorMessage]);
 
   const buttonLabel =
     loadingStep === 'failed'     ? (isRetrying ? '다시 시도 중...' : '다시 시도하기')
@@ -515,8 +513,8 @@ export default function LoadingScreen() {
     if (!hasApiLoading || !tripDayId) return;
     let isMounted = true;
     const firstId = Number(tripDayId);
-    const dayIds  = allDays.length > 1 ? allDays.map((d) => d.tripDayId) : [firstId];
-    const doneIds = new Set<number>();
+    // 작성 화면은 첫 일차만 준비되면 열고, 나머지 일차는 diary_writing의 상태 폴링이 이어서 처리합니다.
+    const dayIds = [firstId];
     let pollInFlight = false;
     let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -533,8 +531,6 @@ export default function LoadingScreen() {
       try {
         const statuses = await Promise.all(dayIds.map((id) => fetchTripDayGenerationStatus(id)));
         if (!isMounted) return;
-        statuses.forEach((s) => { if (s.status === 'completed') doneIds.add(s.tripDayId); });
-        setCompletedDayIds(new Set(doneIds));
         const failed    = statuses.find((s) => s.status === 'failed');
         const doneCount = statuses.filter((s) => s.status === 'completed').length;
         if (failed) {
@@ -584,7 +580,7 @@ export default function LoadingScreen() {
     if (!tripDayId || isRetrying) return;
     setIsRetrying(true);
     setLoadingStep('analyzing_photos'); setErrorMessage(null);
-    setCompletedDayIds(new Set()); setProgress(42);
+    setProgress(42);
     try {
       if (failedDayId !== null) {
         await regenerateDay(failedDayId);
