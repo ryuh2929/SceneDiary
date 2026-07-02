@@ -16,8 +16,11 @@ services:
       - "8000:8000"                     # 호스트:컨테이너 포트 매핑
     volumes:
       - ./backend:/app                  # 코드 변경이 컨테이너에 즉시 반영됨 (핫리로드)
+      - ${APPDATA}/gcloud/application_default_credentials.json:/root/.config/gcloud/application_default_credentials.json:ro
     env_file:
       - .env                            # 환경변수 파일 읽어오기
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /root/.config/gcloud/application_default_credentials.json
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     # depends_on 없음: backend 단독 실행 가능. db가 자동으로 켜지지 않음.
 
