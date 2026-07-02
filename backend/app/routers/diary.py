@@ -37,12 +37,15 @@ from app.schemas.diary import (
 from app.services.travel_style_analysis import run_travel_style_analysis
 from app.utils.country_flags import country_to_flag
 from collections import Counter
+from sse_starlette.sse import EventSourceResponse
+import asyncio
 
 router = APIRouter(tags=["diary"])
 
 # 사진 파일 경로 해석용 backend 루트. (photos.file_url = "test_images/..." 가 이 폴더 기준)
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 # 사진 분석은 OpenAI 호환 경로에서 DIARY_MODEL을 직접 사용합니다.
+# 생성에 쓰는 모델명(생성 이력 기록용). diary_generator 와 같은 기본값.
 _PHOTO_ANALYSIS_MODEL = os.getenv("DIARY_MODEL", "gemma4:e4b")
 _DIARY_MODEL_PROVIDER = os.getenv("DIARY_MODEL_PROVIDER", "openai").strip().lower()
 _GEMINI_DIARY_PROVIDERS = {"gemini", "vertex", "vertexai"}
@@ -61,6 +64,8 @@ def _diary_generation_model_used(persona: str | None = None) -> str:
         endpoint_id = (os.getenv(f"GEMINI_{persona.upper()}_ENDPOINT_ID") or "unconfigured").strip()
         return f"vertex:{persona}:{endpoint_id}"
     return os.getenv(f"DIARY_OPENAI_MODEL_{persona.upper()}", _PHOTO_ANALYSIS_MODEL)
+
+DEAFULT_TRIP_TITLE = "제목 생성 중..."
 
 
 # ─────────────────────────────────────────────────────────────
@@ -507,7 +512,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
 
         # ── 3단계: 이 여행의 모든 일차가 끝났다면 trip 제목 자동 생성 ──
         # 마지막 일차가 막 success 가 된 지금 시점에서 한 번만 실행.
-        # 이미 사용자/AI 가 만든 제목이 있으면(= '새 여행' 기본값이 아니면) 건드리지 않음.
+        # 이미 사용자/AI 가 만든 제목이 있으면(= '제목 생성 중...' 기본값이 아니면) 건드리지 않음.
         try:
             remaining = (
                 db.query(TripDay)
@@ -518,7 +523,12 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                 .count()
             )
             trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
-            if remaining == 0 and trip is not None and (not trip.title or trip.title == "새 여행"):
+            print("제목 생성 준비")
+            print("remaining:",remaining)
+            print("trip.title:",trip.title)
+            print("DEAFULT_TRIP_TITLE:",DEAFULT_TRIP_TITLE)
+            if remaining == 0 and trip is not None and (not trip.title or trip.title == DEAFULT_TRIP_TITLE):
+                print("제목 생성중...")
                 from app.services.diary_generator import write_trip_title
 
                 all_days = (
@@ -639,3 +649,39 @@ def update_trip_status(
         background_tasks.add_task(run_travel_style_analysis, trip.user_id)
 
     return body
+
+@router.get("/trips/{trip_id}/title-stream")
+async def stream_trip_title(trip_id: int, request: Request, db: Session = Depends(get_db)):
+    base = _base_url(request)
+
+    async def event_generator():
+        # 3초마다 반복하면서 값이 바뀌었는지 체크
+        while True:
+            # 1. DB에서 trip 정보 조회 (함수명은 프로젝트에 맞게 사용 중인 헬퍼 함수 적용)
+            trip = _get_trip_or_404(db, trip_id)
+            
+            # 2. AI가 아직 제목을 생성 중이지 않은 상태(임시 텍스트)라고 가정
+            #    -> 프로젝트에서 사용하는 '생성 중' 기본값 문자열을 조건으로 설정하세요!
+            if trip.title == "제목 생성 중..." or trip.title is None:
+                print("아직 생성 중... 3초 대기 후 재조회")
+                await asyncio.sleep(3) # 3초 대기
+                # DB 세션 갱신 필요 시 db.expire_all() 추가
+                db.expire(trip)  # DB 캐시 무효화 후 재조회하기 위함 (SQLAlchemy 세션 갱신용)
+                continue
+            
+            # 3. 생성이 완료되어 값이 바뀌었으면 루프 탈출 후 데이터 전송
+            else:
+                response_data = {
+                    "title": trip.title,
+                    "representImage": _photo_url(db, base, trip.cover_photo_id)
+                }
+                yield {
+                    "event": "message",
+                    "data": json.dumps(response_data, ensure_ascii=False) # JSON 문자열로 변환
+                }
+                break # 전송 후 제너레이터 종료 (SSE 연결도 자연스럽게 닫힘)
+
+
+    
+
+    return EventSourceResponse(event_generator())

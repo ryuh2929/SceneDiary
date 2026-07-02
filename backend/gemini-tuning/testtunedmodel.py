@@ -3,7 +3,11 @@ from google.genai import types
 
 PROJECT_ID = "project-19fbb1da-6ea1-4a56-8c1"
 LOCATION = "us-west1"
-ENDPOINT_ID = "4169895649317224448"
+
+# ENDPOINT_ID = "4169895649317224448"#일상적
+# ENDPOINT_ID = "7170418901052817408"#시적
+ENDPOINT_ID = "6889506874295582720"#유쾌한
+
 
 client = genai.Client(
     vertexai=True,
