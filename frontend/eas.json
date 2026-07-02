@@ -1,6 +1,12 @@
 {
   "build": {
     "development": { "developmentClient": true, "distribution": "internal" },
-    "preview": { "android": { "buildType": "apk" } }
+    "preview": {
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "http://192.168.22.54:8000",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDwA34NLES7T8k-9twHz2x4I17m-fny4OU"
+      }
+    }
   }
 }
