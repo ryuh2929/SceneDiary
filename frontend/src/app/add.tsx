@@ -392,6 +392,7 @@ async function reverseGeocode(
     // trip 단위 destination 의 "국가/도시" 부분. city 가 비어있는 한국식 주소는 region 로 폴백.
     const countryName = first.country || undefined;
     const cityName = first.city || first.region || undefined;
+    console.log("frontend에서 사진 주소 확인하기:", first);
     return { placeName, countryName, cityName };
   } catch {
     return undefined;

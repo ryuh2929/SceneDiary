@@ -657,4 +657,7 @@ async def stream_trip_title(trip_id: int, request: Request, db: Session = Depend
                 }
                 break # 전송 후 제너레이터 종료 (SSE 연결도 자연스럽게 닫힘)
 
+
+    
+
     return EventSourceResponse(event_generator())

@@ -19,7 +19,7 @@ from app.db.neo4j_session import aura_neo4j
 async def lifespan(app: FastAPI):
     # Neo4j는 보조 그래프 저장소라 연결 실패가 API 서버 시작을 막으면 안 됩니다.
     try:
-        await aura_neo4j.create_Index()
+        await aura_neo4j.init_db_schema()
     except Exception as exc:
         print(f"[neo4j] startup skipped: {exc}")
     yield

@@ -17,14 +17,16 @@ class AuraNeo4j:
     def get_session(self):
         return self.driver.session(database=TARGET_DB)
     
-    def create_Index(self):
-            queries = [
-                "CREATE INDEX user_id_idx IF NOT EXISTS FOR (u:User) ON (u.userId);",
+    def init_db_schema(self):
+            constraints = [
+                "CREATE CONSTRAINT user_id_unique IF NOT EXISTS FOR (u:User) REQUIRE u.userId IS UNIQUE;"
+            ]
+            indexes = [
                 "CREATE INDEX trip_id_idx IF NOT EXISTS FOR (t:Trip) ON (t.tripId);",
                 "CREATE INDEX keyword_norm_idx IF NOT EXISTS FOR (k:Keyword) ON (k.normalizedName);",
                 "CREATE INDEX place_norm_idx IF NOT EXISTS FOR (p:Place) ON (p.normalizedName);"
             ]
-            
+            queries = constraints + indexes
             with self.driver.session(database=TARGET_DB) as session:
                 for q in queries:
                     session.run(q)

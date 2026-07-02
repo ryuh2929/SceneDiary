@@ -215,7 +215,6 @@ export default function DiaryWritingScreen() {
           representImage: data.representImage, // resentimage만 덮어씌움
         };
       });
-      // setTitle(event.data);
       eventSource.close();
     });
 

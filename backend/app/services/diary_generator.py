@@ -38,6 +38,8 @@ GEMINI_PROJECT_ID = os.getenv("GEMINI_PROJECT_ID", "project-19fbb1da-6ea1-4a56-8
 GEMINI_LOCATION = os.getenv("GEMINI_LOCATION", "us-west1")
 DIARY_PERSONAS = {"daily", "playful", "poetic", "romantic"}
 
+
+
 GOOGLE_API_KEY= os.getenv("GENAI_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 # 2. 모델 선택 (gemini-1.5-flash 또는 gemini-1.5-pro 등)
@@ -261,6 +263,7 @@ def _openai_diary_model_for_persona(persona: str) -> str:
 def _gemini_diary_endpoint_for_persona(persona: str) -> str:
     env_name = f"GEMINI_{persona.upper()}_ENDPOINT_ID"
     endpoint_id = (os.getenv(env_name) or "").strip()
+    print("페르소나 제미나이 모델 번호:",endpoint_id)
     if not endpoint_id:
         raise RuntimeError(
             f"{env_name} is not configured. "
@@ -290,8 +293,11 @@ def _generate_diary_with_gemini(persona: str, user_text: str) -> dict:
         project=GEMINI_PROJECT_ID,
         location=GEMINI_LOCATION,
     )
+    endpoint_name = _gemini_diary_endpoint_for_persona(persona)
+    print("페르소나 제미나이 엔드포인트 이름:",endpoint_name)
+
     response = vertex_client.models.generate_content(
-        model=_gemini_diary_endpoint_for_persona(persona),
+        model=endpoint_name,
         contents=f"{_write_prompt_for_persona(persona)}\n\n{user_text}",
         config=vertex_types.GenerateContentConfig(
             temperature=0.7,
@@ -405,10 +411,26 @@ def write_diary(
             for index, analysis in enumerate(analyses, 1)
         ],
     }
-    user_text = (
-        "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n"
-        f"{json.dumps(payload, ensure_ascii=False)}"
-    )
+    if persona == "daily":
+        user_text = (
+            "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 daily이면 담백하고 편안한 한국어 구어체로 쓰고, 과장된 문학 표현과 불필요한 수식어는 피하세요.\n"
+            f"{json.dumps(payload, ensure_ascii=False)}"
+        )
+    elif persona == "poetic":
+        user_text = (
+            "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 poetic이면 빛, 색, 소리, 온도 같은 감각을 살려 차분하고 문학적인 한국어 일기체로 쓰세요. 과장된 상징, 운명적인 표현, 입력에 없는 서사는 만들지 마세요.\n"
+            f"{json.dumps(payload, ensure_ascii=False)}"
+        )
+    elif persona == "playful":
+        user_text = (
+            "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n"
+            f"{json.dumps(payload, ensure_ascii=False)}"
+        )
+    else:
+        user_text = (
+            "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 romantic이면 장면을 다정하고 설레는 한국어 일기체로 쓰되, 입력에 없는 관계성이나 과한 사랑 표현은 만들지 마세요.\n"
+            f"{json.dumps(payload, ensure_ascii=False)}"
+        )
 
     if DIARY_MODEL_PROVIDER in {"gemini", "vertex", "vertexai"}:
         parsed = _generate_diary_with_gemini(persona, user_text)
