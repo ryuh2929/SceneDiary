@@ -392,6 +392,7 @@ async function reverseGeocode(
     // trip 단위 destination 의 "국가/도시" 부분. city 가 비어있는 한국식 주소는 region 로 폴백.
     const countryName = first.country || undefined;
     const cityName = first.city || first.region || undefined;
+    console.log("frontend에서 사진 주소 확인하기:", first);
     return { placeName, countryName, cityName };
   } catch {
     return undefined;
@@ -405,7 +406,7 @@ async function buildPendingPhoto(
   // 리사이즈하면 EXIF가 사라지므로, 원본 asset에서 GPS를 먼저 읽습니다.
   // console.log("📸 [디버그] 원본 asset.exif 내용:", JSON.stringify(asset.exif, null, 2));
   const gps = parseExifGps(asset.exif);
-  console.log("📍 [디버그] 파싱된 gps 결과값:", gps);
+  // console.log("📍 [디버그] 파싱된 gps 결과값:", gps);
   // GPS 가 있으면 OS 지오코딩으로 지명도 미리 확보. 백엔드가 그대로 location_summary/destination 으로 사용.
   const geo = gps
     ? await reverseGeocode(gps.latitude, gps.longitude)

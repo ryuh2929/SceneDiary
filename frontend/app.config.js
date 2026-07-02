@@ -39,6 +39,16 @@ export default {
       "expo-web-browser",
       "expo-video",
       [
+        "expo-build-properties",
+        {
+          android: {
+            // 개발/테스트용: 백엔드가 http(평문 LAN)라서 release(preview) 빌드에서도
+            // 평문 통신을 허용해야 연결됨. (debug/Expo Go 는 원래 허용이라 지금까진 됐던 것)
+            usesCleartextTraffic: true,
+          },
+        },
+      ],
+      [
         "expo-media-library",
         {
           photosPermission:
@@ -77,7 +87,10 @@ export default {
       EXPO_PUBLIC_GOOGLE_MAPS_API_KEY:
         process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       eas: {
-         projectId: "7a721926-fa9a-470f-ace4-f4aa3666005c",
+        // 로컬 .env에 EXPO_PUBLIC_EAS_PROJECT_ID가 있으면 그 값(개인 계정), 없으면 팀 공유 ID 사용
+        projectId:
+          process.env.EXPO_PUBLIC_EAS_PROJECT_ID ||
+          "7a721926-fa9a-470f-ace4-f4aa3666005c",
       },
     },
   },

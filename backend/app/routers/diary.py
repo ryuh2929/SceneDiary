@@ -36,13 +36,36 @@ from app.schemas.diary import (
 )
 from app.services.travel_style_analysis import run_travel_style_analysis
 from app.utils.country_flags import country_to_flag
+from collections import Counter
+from sse_starlette.sse import EventSourceResponse
+import asyncio
 
 router = APIRouter(tags=["diary"])
 
 # 사진 파일 경로 해석용 backend 루트. (photos.file_url = "test_images/..." 가 이 폴더 기준)
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+# 사진 분석은 OpenAI 호환 경로에서 DIARY_MODEL을 직접 사용합니다.
 # 생성에 쓰는 모델명(생성 이력 기록용). diary_generator 와 같은 기본값.
-_MODEL_NAME = os.getenv("DIARY_MODEL", "gemma4:e4b")
+_PHOTO_ANALYSIS_MODEL = os.getenv("DIARY_MODEL", "gemma4:e4b")
+_DIARY_MODEL_PROVIDER = os.getenv("DIARY_MODEL_PROVIDER", "openai").strip().lower()
+_GEMINI_DIARY_PROVIDERS = {"gemini", "vertex", "vertexai"}
+_DIARY_PERSONAS = {"daily", "playful", "poetic", "romantic"}
+
+
+def _normalize_diary_persona(persona: str | None) -> str:
+    normalized = (persona or "daily").strip().lower()
+    return normalized if normalized in _DIARY_PERSONAS else "daily"
+
+
+def _diary_generation_model_used(persona: str | None = None) -> str:
+    """Return the model identifier stored in diary_generations.model_used."""
+    persona = _normalize_diary_persona(persona)
+    if _DIARY_MODEL_PROVIDER in _GEMINI_DIARY_PROVIDERS:
+        endpoint_id = (os.getenv(f"GEMINI_{persona.upper()}_ENDPOINT_ID") or "unconfigured").strip()
+        return f"vertex:{persona}:{endpoint_id}"
+    return os.getenv(f"DIARY_OPENAI_MODEL_{persona.upper()}", _PHOTO_ANALYSIS_MODEL)
+
+DEAFULT_TRIP_TITLE = "제목 생성 중..."
 
 
 # ─────────────────────────────────────────────────────────────
@@ -256,6 +279,7 @@ def update_trip_day(
 ) -> DayPage:
     # 진단용 로그 — 어떤 필드가 들어왔는지 확인. 안정화되면 제거.
     print(
+        f"데이터 저장하기: "
         f"[trip-day PATCH] id={trip_day_id} "
         f"loc={body.locationSummary!r} content_len={len(body.content) if body.content is not None else None} "
         f"lat={body.lat} lon={body.lon} "
@@ -298,6 +322,11 @@ def update_trip_day(
                 trip.flag = country_to_flag(body.countryName)
     db.commit()
     db.refresh(trip_day)
+    trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
+    if trip:
+        from app.services.neo4j_service import update_trip_day_graph
+        ok = update_trip_day_graph(trip_day, trip)
+        print("neo4j trip_day update result:", ok)
     return _build_day(db, trip_day, _base_url(request))
 
 
@@ -309,12 +338,21 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
     """
     # openai 의존을 서버 시작과 분리하려고 여기서 지연 import.
     from app.services.diary_generator import analyze_photo, write_diary
+    from app.services.neo4j_service import (Seed,Place,Keyword,Day_Memory,TripData,save_trip_graph,update_trip_day_graph,past_graph_context)
+    graph_trip = TripData()
+    graph_dayMemory: list[Day_Memory] = []
+    graph_place: list[Place] = []
+    graph_keyword = Keyword()
+    mood_list = []
 
     db = SessionLocal()
     started = time.monotonic()
     image_path = []
     try:
         trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
+        trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
+        user = db.query(User).filter(User.id == trip.user_id).first() if trip else None
+        
         photos = (
             db.query(Photo)
             .filter(Photo.trip_day_id == trip_day_id, Photo.deleted_at.is_(None))
@@ -352,7 +390,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                 db.add(
                     PhotoGeneration(
                         photo_id=p.id,
-                        model_used=_MODEL_NAME,
+                        model_used=_PHOTO_ANALYSIS_MODEL,
                         analysis_text=analysis["analysis_text"],
                         analysis_json=analysis_json,
                         place_type=analysis_json.get("place_type"),
@@ -375,29 +413,55 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                     )
                 )
                 analyses.append(analysis["analysis_text"])
+                print("사진속 기분?:",analysis_json.get("mood"))
+                mood_list.append(analysis_json.get("mood"))
+
+                # 2. 이중 for문을 사용하여 objects 내부의 아이템들을 set에 추가
+                # .get()을 사용해 "objects" 키가 없거나 비어있어도 안전하게 처리
+                objects_list = analysis_json.get("objects") or []
+
+                for obj in objects_list:
+                    graph_keyword.name.append(str(obj))
+
+                graph_keyword.type.append(analysis_json.get("place_type") or "unknown")
+                
+                photo_place = Place(
+                    name=analysis_json.get("landmark_guess") or "unknown",
+                    type=analysis_json.get("place_type") or "unknown",
+                    country=p.country_name,
+                    city=p.city_name,
+                    lat=float(p.latitude) if p.latitude else None,
+                    lng=float(p.longitude) if p.longitude else None,
+                    confidence=float(analysis_json.get("landmark_confidence") or 0.0)
+                )
+                graph_place.append(photo_place)
             except Exception as exc:  # 사진 1장 분석 실패는 기록만 하고 계속 진행
                 db.add(
                     PhotoGeneration(
                         photo_id=p.id,
-                        model_used=_MODEL_NAME,
+                        model_used=_PHOTO_ANALYSIS_MODEL,
                         status="failure",
                         created_at=datetime.now(),
                     )
                 )
                 print(f"[diary-gen] photo analyze FAILED: photo={p.id}: {exc}")
         db.commit()  # 분석 이력 먼저 저장(2단계가 실패해도 분석은 남도록)
-
+        
         # ── 2단계: 모은 분석으로 일기 작성(사진 없이 텍스트만) ──
-        trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
-        user = db.query(User).filter(User.id == trip.user_id).first() if trip else None
+        
         persona = (user.writing_persona if user else None) or "daily"
+        gen = db.query(DiaryGeneration).filter(DiaryGeneration.id == gen_id).first()
+        if gen is not None:
+            gen.model_used = _diary_generation_model_used(persona)
+            db.commit()
+
         result = write_diary(
             analyses,
             location=trip_day.location_summary or "",
             date=trip_day.date.isoformat(),
             persona=persona,
         )
-
+        
         # 결과 저장: 합치기 후 일기 내용이 trip_day 에 직접 들어감
         trip_day.content = result["content"]
         trip_day.word_count = len(result["content"])
@@ -410,6 +474,36 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
         gen.status = "success"
         gen.response_text = json.dumps(result, ensure_ascii=False)
         db.commit()
+
+        # 그래프 디비를 위한 DTO 처리 
+        graph_dayMemory.append(
+                    Day_Memory(
+                        title=trip_day.subtitle,
+                        description=trip_day.content,
+                        day_number=trip_day.day_number,
+                        weather=trip_day.weather,
+                        keywords=graph_keyword,
+                        mood=Counter(mood_list).most_common(1)[0][0] if mood_list else None,
+                        place=graph_place,
+                        emotions=trip_day.emotion,
+                        summaryShort=result["summaryShort"] # 요약내용
+                    )
+                )
+        graph_trip.title = trip.title
+        graph_trip.mood_persona = persona
+        graph_trip.travelType=trip.flag
+        graph_trip.startDate=trip.start_date
+        graph_trip.endDate=trip.end_date
+
+        graph_seed = Seed(
+            trip=graph_trip,
+            days=graph_dayMemory
+        )
+        past_graph_context(user.id,graph_seed)
+        ok = save_trip_graph(user.id,user.nickname,graph_seed,trip.id)
+        print("neo4j 저장 결과: ",ok)
+
+
         elapsed = time.monotonic() - started
         print(
             f"[diary-gen] done: trip_day={trip_day_id} in {elapsed:.1f}s "
@@ -418,7 +512,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
 
         # ── 3단계: 이 여행의 모든 일차가 끝났다면 trip 제목 자동 생성 ──
         # 마지막 일차가 막 success 가 된 지금 시점에서 한 번만 실행.
-        # 이미 사용자/AI 가 만든 제목이 있으면(= '새 여행' 기본값이 아니면) 건드리지 않음.
+        # 이미 사용자/AI 가 만든 제목이 있으면(= '제목 생성 중...' 기본값이 아니면) 건드리지 않음.
         try:
             remaining = (
                 db.query(TripDay)
@@ -429,7 +523,12 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                 .count()
             )
             trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
-            if remaining == 0 and trip is not None and (not trip.title or trip.title == "새 여행"):
+            print("제목 생성 준비")
+            print("remaining:",remaining)
+            print("trip.title:",trip.title)
+            print("DEAFULT_TRIP_TITLE:",DEAFULT_TRIP_TITLE)
+            if remaining == 0 and trip is not None and (not trip.title or trip.title == DEAFULT_TRIP_TITLE):
+                print("제목 생성중...")
                 from app.services.diary_generator import write_trip_title
 
                 all_days = (
@@ -486,6 +585,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                     if generated_img_id:
                         trip.cover_photo_id = generated_img_id
                     db.commit()
+                    ok = update_trip_day_graph(trip_day, trip)
                     print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
         except Exception as exc:
             # 제목 생성 실패해도 일기 본문 흐름엔 영향 없게 — 로그만.
@@ -519,13 +619,12 @@ def regenerate_trip_day(
     # 바로 생성 시작 기록(status='running') → 폴링이 generating 으로 봄.
     gen = DiaryGeneration(
         trip_day_id=trip_day_id,
-        model_used=_MODEL_NAME,
+        model_used=_diary_generation_model_used(),
         status="running",
         created_at=datetime.now(),
     )
     db.add(gen)
     db.commit()
-
     # 느린 생성은 응답 후 백그라운드에서. (사진 여러 장이면 수십 초)
     background_tasks.add_task(_run_generation, trip_day_id, gen.id)
     return DayStatus(tripDayId=trip_day.id, genStatus="generating")
@@ -539,6 +638,7 @@ def update_trip_status(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> TripStatusUpdate:
+    print("여기가 진짜 저장 하는곳:",trip_id)
     trip = _get_trip_or_404(db, trip_id)
     previous_status = trip.status
     trip.status = body.status
@@ -549,3 +649,39 @@ def update_trip_status(
         background_tasks.add_task(run_travel_style_analysis, trip.user_id)
 
     return body
+
+@router.get("/trips/{trip_id}/title-stream")
+async def stream_trip_title(trip_id: int, request: Request, db: Session = Depends(get_db)):
+    base = _base_url(request)
+
+    async def event_generator():
+        # 3초마다 반복하면서 값이 바뀌었는지 체크
+        while True:
+            # 1. DB에서 trip 정보 조회 (함수명은 프로젝트에 맞게 사용 중인 헬퍼 함수 적용)
+            trip = _get_trip_or_404(db, trip_id)
+            
+            # 2. AI가 아직 제목을 생성 중이지 않은 상태(임시 텍스트)라고 가정
+            #    -> 프로젝트에서 사용하는 '생성 중' 기본값 문자열을 조건으로 설정하세요!
+            if trip.title == "제목 생성 중..." or trip.title is None:
+                print("아직 생성 중... 3초 대기 후 재조회")
+                await asyncio.sleep(3) # 3초 대기
+                # DB 세션 갱신 필요 시 db.expire_all() 추가
+                db.expire(trip)  # DB 캐시 무효화 후 재조회하기 위함 (SQLAlchemy 세션 갱신용)
+                continue
+            
+            # 3. 생성이 완료되어 값이 바뀌었으면 루프 탈출 후 데이터 전송
+            else:
+                response_data = {
+                    "title": trip.title,
+                    "representImage": _photo_url(db, base, trip.cover_photo_id)
+                }
+                yield {
+                    "event": "message",
+                    "data": json.dumps(response_data, ensure_ascii=False) # JSON 문자열로 변환
+                }
+                break # 전송 후 제너레이터 종료 (SSE 연결도 자연스럽게 닫힘)
+
+
+    
+
+    return EventSourceResponse(event_generator())

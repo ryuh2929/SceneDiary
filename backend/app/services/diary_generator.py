@@ -38,6 +38,8 @@ GEMINI_PROJECT_ID = os.getenv("GEMINI_PROJECT_ID", "project-19fbb1da-6ea1-4a56-8
 GEMINI_LOCATION = os.getenv("GEMINI_LOCATION", "us-west1")
 DIARY_PERSONAS = {"daily", "playful", "poetic", "romantic"}
 
+
+
 GOOGLE_API_KEY= os.getenv("GENAI_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 # 2. 모델 선택 (gemini-1.5-flash 또는 gemini-1.5-pro 등)
@@ -57,6 +59,7 @@ _client = OpenAI(base_url="https://api.openai.com/v1", api_key=API_KEY)
 _ANALYZE_PROMPT = """당신은 여행 사진을 분석해 일기 작성에 필요한 사실 기반 단서를 구조화하는 분석가입니다.
 사진에 보이는 장면을 우선으로 기록하고, 제공된 시간/위치 메타데이터는 참고 정보로만 사용하세요.
 사진 내용과 맞지 않으면 장소명, 랜드마크, 활동을 단정하지 마세요.
+랜드마크는 GPS가 없어도 시각적 특징만으로 매우 명확하면 추정할 수 있습니다. 이때 근거는 visual_match로 두고 confidence를 높게 줄 수 있습니다.
 감성적인 문장 작성은 하지 말고, 관찰 가능한 정보와 신중한 추정만 JSON으로 반환하세요.
 confidence 값은 0.0~1.0 숫자로 작성하세요.
 반드시 아래 JSON 형식으로만, 다른 말 없이 답하세요.
@@ -69,7 +72,7 @@ confidence 값은 0.0~1.0 숫자로 작성하세요.
   "place_type": "반드시 landmark, street, nature, restaurant, cafe, hotel, transport, museum, shop, event, unknown 중 하나",
   "indoor_outdoor": "반드시 indoor, outdoor, mixed, unknown 중 하나",
   "activity": ["walking", "sightseeing"]처럼 사진에서 보이는 활동 키워드",
-  "landmark_guess": "사진과 메타데이터가 함께 뒷받침할 때만 구체 랜드마크명, 아니면 빈 문자열",
+  "landmark_guess": "시각적으로 매우 명확하거나 메타데이터가 함께 뒷받침할 때 구체 랜드마크명, 아니면 빈 문자열",
   "landmark_confidence": 0.0,
   "landmark_basis": ["visual_match", "gps_context"]처럼 판단 근거 키워드 배열",
   "people_type": "반드시 selfie, portrait_of_user, group_photo, performance, crowd, stranger, landscape_only, unclear 중 하나",
@@ -103,7 +106,8 @@ _WRITE_PROMPT = """당신은 여행 사진 분석 결과를 보고 한국어 여
   "subtitle": "여행자가 친구에게 말하듯 간결하게 작성할 것",
   "content": "3~5문장의 평범한 일상을 적는 인스타 감성으로 한국어 일기 본문",
   "weather": "반드시 다음 중 하나만 사용하세요 (☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, '')",
-  "emotion": "그 날의 감정을 나타내는 이모지 1개"
+  "emotion": "그 날의 감정을 나타내는 이모지 1개",
+  "summaryShort": "content의 핵심 장면을 30자 내외로 요약."
 }"""
 
 _PERSONA_STYLE_PROMPTS = {
@@ -260,6 +264,7 @@ def _openai_diary_model_for_persona(persona: str) -> str:
 def _gemini_diary_endpoint_for_persona(persona: str) -> str:
     env_name = f"GEMINI_{persona.upper()}_ENDPOINT_ID"
     endpoint_id = (os.getenv(env_name) or "").strip()
+    print("페르소나 제미나이 모델 번호:",endpoint_id)
     if not endpoint_id:
         raise RuntimeError(
             f"{env_name} is not configured. "
@@ -289,8 +294,11 @@ def _generate_diary_with_gemini(persona: str, user_text: str) -> dict:
         project=GEMINI_PROJECT_ID,
         location=GEMINI_LOCATION,
     )
+    endpoint_name = _gemini_diary_endpoint_for_persona(persona)
+    print("페르소나 제미나이 엔드포인트 이름:",endpoint_name)
+
     response = vertex_client.models.generate_content(
-        model=_gemini_diary_endpoint_for_persona(persona),
+        model=endpoint_name,
         contents=f"{_write_prompt_for_persona(persona)}\n\n{user_text}",
         config=vertex_types.GenerateContentConfig(
             temperature=0.7,
@@ -389,7 +397,7 @@ def write_diary(
 ) -> dict:
     """[2단계 · LLM] 사진 분석 텍스트들만 보고(사진 없이) 일기를 씁니다.
 
-    반환: {"subtitle", "content", "weather"(코드포인트), "emotion"(코드포인트)}
+    반환: {"subtitle", "content", "weather"(코드포인트), "emotion"(코드포인트),"summaryShort"(일기 요약)}
     weather·emotion 은 이모지를 Twemoji 코드포인트(hex)로 변환해 돌려줍니다.
     """
     persona = _normalize_persona(persona)
@@ -404,108 +412,39 @@ def write_diary(
             for index, analysis in enumerate(analyses, 1)
         ],
     }
-    user_text = (
-        "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n"
-        f"{json.dumps(payload, ensure_ascii=False)}"
-    )
+    if persona == "daily":
+        user_text = (
+            "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 daily이면 담백하고 편안한 한국어 구어체로 쓰고, 과장된 문학 표현과 불필요한 수식어는 피하세요.\n"
+            f"{json.dumps(payload, ensure_ascii=False)}"
+        )
+    elif persona == "poetic":
+        user_text = (
+            "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 poetic이면 빛, 색, 소리, 온도 같은 감각을 살려 차분하고 문학적인 한국어 일기체로 쓰세요. 과장된 상징, 운명적인 표현, 입력에 없는 서사는 만들지 마세요.\n"
+            f"{json.dumps(payload, ensure_ascii=False)}"
+        )
+    elif persona == "playful":
+        user_text = (
+            "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n"
+            f"{json.dumps(payload, ensure_ascii=False)}"
+        )
+    else:
+        user_text = (
+            "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 romantic이면 장면을 다정하고 설레는 한국어 일기체로 쓰되, 입력에 없는 관계성이나 과한 사랑 표현은 만들지 마세요.\n"
+            f"{json.dumps(payload, ensure_ascii=False)}"
+        )
 
     if DIARY_MODEL_PROVIDER in {"gemini", "vertex", "vertexai"}:
         parsed = _generate_diary_with_gemini(persona, user_text)
     else:
         parsed = _generate_diary_with_openai(persona, user_text)
-
+    
     return {
         "subtitle": (parsed.get("subtitle") or "").strip(),
         "content": (parsed.get("content") or "").strip(),
         "weather": _emoji_to_codepoint(parsed.get("weather", "")),
         "emotion": _emoji_to_codepoint(parsed.get("emotion", "")),
+        "summaryShort":(parsed.get("summaryShort") or "").strip(),
     }
-
-
-def _write_trip_title_legacy(
-    days: list[dict], *, destination: str = "", path_list: list[Path], photo_info:list[dict]
-) -> dict:
-    """[3단계 · LLM] 모든 일차의 (subtitle, content 요약) 을 보고 여행 제목 한 줄을 만듭니다.
-
-    days : [{"subtitle": str, "content_excerpt": str}, ...] (일차 순서대로)
-    destination : trips.destination (예: "일본/도쿄"). 비어있어도 됨.
-    반환 : 제목 문자열. 모델 실패 시 빈 문자열.
-    """
-    if not days:
-        return ""
-
-    # 일차별 한 줄 요약을 만들어 모델 입력으로 합칩니다.
-    lines = []
-    for i, d in enumerate(days, 1):
-        sub = (d.get("subtitle") or "").strip()
-        excerpt = (d.get("content_excerpt") or "").strip()
-        lines.append(f"{i}일차 [{sub}]: {excerpt}")
-    joined = "\n".join(lines)
-    hint = f"\n참고: 여행지='{destination}'." if destination else ""
-    
-    
-    photo_id_text = [path['img_id'] for path in photo_info]
-    print("AI한테 보내는 사진 아이디들:",photo_id_text)
-    user_text = (
-        f"""이미지 리스트랑 img_id를 알려주면 그 중에서 메인으로 사용할 사진을 한 장만 선택해서 img_id만 형식에 맞게 알려줘\n
-        사진 선택할 때는 임팩트 있는 걸로 선택하되 순서 상관없이 골라줘
-        {photo_id_text}"""
-    )
-    # 이미지 데이터 변환
-    # 각 사진의 URL을 AI가 읽을 수 있는 바이너리 형식(blob)으로 변환하여 리스트에 저장
-    encoded_images = [get_gemini_image_blob(Path(path['file_url'])) for path in photo_info]
-
-    # 2. 메시지 구성 (기본 텍스트 포함)
-    message_content = [{"type": "text", "text": user_text}]
-
-    # 3. 이미지들을 하나씩 별도의 객체로 추가
-    for url in encoded_images:
-        message_content.append({
-            "type": "image_url",
-            "image_url": {"url": url}
-        })
-
-    # 4. API 호출  (텍스트 데이터만 사용)
-    # resp = _client.chat.completions.create(
-    #     model=DIARY_MODEL,
-    #     messages=[
-    #         {"role": "system", "content": _TITLE_PROMPT},
-    #         {"role": "user", "content": message_content} # 위에서 만든 리스트를 통째로 전달
-    #     ],
-    #     response_format={"type": "json_object"},
-    #     temperature=0.2,
-    # )
-    
-    if TITLE_MODEL_PROVIDER in {"openai", "chatgpt", "gpt"}:
-        openai_images = [
-            {
-                "type": "image_url",
-                "image_url": {"url": _encode_image(Path(path["file_url"]))},
-            }
-            for path in photo_info
-        ]
-        resp = _client.chat.completions.create(
-            model=TITLE_MODEL,
-            messages=[
-                {"role": "system", "content": _TITLE_PROMPT},
-                {
-                    "role": "user",
-                    "content": [{"type": "text", "text": user_text}] + openai_images,
-                },
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.2,
-        )
-        print(f"write_trip_title provider=openai model={resp.model}")
-        dict_text = _parse_dict(resp.choices[0].message.content)
-    else:
-        response = google_model.generate_content([_TITLE_PROMPT+"\n"+user_text] + encoded_images)
-        print(f"write_trip_title provider=gemini model={TITLE_GEMINI_MODEL}")
-        print(response.text)
-        dict_text = _parse_dict(response.text)
-    print("AI가 돌려준 이미지 번호",dict_text.get("img_id"))
-    return dict_text
-
 
 def write_trip_title(
     days: list[dict],
@@ -541,7 +480,7 @@ def write_trip_title(
             if item.get("img_id") is not None
         ],
     }
-
+    print("제목 생성할때 참고하는것들: ",payload)
     user_text = (
         "다음 여행 일기 요약과 후보 사진을 보고 여행 제목과 대표사진을 정해줘.\n"
         "반드시 JSON 객체 하나만 반환해.\n"
@@ -555,7 +494,7 @@ def write_trip_title(
         f"입력 데이터:\n{json.dumps(payload, ensure_ascii=False)}"
     )
     print("AI에게 보내는 대표사진 후보:", candidate_img_ids)
-
+    print("제목 AI 모델명:",TITLE_MODEL_PROVIDER)
     if TITLE_MODEL_PROVIDER in {"openai", "chatgpt", "gpt"}:
         resp = _client.chat.completions.create(
             model=TITLE_MODEL,
