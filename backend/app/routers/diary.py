@@ -42,8 +42,25 @@ router = APIRouter(tags=["diary"])
 
 # 사진 파일 경로 해석용 backend 루트. (photos.file_url = "test_images/..." 가 이 폴더 기준)
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
-# 생성에 쓰는 모델명(생성 이력 기록용). diary_generator 와 같은 기본값.
-_MODEL_NAME = os.getenv("DIARY_MODEL", "gemma4:e4b")
+# 사진 분석은 OpenAI 호환 경로에서 DIARY_MODEL을 직접 사용합니다.
+_PHOTO_ANALYSIS_MODEL = os.getenv("DIARY_MODEL", "gemma4:e4b")
+_DIARY_MODEL_PROVIDER = os.getenv("DIARY_MODEL_PROVIDER", "openai").strip().lower()
+_GEMINI_DIARY_PROVIDERS = {"gemini", "vertex", "vertexai"}
+_DIARY_PERSONAS = {"daily", "playful", "poetic", "romantic"}
+
+
+def _normalize_diary_persona(persona: str | None) -> str:
+    normalized = (persona or "daily").strip().lower()
+    return normalized if normalized in _DIARY_PERSONAS else "daily"
+
+
+def _diary_generation_model_used(persona: str | None = None) -> str:
+    """Return the model identifier stored in diary_generations.model_used."""
+    persona = _normalize_diary_persona(persona)
+    if _DIARY_MODEL_PROVIDER in _GEMINI_DIARY_PROVIDERS:
+        endpoint_id = (os.getenv(f"GEMINI_{persona.upper()}_ENDPOINT_ID") or "unconfigured").strip()
+        return f"vertex:{persona}:{endpoint_id}"
+    return os.getenv(f"DIARY_OPENAI_MODEL_{persona.upper()}", _PHOTO_ANALYSIS_MODEL)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -368,7 +385,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                 db.add(
                     PhotoGeneration(
                         photo_id=p.id,
-                        model_used=_MODEL_NAME,
+                        model_used=_PHOTO_ANALYSIS_MODEL,
                         analysis_text=analysis["analysis_text"],
                         analysis_json=analysis_json,
                         place_type=analysis_json.get("place_type"),
@@ -417,7 +434,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                 db.add(
                     PhotoGeneration(
                         photo_id=p.id,
-                        model_used=_MODEL_NAME,
+                        model_used=_PHOTO_ANALYSIS_MODEL,
                         status="failure",
                         created_at=datetime.now(),
                     )
@@ -428,6 +445,11 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
         # ── 2단계: 모은 분석으로 일기 작성(사진 없이 텍스트만) ──
         
         persona = (user.writing_persona if user else None) or "daily"
+        gen = db.query(DiaryGeneration).filter(DiaryGeneration.id == gen_id).first()
+        if gen is not None:
+            gen.model_used = _diary_generation_model_used(persona)
+            db.commit()
+
         result = write_diary(
             analyses,
             location=trip_day.location_summary or "",
@@ -587,7 +609,7 @@ def regenerate_trip_day(
     # 바로 생성 시작 기록(status='running') → 폴링이 generating 으로 봄.
     gen = DiaryGeneration(
         trip_day_id=trip_day_id,
-        model_used=_MODEL_NAME,
+        model_used=_diary_generation_model_used(),
         status="running",
         created_at=datetime.now(),
     )
