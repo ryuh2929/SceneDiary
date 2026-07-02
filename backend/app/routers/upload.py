@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -17,7 +16,13 @@ from sqlalchemy.orm import Session
 
 from app.db.models import DiaryGeneration, Photo, Trip, TripDay
 from app.db.session import get_db
-from app.routers.diary import _abs_url, _base_url, _gen_status, _run_generation
+from app.routers.diary import (
+    _abs_url,
+    _base_url,
+    _diary_generation_model_used,
+    _gen_status,
+    _run_generation,
+)
 from app.services.image_processor import extract_image_gps_coordinates, extract_image_taken_date, process_upload_image
 from app.utils.country_flags import country_to_flag
 
@@ -32,7 +37,6 @@ _ANALYSIS_PUBLIC_ROOT = "test_images/test_images_korea"
 _THUMBNAIL_PUBLIC_ROOT = "test_images/test_images_korea_thumbs"
 _ANALYSIS_ROOT = _TEST_IMAGES_ROOT / "test_images_korea"
 _THUMBNAIL_ROOT = _TEST_IMAGES_ROOT / "test_images_korea_thumbs"
-_MODEL_NAME = os.getenv("DIARY_MODEL", "gemma4:e4b")
 MAX_UPLOAD_PHOTOS_PER_DAY = 8
 MAX_UPLOAD_BYTES = 12 * 1024 * 1024
 IMAGE_PROCESSING_CONCURRENCY = 3
@@ -665,7 +669,7 @@ async def upload_first_day_photos(
 
         gen = DiaryGeneration(
             trip_day_id=trip_day.id,
-            model_used=_MODEL_NAME,
+            model_used=_diary_generation_model_used(),
             status="running",
             created_at=datetime.now(),
         )
@@ -742,7 +746,7 @@ def start_trip_day_generation(
 
     gen = DiaryGeneration(
         trip_day_id=trip_day.id,
-        model_used=_MODEL_NAME,
+        model_used=_diary_generation_model_used(),
         status="running",
         created_at=datetime.now(),
     )

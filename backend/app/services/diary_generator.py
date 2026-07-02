@@ -59,6 +59,7 @@ _client = OpenAI(base_url="https://api.openai.com/v1", api_key=API_KEY)
 _ANALYZE_PROMPT = """당신은 여행 사진을 분석해 일기 작성에 필요한 사실 기반 단서를 구조화하는 분석가입니다.
 사진에 보이는 장면을 우선으로 기록하고, 제공된 시간/위치 메타데이터는 참고 정보로만 사용하세요.
 사진 내용과 맞지 않으면 장소명, 랜드마크, 활동을 단정하지 마세요.
+랜드마크는 GPS가 없어도 시각적 특징만으로 매우 명확하면 추정할 수 있습니다. 이때 근거는 visual_match로 두고 confidence를 높게 줄 수 있습니다.
 감성적인 문장 작성은 하지 말고, 관찰 가능한 정보와 신중한 추정만 JSON으로 반환하세요.
 confidence 값은 0.0~1.0 숫자로 작성하세요.
 반드시 아래 JSON 형식으로만, 다른 말 없이 답하세요.
@@ -71,7 +72,7 @@ confidence 값은 0.0~1.0 숫자로 작성하세요.
   "place_type": "반드시 landmark, street, nature, restaurant, cafe, hotel, transport, museum, shop, event, unknown 중 하나",
   "indoor_outdoor": "반드시 indoor, outdoor, mixed, unknown 중 하나",
   "activity": ["walking", "sightseeing"]처럼 사진에서 보이는 활동 키워드",
-  "landmark_guess": "사진과 메타데이터가 함께 뒷받침할 때만 구체 랜드마크명, 아니면 빈 문자열",
+  "landmark_guess": "시각적으로 매우 명확하거나 메타데이터가 함께 뒷받침할 때 구체 랜드마크명, 아니면 빈 문자열",
   "landmark_confidence": 0.0,
   "landmark_basis": ["visual_match", "gps_context"]처럼 판단 근거 키워드 배열",
   "people_type": "반드시 selfie, portrait_of_user, group_photo, performance, crowd, stranger, landscape_only, unclear 중 하나",
