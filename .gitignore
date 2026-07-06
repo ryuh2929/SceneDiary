@@ -7,6 +7,9 @@
 .antigravity/
 .antigravity*
 
+# 개인 회고/정리 노트 (팀 공유 X)
+retrospective/
+
 # Local splash render previews
 preview-splash-fast/
 .splash-render-profile*/
