@@ -39,6 +39,9 @@ const DELTA = {latitudeDelta: 0.0922, longitudeDelta: 0.0421};
 // 위도·경도 한 쌍. 지도에서 고른 한 지점을 나타냅니다.
 type Coord = {latitude: number; longitude: number};
 
+// 같은 앱 실행 중에는 마지막으로 잡은 현재 위치를 기억해 다음 피커 오픈 때 서울 fallback을 먼저 보여주지 않습니다.
+let cachedCurrentCoord: Coord | null = null;
+
 // 이 부품이 바깥(일기 화면)에서 받는 값들 = "props".
 //   visible  : 지금 열려 있니? (true면 화면에 보임)
 //   onClose  : "그냥 닫고 싶을 때" 바깥에게 알리는 함수 (X 버튼)
@@ -120,6 +123,12 @@ export default function LocationPicker({
     }
   };
 
+  const applyCurrentCoord = (c: Coord) => {
+    cachedCurrentCoord = c;
+    setPicked(c);
+    centerOn(c);
+  };
+
   // 피커를 열 때 초기 핀/카메라를 잡습니다.
   //  ① 그 날에 이미 좌표가 있으면(위치 있는 날) → 그 좌표에 핀을 박고 카메라도 그쪽으로.
   //     (사진 EXIF/이전 선택으로 검출된 여행지를 지도에 그대로 보여줘야 함 — 요구사항 1)
@@ -127,6 +136,7 @@ export default function LocationPicker({
   //     권한 거부 / GPS 실패 시엔 기본 시작 위치(SEOUL)에서 핀 없이 시작.
   useEffect(() => {
     if (!visible) return;
+    let cancelled = false;
     // 새로 열 때마다 MapView 가 재마운트되므로 준비상태/목표를 초기화.
     mapReadyRef.current = false;
     targetRef.current = null;
@@ -141,21 +151,47 @@ export default function LocationPicker({
 
     // ② 위치 없는 날: 이전 핀을 지우고 현재 위치를 기본으로 잡습니다.
     setPicked(null);
+    if (cachedCurrentCoord) {
+      setPicked(cachedCurrentCoord);
+      centerOn(cachedCurrentCoord);
+    }
     (async () => {
       try {
-        const {status} = await Location.requestForegroundPermissionsAsync();
+        const currentPermission = await Location.getForegroundPermissionsAsync();
+        const permission =
+          currentPermission.status === "granted"
+            ? currentPermission
+            : await Location.requestForegroundPermissionsAsync();
+        const {status} = permission;
         if (status !== "granted") return;
-        const pos = await Location.getCurrentPositionAsync({});
+
+        // OS가 가진 최근 위치가 있으면 먼저 적용해 지도가 서울에 머무는 시간을 줄입니다.
+        const lastKnown = await Location.getLastKnownPositionAsync({
+          maxAge: 1000 * 60 * 5,
+        });
+        if (!cancelled && lastKnown) {
+          applyCurrentCoord({
+            latitude: lastKnown.coords.latitude,
+            longitude: lastKnown.coords.longitude,
+          });
+        }
+
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (cancelled) return;
         const c = {
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
         };
-        setPicked(c); // 핀 미리 박기 → 하단 "이 위치로 선택" 즉시 활성화
-        centerOn(c); // 지도 준비 여부와 무관하게 안전하게 이동(준비 전이면 onMapReady 가 처리)
+        applyCurrentCoord(c); // 핀 미리 박기 → 하단 "이 위치로 선택" 즉시 활성화
       } catch (e) {
         console.error("초기 위치 설정 실패:", e);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [visible, initialLat, initialLon]);
 
   // 안 열려 있으면 아무것도 그리지 않음(화면에서 사라짐).
@@ -167,13 +203,21 @@ export default function LocationPicker({
   const useCurrentLocation = async () => {
     setBusy(true);
     try {
-      const {status} = await Location.requestForegroundPermissionsAsync();
+      const currentPermission = await Location.getForegroundPermissionsAsync();
+      const permission =
+        currentPermission.status === "granted"
+          ? currentPermission
+          : await Location.requestForegroundPermissionsAsync();
+      const {status} = permission;
       if (status !== "granted") return; // 거부해도 OK — 지도 탭으로 고르면 됨
-      const pos = await Location.getCurrentPositionAsync({});
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
       const c = {
         latitude: pos.coords.latitude,
         longitude: pos.coords.longitude,
       };
+      cachedCurrentCoord = c;
       setPicked(c); // 핀 표시
       mapRef.current?.animateToRegion({...c, ...DELTA}, 500); // 지도 카메라 이동(0.5초)
     } catch (e) {
@@ -298,8 +342,8 @@ export default function LocationPicker({
           style={{flex: 1}}
           // 위치 있는 날은 그 좌표를, 없으면 서울을 중심으로 마운트(이후 effect 가 현재 위치로 이동).
           initialRegion={{
-            latitude: initialLat ?? SEOUL.latitude,
-            longitude: initialLon ?? SEOUL.longitude,
+            latitude: initialLat ?? cachedCurrentCoord?.latitude ?? SEOUL.latitude,
+            longitude: initialLon ?? cachedCurrentCoord?.longitude ?? SEOUL.longitude,
             ...DELTA,
           }}
           onMapReady={handleMapReady} // 지도 준비 완료 시 대기 중인 목표로 카메라 이동
