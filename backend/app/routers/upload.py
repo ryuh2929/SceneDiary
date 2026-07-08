@@ -21,7 +21,7 @@ from app.routers.diary import (
     _base_url,
     _diary_generation_model_used,
     _gen_status,
-    _run_generation,
+    submit_generation_task,
 )
 from app.services.image_processor import extract_image_gps_coordinates, extract_image_taken_date, process_upload_image
 from app.utils.country_flags import country_to_flag
@@ -694,7 +694,7 @@ async def upload_first_day_photos(
     
     # 일차 데이터 api호출
     for trip_day_id, gen_id in generation_jobs:
-        background_tasks.add_task(_run_generation, trip_day_id, gen_id)
+        background_tasks.add_task(submit_generation_task, trip_day_id, gen_id)
 
     first_trip_day = trip_days_by_date[photo_taken_dates[0]]
     return FirstDayUploadResponse(
@@ -753,7 +753,7 @@ def start_trip_day_generation(
     db.add(gen)
     db.commit()
     print("AI가 사진 분석 하기1")
-    background_tasks.add_task(_run_generation, trip_day.id, gen.id)
+    background_tasks.add_task(submit_generation_task, trip_day.id, gen.id)
 
     return GenerationStartResponse(
         tripId=trip_day.trip_id,
