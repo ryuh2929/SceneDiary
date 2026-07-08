@@ -617,6 +617,9 @@ export default function AddScreen() {
     if (pendingPhotos.length === 0 || isPreparing || isUploading) {
       return;
     }
+    // 성능 측정 기준점: 사용자가 실제로 "AI로 일기 작성하기" 버튼을 누른 순간.
+    // loading/diary_writing 화면까지 params로 넘겨 사용자 체감 시간을 한 기준으로 잽니다.
+    const perfStartedAt = Date.now();
     setIsUploading(true);
     try {
       const uploadResponse = await uploadFirstDayPhotos(pendingPhotos, {
@@ -647,6 +650,7 @@ export default function AddScreen() {
           day: String(uploadResponse.day),
           mode: "initial",
           days: encodeURIComponent(JSON.stringify(uploadResponse.days)),
+          perfStartedAt: String(perfStartedAt),
         },
       });
     } catch (error) {
