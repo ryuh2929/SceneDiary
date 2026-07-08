@@ -81,6 +81,7 @@ export default function DiaryWritingScreen() {
     tripId?: string | string[];
     path?: string;
     perfStartedAt?: string | string[];
+    perfFirstDayReadyMs?: string | string[];
   }>();
   console.log("누가 다이어리로 왔는가", routeParams.path);
   const tripIdRaw = Array.isArray(routeParams.tripId)
@@ -89,6 +90,9 @@ export default function DiaryWritingScreen() {
   const perfStartedAtRaw = Array.isArray(routeParams.perfStartedAt)
     ? routeParams.perfStartedAt[0]
     : routeParams.perfStartedAt;
+  const perfFirstDayReadyMsRaw = Array.isArray(routeParams.perfFirstDayReadyMs)
+    ? routeParams.perfFirstDayReadyMs[0]
+    : routeParams.perfFirstDayReadyMs;
   const TRIP_ID = tripIdRaw ? Number(tripIdRaw) : NaN;
 
   // 백엔드에서 받아온 여행 전체. 받기 전(로딩 중)엔 null.
@@ -217,11 +221,17 @@ export default function DiaryWritingScreen() {
     ) {
       loggedAllDaysReadyRef.current = true;
       const elapsedMs = Date.now() - startedAt;
+      const firstDayReadyMs = Number(perfFirstDayReadyMsRaw);
+      if (Number.isFinite(firstDayReadyMs)) {
+        console.log(
+          `[perf] click_to_first_day_ready=${firstDayReadyMs}ms (${(firstDayReadyMs / 1000).toFixed(2)}s)`,
+        );
+      }
       console.log(
         `[perf] click_to_all_days_ready=${elapsedMs}ms (${(elapsedMs / 1000).toFixed(2)}s)`,
       );
     }
-  }, [days, perfStartedAtRaw]);
+  }, [days, perfFirstDayReadyMsRaw, perfStartedAtRaw]);
 
   useEffect(() => {
     const eventSource = getTripTitle(TRIP_ID);
