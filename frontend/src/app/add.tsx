@@ -37,6 +37,7 @@ type PendingPhoto = {
   originalFilename: string;
   mimeType: string;
   takenDate?: string;
+  takenAtMs?: number;
   gpsLatitude?: number;
   gpsLongitude?: number;
   // GPS 좌표를 OS 지오코딩으로 변환한 지명. 백엔드에서 trip_days.location_summary,
@@ -138,6 +139,54 @@ function parseExifTakenDate(
   }
 
   return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
+function parseExifTakenAtMs(
+  exif: Record<string, unknown> | null | undefined,
+): number | undefined {
+  if (!exif) {
+    return undefined;
+  }
+
+  const dateCandidates = [
+    exif.SubSecDateTimeOriginal,
+    exif.CompositeSubSecDateTimeOriginal,
+    exif["Composite:SubSecDateTimeOriginal"],
+    exif.TimeStamp,
+    exif.SamsungTimeStamp,
+    exif["Samsung:TimeStamp"],
+    exif.DateTimeOriginal,
+    exif.DateTimeDigitized,
+    exif.DateTime,
+    exif.CreateDate,
+    exif.ModifyDate,
+  ];
+
+  const rawDate = dateCandidates.find((value) => typeof value === "string");
+  if (typeof rawDate !== "string") {
+    return undefined;
+  }
+
+  // EXIF는 보통 "YYYY:MM:DD HH:mm:ss" 형식입니다.
+  // timezone이 없는 값은 촬영지/기기 로컬 시간으로 보고, 정렬용 숫자로만 사용합니다.
+  const match = rawDate.match(
+    /^(20\d{2})[:/-](\d{2})[:/-](\d{2})[ T](\d{2}):(\d{2}):(\d{2})/,
+  );
+  if (!match) {
+    return undefined;
+  }
+
+  const [, year, month, day, hour, minute, second] = match;
+  const timestamp = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second),
+  ).getTime();
+
+  return Number.isFinite(timestamp) ? timestamp : undefined;
 }
 
 function parseGpsCoordinateValue(value: unknown): number | undefined {
@@ -317,6 +366,8 @@ function sortPhotosByTakenDate(photos: PendingPhoto[]) {
       if (left.takenDate && right.takenDate) {
         return (
           left.takenDate.localeCompare(right.takenDate) ||
+          (left.takenAtMs ?? Number.POSITIVE_INFINITY) -
+            (right.takenAtMs ?? Number.POSITIVE_INFINITY) ||
           left.displayOrder - right.displayOrder
         );
       }
@@ -440,6 +491,7 @@ async function buildPendingPhoto(
       parseExifTakenDate(asset.exif) ??
       parseFilenameDate(asset.fileName) ??
       getLocalTodayDate(),
+    takenAtMs: parseExifTakenAtMs(asset.exif),
     gpsLatitude: gps?.latitude,
     gpsLongitude: gps?.longitude,
     placeName: geo?.placeName,
