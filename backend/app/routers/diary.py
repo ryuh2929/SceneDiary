@@ -531,9 +531,14 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             trip=graph_trip,
             days=graph_dayMemory
         )
-        past_graph_context(user.id,graph_seed)
-        ok = save_trip_graph(user.id,user.nickname,graph_seed,trip.id)
-        print("neo4j 저장 결과: ",ok)
+        # Neo4j 저장은 검색/회상용 부가 처리입니다.
+        # 연결 실패가 일기 본문 저장이나 전체 제목 생성까지 막지 않도록 분리합니다.
+        try:
+            past_graph_context(user.id,graph_seed)
+            ok = save_trip_graph(user.id,user.nickname,graph_seed,trip.id)
+            print("neo4j 저장 결과: ",ok)
+        except Exception as exc:
+            print(f"[neo4j] graph context/save skipped: {exc}")
 
 
         elapsed = time.monotonic() - started
