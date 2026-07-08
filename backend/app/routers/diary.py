@@ -15,6 +15,7 @@ import json
 import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -48,6 +49,7 @@ _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 # 사진 분석은 OpenAI 호환 경로에서 DIARY_MODEL을 직접 사용합니다.
 # 생성에 쓰는 모델명(생성 이력 기록용). diary_generator 와 같은 기본값.
 _PHOTO_ANALYSIS_MODEL = os.getenv("DIARY_MODEL", "gemma4:e4b")
+_PHOTO_ANALYSIS_CONCURRENCY = max(1, int(os.getenv("PHOTO_ANALYSIS_CONCURRENCY", "4")))
 _DIARY_MODEL_PROVIDER = os.getenv("DIARY_MODEL_PROVIDER", "openai").strip().lower()
 _GEMINI_DIARY_PROVIDERS = {"gemini", "vertex", "vertexai"}
 _DIARY_PERSONAS = {"daily", "playful", "poetic", "romantic"}
@@ -307,6 +309,7 @@ def update_trip_day(
     trip_day_id: int,
     body: DayUpdate,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> DayPage:
     # 진단용 로그 — 어떤 필드가 들어왔는지 확인. 안정화되면 제거.
@@ -354,12 +357,29 @@ def update_trip_day(
                 trip.flag = country_to_flag(body.countryName)
     db.commit()
     db.refresh(trip_day)
-    trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
-    if trip:
+    # Neo4j 동기화는 부가 처리라 저장 응답을 막지 않도록 백그라운드로 넘깁니다.
+    background_tasks.add_task(_update_trip_day_graph_background, trip_day.id)
+    return _build_day(db, trip_day, _base_url(request))
+
+
+def _update_trip_day_graph_background(trip_day_id: int) -> None:
+    db = SessionLocal()
+    try:
+        trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
+        if trip_day is None:
+            return
+        trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
+        if trip is None:
+            return
+
         from app.services.neo4j_service import update_trip_day_graph
+
         ok = update_trip_day_graph(trip_day, trip)
         print("neo4j trip_day update result:", ok)
-    return _build_day(db, trip_day, _base_url(request))
+    except Exception as exc:
+        print(f"[neo4j] background trip_day update skipped: {exc}")
+    finally:
+        db.close()
 
 
 # ── 백그라운드 생성 작업 ──
@@ -394,8 +414,13 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
         # 콘솔 로그(영문/숫자만 — 어떤 터미널에서도 안 깨지게)
         print(f"[diary-gen] start: trip_day={trip_day_id}, photos={len(photos)}")
 
-        # ── 1단계: 사진별 분석. 이미 성공한 분석이 있으면 재사용(재생성이 빨라짐) ──
+        # ── 1단계: 사진별 분석. 이미 성공한 분석은 재사용하고, 새 VLM 호출만 4개까지 병렬 처리합니다. ──
         analyses: list[dict] = []
+        cached_analysis_by_photo_id: dict[int, str] = {}
+        fresh_analysis_by_photo_id: dict[int, dict] = {}
+        failed_photo_ids: set[int] = set()
+        pending_photo_jobs: list[tuple[Photo, Path, dict]] = []
+
         for p in photos:
             cached = (
                 db.query(PhotoGeneration)
@@ -407,7 +432,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                 .first()
             )
             if cached is not None and cached.analysis_text:
-                analyses.append(_photo_analysis_for_llm(p, cached.analysis_text))  # 재사용: AI 재호출 없음
+                cached_analysis_by_photo_id[p.id] = cached.analysis_text  # 재사용: AI 재호출 없음
                 continue
 
             path = _BACKEND_DIR / p.file_url
@@ -415,8 +440,37 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             image_path.append(path)
             if not path.exists():
                 continue  # 파일이 없으면 그 사진은 건너뜀
-            try:
-                analysis = analyze_photo(path, photo_metadata=_photo_metadata_for_vlm(p))
+            pending_photo_jobs.append((p, path, _photo_metadata_for_vlm(p)))
+
+        if pending_photo_jobs:
+            print(
+                f"[diary-gen] VLM analyze start: pending={len(pending_photo_jobs)}, "
+                f"concurrency={_PHOTO_ANALYSIS_CONCURRENCY}"
+            )
+
+            # OpenAI VLM 호출은 I/O bound라 스레드에서 동시에 기다리게 하고,
+            # SQLAlchemy 세션/DB 쓰기는 아래 메인 스레드에서만 처리합니다.
+            with ThreadPoolExecutor(max_workers=_PHOTO_ANALYSIS_CONCURRENCY) as executor:
+                future_to_photo_id = {
+                    executor.submit(analyze_photo, path, photo_metadata=metadata): p.id
+                    for p, path, metadata in pending_photo_jobs
+                }
+                for future in as_completed(future_to_photo_id):
+                    photo_id = future_to_photo_id[future]
+                    try:
+                        fresh_analysis_by_photo_id[photo_id] = future.result()
+                    except Exception as exc:
+                        failed_photo_ids.add(photo_id)
+                        print(f"[diary-gen] photo analyze FAILED: photo={photo_id}: {exc}")
+
+        for p in photos:
+            cached_text = cached_analysis_by_photo_id.get(p.id)
+            if cached_text:
+                analyses.append(_photo_analysis_for_llm(p, cached_text))
+                continue
+
+            analysis = fresh_analysis_by_photo_id.get(p.id)
+            if analysis is not None:
                 analysis_json = analysis["analysis_json"]
                 token_usage = analysis.get("token_usage") or {}
                 db.add(
@@ -467,7 +521,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                     confidence=float(analysis_json.get("landmark_confidence") or 0.0)
                 )
                 graph_place.append(photo_place)
-            except Exception as exc:  # 사진 1장 분석 실패는 기록만 하고 계속 진행
+            elif p.id in failed_photo_ids:  # 사진 1장 분석 실패는 기록만 하고 계속 진행
                 db.add(
                     PhotoGeneration(
                         photo_id=p.id,
@@ -476,7 +530,6 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                         created_at=datetime.now(),
                     )
                 )
-                print(f"[diary-gen] photo analyze FAILED: photo={p.id}: {exc}")
         db.commit()  # 분석 이력 먼저 저장(2단계가 실패해도 분석은 남도록)
         
         # ── 2단계: 모은 분석으로 일기 작성(사진 없이 텍스트만) ──
