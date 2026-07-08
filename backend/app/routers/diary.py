@@ -13,8 +13,9 @@
 
 import json
 import os
+import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from urllib.parse import quote
@@ -149,6 +150,37 @@ def _photo_metadata_for_vlm(photo: Photo) -> dict:
         "location_name": photo.location_name or "",
         "city_name": getattr(photo, "city_name", None) or "",
         "country_name": getattr(photo, "country_name", None) or "",
+    }
+
+
+def _photo_taken_at_local(photo: Photo) -> str:
+    if not photo.taken_at_utc or not photo.tz:
+        return ""
+
+    match = re.match(r"^([+-])(\d{2}):(\d{2})$", photo.tz)
+    if not match:
+        return ""
+
+    sign, hours_raw, minutes_raw = match.groups()
+    offset_minutes = int(hours_raw) * 60 + int(minutes_raw)
+    if sign == "-":
+        offset_minutes *= -1
+
+    utc_dt = photo.taken_at_utc
+    if utc_dt.tzinfo is None:
+        utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+    offset = timezone(timedelta(minutes=offset_minutes))
+    return utc_dt.astimezone(offset).isoformat(timespec="seconds")
+
+
+def _photo_analysis_for_llm(photo: Photo, analysis_text: str) -> dict:
+    # LLM은 사진을 직접 보지 않고 VLM 분석 텍스트를 보므로,
+    # 촬영 시간을 함께 넘겨 하루의 시간 흐름을 더 자연스럽게 구성하게 합니다.
+    return {
+        "analysis_text": analysis_text,
+        "taken_at_local": _photo_taken_at_local(photo),
+        "taken_at_utc": photo.taken_at_utc.isoformat() if photo.taken_at_utc else "",
+        "tz": photo.tz or "",
     }
 
 
@@ -363,7 +395,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
         print(f"[diary-gen] start: trip_day={trip_day_id}, photos={len(photos)}")
 
         # ── 1단계: 사진별 분석. 이미 성공한 분석이 있으면 재사용(재생성이 빨라짐) ──
-        analyses: list[str] = []
+        analyses: list[dict] = []
         for p in photos:
             cached = (
                 db.query(PhotoGeneration)
@@ -375,7 +407,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                 .first()
             )
             if cached is not None and cached.analysis_text:
-                analyses.append(cached.analysis_text)  # 재사용: AI 재호출 없음
+                analyses.append(_photo_analysis_for_llm(p, cached.analysis_text))  # 재사용: AI 재호출 없음
                 continue
 
             path = _BACKEND_DIR / p.file_url
@@ -412,7 +444,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                         created_at=datetime.now(),
                     )
                 )
-                analyses.append(analysis["analysis_text"])
+                analyses.append(_photo_analysis_for_llm(p, analysis["analysis_text"]))
                 print("사진속 기분?:",analysis_json.get("mood"))
                 mood_list.append(analysis_json.get("mood"))
 
