@@ -1,0 +1,2582 @@
+[
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"베이징\",\"date\":\"2026-05-03\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"산등성이를 따라 긴 성벽과 망루가 이어져 있다. 관광객들이 성벽 위를 걷고 있다. (날씨: 맑음, 분위기: 웅장함, 장소유형: landmark, 랜드마크: Great Wall of China, 활동: walking, sightseeing, 키워드: 성벽, 망루, 산, 관광객)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"성벽이 끝이 안 나네, 안 나!\",\"content\":\"산등성이를 따라 끝없이 이어진 성벽을 걷는데, 처음엔 눈이 번쩍 뜨일 만큼 멋있더니 나중엔 다리가 먼저 현실을 자각시켜 주더라고. 😂 망루가 보일 때마다 \"딱 저기까지만 가자!\" 하고 외쳤지만, 도착하면 다음 망루가 기다리는 매직... the love... 압도적인 절경에 감탄하다가도 내 체력이 조용히 파업을 선언하는, 아주 스펙터클하고 활기찬 오후였어!\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"완전 레전드 여행ㅋㅋ\",\"content\":\"베이징에서 진짜 대박 사건이 터졌다ㅋㅋ 모든 게 미쳤고 완전 레전드라서 하루 종일 웃겨 죽는 줄 알았다. 여기는 무조건 또 가야 하는 개꿀잼 장소로 인정이다.\",\"weather\":\"☀️\",\"emotion\":\"🤣\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"도쿄 오다이바\",\"date\":\"2026-04-12\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"물가 근처에 자유의 여신상 조형물과 다리가 보인다. 주변에 관광객들이 사진을 찍고 있다. (날씨: 맑음, 분위기: 활기, 장소유형: landmark, 랜드마크: Odaiba Statue of Liberty, 활동: sightseeing, taking_photo, 키워드: 조형물, 다리, 물가, 관광객)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"오다이바에서 만난 뉴욕(?)\",\"content\":\"오다이바 물가에서 자유의 여신상 조형물을 봤는데, 뒤로 다리까지 같이 보여서 완전 포토존이더라고! 주변 사람들도 다 같은 생각이었는지 여기저기서 셔터 누르느라 바빴어. 📸 일본에서 만난 낯익은 실루엣이라 괜히 한 번 더 올려다보게 되더라니까.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"친구들과 난리 난 날\",\"content\":\"친구들과 도쿄 오다이바에서 서로 장난을 치며 크게 웃었다. 중간에 길을 잃고 뛰어다니는 소동도 있었지만 모두가 즐거워해서 더 기억에 남았다.\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"경주\",\"date\":\"2026-05-18\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"잔디밭 위에 첨성대가 서 있고 주변에 산책하는 사람들이 보인다. 하늘은 맑고 공간이 넓다. (날씨: 맑음, 분위기: 평온함, 장소유형: landmark, 랜드마크: Cheomseongdae, 활동: walking, sightseeing, 키워드: 첨성대, 잔디밭, 산책)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"첨성대 앞 도장 찍기\",\"content\":\"첨성대 근처를 걷는데 잔디밭이 엄청 넓어서 내 마음까지 잠깐 평평해지는 느낌이더라고. 사진 찍는 사람들 사이를 지나며 나도 자연스럽게 한 장 남겼지! 📸 엄청 거창한 일정은 아니었지만, 경주에 왔다는 도장 하나는 제대로 찍고 간 셈이라 아주 만족스러웠어.\",\"weather\":\"☀️\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"첨성대 잔디밭에서 힐링 한 스푼\",\"content\":\"경주의 풍경은 장난기 많은 시처럼 마음을 간질였고, 모든 빛과 바람이 나를 웃기기 위해 준비된 무대 같았다. 나는 그 유쾌한 운명 속에서 오래 웃었다.\",\"weather\":\"☀️\",\"emotion\":\"✨\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"서울 잠실\",\"date\":\"2026-06-02\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"높은 타워 건물과 넓은 광장이 보인다. 사람들이 건물 앞을 지나가고 있다. (날씨: 흐림, 분위기: 도시적, 장소유형: landmark, 랜드마크: Lotte World Tower, 활동: sightseeing, walking, 키워드: 타워, 광장, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"타워 보려다 목 디스크 올 뻔..\",\"content\":\"잠실 쪽을 지나가다가 높은 타워 앞에 섰는데, 광장이 워낙 넓어서 그런지 건물이 더 거대해 보이더라고. 올려다보는 순간 목에서 먼저 반응이 오더라니까. 윽! 날이 흐려서 사진은 차분하게 나왔지만, 오히려 진짜 도시 구경 온 기분은 제대로 만끽했어.\",\"weather\":\"☁️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"잠실에서 하늘을 올려다 보며\",\"content\":\"사진에는 서울 잠실의 분위기가 잘 담겨 있었다. 여행자가 그 장소를 즐겁게 느꼈을 것 같은 장면이었고, 전체적으로 밝고 유쾌한 이미지로 보였다.\",\"weather\":\"☁️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"파리\",\"date\":\"2026-07-10\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"넓은 잔디밭 너머로 철제 탑이 보이고 사람들이 주변에 앉아 있다. (날씨: 맑음, 분위기: 여유, 장소유형: landmark, 랜드마크: Eiffel Tower, 활동: sightseeing, resting, 키워드: 탑, 잔디밭, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"잔디밭에 드러누울까?\",\"content\":\"넓은 잔디밭 너머로 탑이 보이는데, 다들 여유롭게 앉아서 쉬고 있더라고. 나도 괜히 급하게 움직일 이유가 없어지길래 그냥 자리에 멈춰 섰지! 유명한 장소라 그런지 가만히 바라보는 것만으로도 알찬 일정 같았어. 덕분에 한동안 벤치에 앉아서 사진도 찍고 여유 제대로 즐겼다니까.\",\"weather\":\"☀️\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"파리 방문 기록\",\"content\":\"파리에서 사진에 보이는 장소를 방문했다. 주요 대상과 주변 분위기를 확인했고, 날씨와 사람들의 모습도 관찰할 수 있었다. 전체적으로 여행 중 남긴 기록이다.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"뉴욕\",\"date\":\"2026-08-21\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"항구 쪽 멀리 자유의 여신상과 물 위를 지나는 배가 보인다. 하늘은 조금 흐리다. (날씨: 흐림, 분위기: 차분함, 장소유형: landmark, 랜드마크: Statue of Liberty, 활동: sightseeing, 키워드: 조형물, 항구, 배, 물)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"배랑 같이 찍히니 그럴듯하네\",\"content\":\"항구 쪽에서 멀리 자유의 여신상이 보이더라고. 가까이 간 건 아니지만 물 위를 지나는 배까지 같이 프레임에 잡히니까 사진이 꽤 그럴듯하게 나왔어! 흐린 하늘 덕분에 분위기도 차분하고, 나는 괜히 관광객 모드로 폰 꺼내서 한 번 더 확대해서 구경했잖아.\",\"weather\":\"☁️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"완전 레전드 순간의 여행ㅋㅋ\",\"content\":\"뉴욕에서 진짜 대박 사건이 터졌다ㅋㅋ 모든 게 미쳤고 완전 레전드라서 하루 종일 웃겨 죽는 줄 알았다. 여기는 무조건 또 가야 하는 개꿀잼 장소로 인정이다.\",\"weather\":\"☁️\",\"emotion\":\"🤣\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"교토\",\"date\":\"2026-04-25\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"붉은 도리이 문들이 길게 이어진 길과 걷는 사람들이 보인다. 주변은 숲처럼 보인다. (날씨: 맑음, 분위기: 조용함, 장소유형: landmark, 랜드마크: Fushimi Inari Shrine, 활동: walking, sightseeing, 키워드: 도리이, 숲, 길, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도리이 문에 끝없이 빨려 들어가는 중\",\"content\":\"붉은 도리이 문들이 끝없이 이어져 있어서 걷다 보니까 진짜 똑같은 자리를 계속 맴도는 기분이었어. 😂 웅장하고 신비로운 분위기 덕분에 텐션이 그냥 막 올라가더라고! 어디서 셔터를 눌러도 인생샷이 쏟아지긴 하는데... 사람 없는 타이밍 잡으려고 눈치 게임하느라 진 다 빠졌네. 그래도 건진 사진 보면 완전 대만족이야!\",\"weather\":\"☀️\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"친구들과 난리 난 날\",\"content\":\"친구들과 교토에서 서로 장난을 치며 크게 웃었다. 중간에 길을 잃고 뛰어다니는 소동도 있었지만 모두가 즐거워해서 더 기억에 남았다.\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"싱가포르\",\"date\":\"2026-09-04\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"큰 인공 폭포와 유리 돔 내부의 식물들이 보인다. 사람들이 주변 통로에서 구경하고 있다. (분위기: 시원함, 장소유형: landmark, 실내외: indoor, 랜드마크: Jewel Changi Rain Vortex, 활동: sightseeing, walking, 키워드: 폭포, 유리돔, 식물, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"실내 폭포의 압도적인 스케일\",\"content\":\"유리 돔 안에 엄청난 규모의 폭포가 쏟아지는데 진짜 입이 떡 벌어지더라고. 😮 실내인데도 시원한 물소리에 초록초록한 식물들까지 어우러지니까 여기가 공항 근처라는 게 잠깐 현실감 없이 느껴졌어! 그냥 스쳐 지나가려던 계획은 순식간에 증발하고, 어느새 나도 모르게 홀린 듯이 요리조리 각도 바꿔가며 폭포 인증샷을 털어대고 있었지 뭐야. 구경하는 내내 눈도 귀도 아주 호강하는 시간이었어!\",\"weather\":\"\",\"emotion\":\"😮\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도시가 속삭인 농담\",\"content\":\"싱가포르의 풍경은 장난기 많은 시처럼 마음을 간질였고, 모든 빛과 바람이 나를 웃기기 위해 준비된 무대 같았다. 나는 그 유쾌한 운명 속에서 오래 웃었다.\",\"weather\":\"\",\"emotion\":\"✨\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"서울 성수\",\"date\":\"2026-05-07\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"낮은 건물 사이로 작은 가게들과 걷는 사람들이 보인다. (날씨: 맑음, 분위기: 활기, 장소유형: street, 활동: walking, sightseeing, 키워드: 골목, 상점, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"발길 닿는 대로 성수동 골목 구경\",\"content\":\"성수동 골목골목을 느긋하게 누비고 다녔어. 자그마하고 개성 넘치는 숍들이 끝도 없이 이어져 있어서 구경하느라 시간 가는 줄 몰랐잖아! 거리마다 사람들로 북적북적해서 동네 자체가 아주 활기차게 살아 숨 쉬는 느낌이더라고. 양손은 가벼웠지만 눈으로는 이미 마음에 드는 거 다 쓸어 담고 쇼핑 수십 번은 끝낸 아주 신나는 하루였어!\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"사진 속 장면\",\"content\":\"사진에는 서울 성수의 분위기가 잘 담겨 있었다. 여행자가 그 장소를 즐겁게 느꼈을 것 같은 장면이었고, 전체적으로 밝고 유쾌한 이미지로 보였다.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"부산 남포동\",\"date\":\"2026-06-20\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"간판이 많은 거리와 횡단보도를 건너는 사람들이 보인다. (날씨: 흐림, 분위기: 북적임, 장소유형: street, 활동: walking, 키워드: 거리, 간판, 횡단보도, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"발 디딜 틈 없는 남포동의 북적이는 매력\",\"content\":\"남포동 거리를 구경하면서 발길 닿는 대로 천천히 걸었는데, 인파 때문에 걸음이 자연스럽게 느려진 덕분에 스쳐 지나갈 뻔한 풍경들까지 훨씬 더 오래오래 눈에 담을 수 있었어! 특히 시장 근처 특유의 북적북적하고 활기찬 분위기가 온몸으로 전해져서, 그냥 걷기만 해도 알찬 일정 하나를 거뜬히 해낸 기분이었어!\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"부산 남포동 방문 기록\",\"content\":\"부산 남포동에서 사진에 보이는 장소를 방문했다. 주요 대상과 주변 분위기를 확인했고, 날씨와 사람들의 모습도 관찰할 수 있었다. 전체적으로 여행 중 남긴 기록이다.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"오사카 도톤보리\",\"date\":\"2026-04-30\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"강 옆 산책로와 화려한 간판들이 보인다. 사람들이 다리 근처에서 사진을 찍고 있다. (날씨: 맑음, 분위기: 활기, 장소유형: street, 활동: walking, taking_photo, 키워드: 강, 간판, 다리, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"눈이 핑핑 도는 도톤보리 간판 파티\",\"content\":\"도톤보리 강 옆을 따라 쭉 걸었는데, 워낙 화려한 간판들이 계속 쏟아지다 보니까 시선을 어디에 둬야 할지 아주 눈이 바쁘더라고. 😂 다리랑 강이랑 수많은 사람들까지 전부 다 한꺼번에 움직이니까, 내가 굳이 뭘 찾으려 애쓰지 않아도 도시 자체가 알아서 빵빵한 구경거리를 실시간으로 틀어주는 기분이었어!\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"완전 레전드 여행ㅋㅋ\",\"content\":\"오사카 도톤보리에서 진짜 대박 사건이 터졌다ㅋㅋ 모든 게 미쳤고 완전 레전드라서 하루 종일 웃겨 죽는 줄 알았다. 여기는 무조건 또 가야 하는 개꿀잼 장소로 인정이다.\",\"weather\":\"☀️\",\"emotion\":\"🤣\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"전주 한옥마을\",\"date\":\"2026-03-12\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"한옥 건물과 좁은 거리, 걸어 다니는 관광객들이 보인다. (날씨: 맑음, 분위기: 차분함, 장소유형: street, 활동: walking, sightseeing, 키워드: 한옥, 거리, 관광객)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"한옥마을의 기와는 몇장일까..\",\"content\":\"전주 한옥마을을 구경하면서 발길 닿는 대로 천천히 걸었는데, 나지막한 건물들과 아기자기한 골목길이 계속 이어져 있어서 눈을 뗄 수가 없더라고. 😂 어디를 배경으로 셔터를 눌러도 기와지붕이 멋스럽게 걸려서 그냥 막 찍어도 죄다 화보 같은 여행 사진이 되는 마법... 걷는 속도는 한없이 느긋했지만 구경하느라 눈도 바쁘고 카메라를 쥔 손가락도 아주 쉴 틈 없이 성실하게 일했던 하루였어!\",\"weather\":\"☀️\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"친구들과 난리 난 날\",\"content\":\"친구들과 전주 한옥마을에서 서로 장난을 치며 크게 웃었다. 중간에 길을 잃고 뛰어다니는 소동도 있었지만 모두가 즐거워해서 더 기억에 남았다.\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"인천 차이나타운\",\"date\":\"2026-02-08\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"붉은 장식과 간판이 있는 골목길이 보이고 사람들이 지나간다. (날씨: 흐림, 분위기: 이국적, 장소유형: street, 활동: walking, sightseeing, 키워드: 골목, 간판, 장식, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"짜장면이 거들 뿐인 차이나타운\",\"content\":\"차이나타운 골목골목을 누비며 시선 강탈하는 붉은 간판과 화려한 장식들을 구경했는데, 거리 풍경 자체만으로도 이미 분위기가 압도적이더라고. 여기에 점심으로 진한 짜장면이랑 바삭한 탕수육까지 야무지게 챙겨 먹으니까 완벽한 하루 코스가 깔끔하게 완성됐어! 거리 구경부터 식사까지 지갑은 가벼워도 배랑 양손은 아주 묵직하게 채워지는 알찬 하루였어.\",\"weather\":\"☁️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도시가 속삭인 농담\",\"content\":\"인천 차이나타운의 풍경은 장난기 많은 시처럼 마음을 간질였고, 모든 빛과 바람이 나를 웃기기 위해 준비된 무대 같았다. 나는 그 유쾌한 운명 속에서 오래 웃었다.\",\"weather\":\"☁️\",\"emotion\":\"✨\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"서울 익선동\",\"date\":\"2026-05-15\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"좁은 골목 양쪽에 작은 가게와 오래된 건물들이 보인다. (날씨: 맑음, 분위기: 아기자기함, 장소유형: street, 활동: walking, sightseeing, 키워드: 골목, 가게, 오래된 건물)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"개미지옥이 따로 없는 익선동 골목\",\"content\":\"익선동 골목을 요리조리 누비고 다녔는데, 자그마한 가게들이 쉴 틈 없이 튀어나오다 보니까 '딱 한 골목만 더 보고 가자'고 다짐해 놓고는 결국 옆 동네까지 넘어가 버리는 아주 전형적인 개미지옥 패턴에 제대로 걸려들었어. 😂 길이 워낙 좁아서 발걸음은 자연스럽게 달팽이처럼 느릿느릿해졌지만, 구경하느라 눈동자만큼은 사방팔방 굴러가며 아주 쉴 틈이 없던 하루였지!\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"사진 속 장면\",\"content\":\"사진에는 서울 익선동의 분위기가 잘 담겨 있었다. 여행자가 그 장소를 즐겁게 느꼈을 것 같은 장면이었고, 전체적으로 밝고 유쾌한 이미지로 보였다.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"타이베이 시먼딩\",\"date\":\"2026-10-09\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"넓은 보행자 거리와 여러 상점 간판, 걸어가는 사람들이 보인다. (날씨: 맑음, 분위기: 활기, 장소유형: street, 활동: walking, shopping, 키워드: 보행자 거리, 상점, 간판, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"간판과 인파에 치이는 시먼딩 밤거리\",\"content\":\"시먼딩 거리가 현란한 네온사인과 수많은 인파로 쉴 새 없이 북적거리더라고. 고개를 어디로 돌려도 번쩍이는 간판들이 쉴 새 없이 시야를 강탈해서, 가만히 서 있기만 해도 정신이 아찔해지면서 도파민이 솟구치는 기분이었어! 인증샷 한 장 남기려고 폼 잡을 때마다 사람들이 계속 프레임 안으로 스쳐 지나갔지만, 오히려 덕분에 그 북적북적한 거리의 날것 그대로의 생생한 분위기가 사진에 훨씬 더 진하게 담긴 것 같아 대만족이야.\",\"weather\":\"🌙\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"타이베이 시먼딩 방문 기록\",\"content\":\"타이베이 시먼딩에서 사진에 보이는 장소를 방문했다. 주요 대상과 주변 분위기를 확인했고, 날씨와 사람들의 모습도 관찰할 수 있었다. 전체적으로 여행 중 남긴 기록이다.\",\"weather\":\"🌙\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"강릉 안목해변\",\"date\":\"2026-07-03\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"흐린 하늘 아래 해변과 파도가 보인다. 모래사장에는 사람이 많지 않다. (날씨: 흐림, 분위기: 한적함, 장소유형: nature, 활동: walking, resting, 키워드: 해변, 파도, 모래사장)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"파도 소리로 채우는 강릉 바다 산책\",\"content\":\"강릉으로 바다 보러 갔는데 하늘에 먹구름이 잔뜩 껴서 살짝 아쉽나 싶었거든? 근데 역시 바다는 바다더라고. 묵직~하게 철썩이는 파도 소리만 귓가에 때려 박혀도 오늘 하루 할 일은 이미 다 끝낸 것마냥 콧노래가 절로 나왔어. 카페거리 쪽을 느긋하게 발 도장 찍으며 돌아다녀 보니까, 쨍한 날엔 몰랐던 흐린 날 특유의 차분하고 센치한 분위기가 또 엄청 매력적이더라고!\",\"weather\":\"☁️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"완전 레전드 여행ㅋㅋ\",\"content\":\"강릉 안목해변에서 진짜 대박 사건이 터졌다ㅋㅋ 모든 게 미쳤고 완전 레전드라서 하루 종일 웃겨 죽는 줄 알았다. 여기는 무조건 또 가야 하는 개꿀잼 장소로 인정이다.\",\"weather\":\"☁️\",\"emotion\":\"🤣\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"제주 협재\",\"date\":\"2026-05-11\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"밝은 바다와 모래사장, 멀리 낮은 섬이 보인다. (날씨: 맑음, 분위기: 시원함, 장소유형: nature, 활동: walking, sightseeing, 키워드: 바다, 모래사장, 섬)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"에메랄드빛에 눈이 멀 뻔한 협재 해변\",\"content\":\"협재 바다에 도착해서 마주한 물빛이 상상했던 것보다 훨씬 더 쨍하고 또렷하더라고! 새하얀 모래사장이랑 에메랄드빛 바다가 한 프레임에 같이 걸리는데, 여기서 셔터를 안 누르고 그냥 지나치는 건 진짜 유죄라고 생각했어. 애초에 그냥 가벼운 마음으로 바다 구경만 하러 온 거였는데, 어느새 정신 차려 보니까 똑같은 풍경을 각도만 요리조리 살짝씩 바꿔가면서 갤러리에 아주 수십 장씩 찍어내고 있더라구!\",\"weather\":\"☀️\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"친구들과 난리 난 날\",\"content\":\"친구들과 제주 협재에서 서로 장난을 치며 크게 웃었다. 중간에 길을 잃고 뛰어다니는 소동도 있었지만 모두가 즐거워해서 더 기억에 남았다.\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"속초 설악산\",\"date\":\"2026-10-20\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"산길과 바위, 주변의 나무들이 보인다. 길을 따라 걷는 사람들이 있다. (날씨: 맑음, 분위기: 상쾌함, 장소유형: nature, 활동: hiking, walking, 키워드: 산길, 바위, 나무, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"풍경에 속고 경사에 우는 설악산 등산\",\"content\":\"설악산 산길을 걷는데 주변에 기암괴석이랑 울창한 나무들이 계속 이어져서 눈 호강은 제대로 했거든? 근데 문제는 눈이 즐거운 만큼 등산로 경사도 아주 정직하고 성실하게 치고 올라간다는 점이었어. 😂 다리가 후들거려서 한계가 올 때마다 '아, 경치 참 좋다~' 하면서 자연스럽게 멈춰 서서 주변을 감상하는 척 틈틈이 합법적인 물멍 타임을 가졌더니, 의도치 않게 갤러리에 풍경 사진이 아주 산더미처럼 쌓여 있더라구!\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도시가 속삭인 농담\",\"content\":\"속초 설악산의 풍경은 장난기 많은 시처럼 마음을 간질였고, 모든 빛과 바람이 나를 웃기기 위해 준비된 무대 같았다. 나는 그 유쾌한 운명 속에서 오래 웃었다.\",\"weather\":\"☀️\",\"emotion\":\"✨\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"서울 한강공원\",\"date\":\"2026-06-05\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"강변 잔디밭과 자전거 도로, 멀리 다리가 보인다. 사람들이 돗자리에 앉아 있다. (날씨: 맑음, 분위기: 여유, 장소유형: nature, 활동: resting, walking, 키워드: 강, 잔디밭, 다리, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"아무것도 안 해서 완벽한 한강 피크닉\",\"content\":\"한강공원 잔디밭에 앉아 그저 멍때린 게 전부지만! 이런 날은 오히려 아무짝에도 쓸모없이 흘려보낸 시간이 제일 알차고 완벽한 법 아니겠어?\",\"weather\":\"☀️\",\"emotion\":\"😌\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"사진 속 장면\",\"content\":\"사진에는 서울 한강공원의 분위기가 잘 담겨 있었다. 여행자가 그 장소를 즐겁게 느꼈을 것 같은 장면이었고, 전체적으로 밝고 유쾌한 이미지로 보였다.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"춘천 남이섬\",\"date\":\"2026-09-15\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"나무가 줄지어 선 길과 걷는 사람들이 보인다. 길 주변은 초록색으로 가득하다. (날씨: 흐림, 분위기: 차분함, 장소유형: nature, 활동: walking, sightseeing, 키워드: 나무길, 사람들, 산책로)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"초록 내음 치트키 쓴 데크길 산책\",\"content\":\"쭉쭉 곧게 뻗은 나무들이 빈틈없이 이어진 길을 사부작사부작 걸었는데, 발걸음 닿는 족족 피톤치드가 아주 그냥 코끝을 강하게 때리더라고. 길이 워낙 반듯하게 깔려 있어서 걷기도 편한 데다, 폰카로 대충 찍어도 갤러리에 아주 평화롭고 청량한 엽서 한 장이 뚝딱 완성되는 마법... 뭐 엄청나게 스펙터클한 이벤트는 눈을 씻고 찾아봐도 없었지만, 이 정도면 다리품 판 거에 비해 눈동자가 아주 제대로 호강한 혜자로운 일정이잖아!\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"춘천 남이섬 방문 기록\",\"content\":\"춘천 남이섬에서 사진에 보이는 장소를 방문했다. 주요 대상과 주변 분위기를 확인했고, 날씨와 사람들의 모습도 관찰할 수 있었다. 전체적으로 여행 중 남긴 기록이다.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"여수 오동도\",\"date\":\"2026-08-09\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"바다 옆 산책로와 나무, 멀리 보이는 해안선이 있다. (날씨: 맑음, 분위기: 시원함, 장소유형: nature, 활동: walking, sightseeing, 키워드: 바다, 산책로, 나무, 해안선)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"오동도 해안 치트키\",\"content\":\"오동도 산책로를 따라 사부작~사부작~ 걸었는데, 시야에 울창한 숲이랑 탁 트인 바다가 동시에 촥 펼쳐지니까 발걸음이 아주 그냥 고장 난 것처럼 달팽이 모드가 되더라고. 뭐 엄청나게 스펙터클한 걸 챙겨서 한 건 눈을 씻고 찾아봐도 없지만, 파도 소리 들으면서 물가 옆을 멍하니 걷는 것만으로도 아주 폼 나는 하루 일정이 뚝딱 완성되잖아!\",\"weather\":\"☀️\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"완전 레전드 여행ㅋㅋ\",\"content\":\"여수 오동도에서 진짜 대박 사건이 터졌다ㅋㅋ 모든 게 미쳤고 완전 레전드라서 하루 종일 웃겨 죽는 줄 알았다. 여기는 무조건 또 가야 하는 개꿀잼 장소로 인정이다.\",\"weather\":\"☀️\",\"emotion\":\"🤣\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"양양 낙산\",\"date\":\"2026-07-22\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"해변 위로 파도가 밀려오고 멀리 사람들이 걷고 있다. 하늘은 구름이 조금 있다. (날씨: 구름 조금, 분위기: 한가함, 장소유형: nature, 활동: walking, resting, 키워드: 해변, 파도, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도와주지 않는 파도...\",\"content\":\"낙산 쪽 바다를 옆에 끼고 사부작~사부작~ 걸었는데, 철썩이는 파도가 쉴 새 없이 밀려오니까 똑같은 풍경인데도 멍하니 홀린 듯이 계속 보게 되더라고. 예쁘게 인증샷 한 장 건져보겠다고 폰 들고 대기 탔더니, 셔터 누를 때마다 파도가 타이밍을 기가 막히게 빗나가면서 어느새 파도랑 아주 치열한 눈치 게임을 찍고 있었지 뭐야!\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"친구들과 난리 난 날\",\"content\":\"친구들과 양양 낙산에서 서로 장난을 치며 크게 웃었다. 중간에 길을 잃고 뛰어다니는 소동도 있었지만 모두가 즐거워해서 더 기억에 남았다.\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"제주 사려니숲\",\"date\":\"2026-05-13\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"키 큰 나무들이 이어진 숲길과 흙길이 보인다. 사람은 거의 보이지 않는다. (날씨: 흐림, 분위기: 조용함, 장소유형: nature, 활동: walking, 키워드: 숲길, 나무, 흙길)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"사려니숲길을 사부작~사부작~\",\"content\":\"하늘 높이 쭉쭉 뻗은 울창한 삼나무들이 아주 빈틈없이 도열해 있는 사려니숲길을 사부작~사부작~ 걸었어. 웅장한 자연 앞에서 나대지 않고 발걸음이 자연스럽게 조용해지더라고. 😌 폭신폭신한 흙길을 밟는 동안 구구절절 말 따위는 사치였고, 중간중간 멈춰 서서 인증샷 몇 장 찰칵거렸더니 갤러리만 보면 뭐 거의 지구력 만렙 찍은 프로 등산러인 척 제대로 사기 치기 딱 좋은 거 있지!\",\"weather\":\"☀️\",\"emotion\":\"😌\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도시가 속삭인 농담\",\"content\":\"제주 사려니숲의 풍경은 장난기 많은 시처럼 마음을 간질였고, 모든 빛과 바람이 나를 웃기기 위해 준비된 무대 같았다. 나는 그 유쾌한 운명 속에서 오래 웃었다.\",\"weather\":\"☀️\",\"emotion\":\"✨\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"제주 서귀포\",\"date\":\"2026-05-02\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"카페 테이블 위에 아이스커피와 감귤 디저트가 놓여 있고 창밖으로 바다가 보인다. (분위기: 조용함, 장소유형: cafe, 활동: resting, eating, 키워드: 카페, 커피, 디저트, 바다)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"감귤 디저트의 거부할 수 없는 유혹\",\"content\":\"통창 너머로 에메랄드빛 바다가 쫙 펼쳐지는 뷰맛집 카페에 앉아 커피랑 감귤 디저트를 조졌어. 디저트 쪼가리가 뭐 얼마나 대단하겠냐 싶었는데, 입에 넣자마자 존재감이 아주 그냥 묵직하게 뿜어져 나오더라고! 여기에 창밖의 찰랑이는 바다 풍경까지 치트키처럼 딱 곁들여지니까, 그야말로 완벽한 힐링 타임이 뚝딱 완성됐지 뭐야. 엉덩이 붙이고 잠깐 쉬어간 것뿐인데, 꼬였던 여행 일정이 아주 그냥 사르르 풀려버리는 마법 같은 순간이었어!\",\"weather\":\"☀️\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"사진 속 장면\",\"content\":\"사진에는 제주 서귀포의 분위기가 잘 담겨 있었다. 여행자가 그 장소를 즐겁게 느꼈을 것 같은 장면이었고, 전체적으로 밝고 유쾌한 이미지로 보였다.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"부산 해운대\",\"date\":\"2026-06-14\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"식당 테이블 위에 밀면과 만두가 놓여 있다. 실내는 밝고 손님이 많다. (분위기: 북적임, 장소유형: restaurant, 활동: eating, 키워드: 밀면, 만두, 식당)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"해운대 해변의 완벽한 기승전결\",\"content\":\"해운대 해변을 런웨이 삼아 아주 당차게 파워워킹을 하고 나서, 시원한 밀면이랑 꽉 찬 만두를 아주 깔끔하게 해치우고 왔어. 바다 구경으로 눈을 화끈하게 호강시켰더니, 이번엔 식당에서 빈 위장을 든든하게 채워버리는 기가 막힌 K-투어의 효율적인 동선이었지! 살얼음 동동 뜬 밀면 육수로 뼛속까지 시원함을 들이붓고 속이 꽉 찬 만두로 탄수화물까지 딱 넣어주니까, 땡볕에 걷느라 바닥났던 체력이 순식간에 풀충전되더라고!\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"부산 해운대 방문 기록\",\"content\":\"부산 해운대에서 사진에 보이는 장소를 방문했다. 주요 대상과 주변 분위기를 확인했고, 날씨와 사람들의 모습도 관찰할 수 있었다. 전체적으로 여행 중 남긴 기록이다.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"대전 성심당\",\"date\":\"2026-01-22\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"빵집 진열대에 여러 종류의 빵이 놓여 있고 사람들이 줄을 서 있다. (분위기: 북적임, 장소유형: shop, 활동: shopping, eating, 키워드: 빵집, 빵, 줄)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"빵 앞에서 국가대표급 근엄함\",\"content\":\"성심당에 들렀더니 진열대에 눈 돌아가게 맛있는 빵이 한가득 쌓여 있더라고. 줄이 어마어마하게 길어서 살짝 긴장 타기도 했는데, 막상 빵을 고르는 사람들 눈빛을 보니까 다들 무슨 국가대표 선발전이라도 나온 것처럼 엄청나게 진지해지는 거 있지! 시그니처인 튀김소보로랑 커피를 테이블에 딱 모셔두니까, 오늘 대전까지 온 여행 일정의 목적이 아주 그냥 뚜렷하게 완성되더라고!\",\"weather\":\"\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"완전 레전드 여행ㅋㅋ\",\"content\":\"대전 성심당에서 진짜 대박 사건이 터졌다ㅋㅋ 모든 게 미쳤고 완전 레전드라서 하루 종일 웃겨 죽는 줄 알았다. 여기는 무조건 또 가야 하는 개꿀잼 장소로 인정이다.\",\"weather\":\"\",\"emotion\":\"🤣\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"전주\",\"date\":\"2026-03-12\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"식탁 위에 비빔밥과 여러 반찬이 놓여 있다. 그릇들이 깔끔하게 정리되어 있다. (분위기: 편안함, 장소유형: restaurant, 활동: eating, 키워드: 비빔밥, 반찬, 식탁)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"비빔밥 영접의 시간\",\"content\":\"전주에 왔으니 무조건 비빔밥을 영접해야지 하고 들어갔는데, 놋그릇 안에 온갖 고명들이 아주 알록달록하게 빈틈없이 세팅되어 있더라고! 숟가락을 대기가 아까울 정도로 비주얼이 너무 예뻐서 먹기 전에 경건하게 눈으로 먼저 감상하는 시간도 살짝 가졌잖아. 어차피 슥슥 비벼버리면 이 영롱한 자태가 흔적도 없이 사라질 걸 너무 잘 아니까, 폰 꺼내서 다급하게 인증샷부터 여러 장 남겨뒀지! 물론 그렇게 애지중지 찍고 나서는 빛의 속도로 뱃속에 순삭당하긴 했지만 말이야.\",\"weather\":\"\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"친구들과 난리 난 날\",\"content\":\"친구들과 전주에서 서로 장난을 치며 크게 웃었다. 중간에 길을 잃고 뛰어다니는 소동도 있었지만 모두가 즐거워해서 더 기억에 남았다.\",\"weather\":\"\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"강릉\",\"date\":\"2026-07-03\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"카페 창가 자리에 커피잔이 놓여 있고 창밖으로 흐린 바다가 보인다. (날씨: 흐림, 분위기: 조용함, 장소유형: cafe, 활동: resting, 키워드: 카페, 커피, 바다, 창가)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"흐린 날씨마저 영업하는 오션뷰 카페\",\"content\":\"먹구름이 잔뜩 껴서 쨍한 맛은 없었지만, 통창 너머로 아련하게 펼쳐지는 바다를 보며 마시는 커피 한 잔의 여유란! 날씨가 살짝 아쉽긴 해도 눈앞에 바다가 떡하니 버티고 있다는 사실 하나만으로 이미 카페 점수는 만점짜리였어. 따뜻한 커피잔을 쥐고 멍하니 앉아있으니까, 우중충한 날씨도 나름대로 갬성(감성) 한 스푼 더 얹어서 열일하고 있더라고.\",\"weather\":\"☁️\",\"emotion\":\"😌\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도시가 속삭인 농담\",\"content\":\"강릉의 풍경은 장난기 많은 시처럼 마음을 간질였고, 모든 빛과 바람이 나를 웃기기 위해 준비된 무대 같았다. 나는 그 유쾌한 운명 속에서 오래 웃었다.\",\"weather\":\"☁️\",\"emotion\":\"✨\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"오사카\",\"date\":\"2026-04-30\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"철판 위에 타코야키가 놓여 있고 주변에 소스와 가쓰오부시가 보인다. (분위기: 따뜻함, 장소유형: restaurant, 활동: eating, 키워드: 타코야키, 철판, 소스)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"주의! 마그마 타코야키!\",\"content\":\"너무 먹음직스러워 보여서 눈이 돌아갈 뻔했지만, 펄펄 끓는 김이 모락모락 올라오는 걸 보고 극적으로 이성을 되찾았어. 호기롭게 바로 집어넣었다간 여행 추억 대신 처참한 입천장 화상 기록만 훈장처럼 남길 뻔했지 뭐야! 호호 불어가며 살짝 식힌 다음에 입에 쏙 넣으니까, 그제야 입안 가득 안전하고 묵직한 오사카의 맛이 싹 퍼지더라고!\",\"weather\":\"\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"사진 속 장면\",\"content\":\"사진에는 오사카의 분위기가 잘 담겨 있었다. 여행자가 그 장소를 즐겁게 느꼈을 것 같은 장면이었고, 전체적으로 밝고 유쾌한 이미지로 보였다.\",\"weather\":\"\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"서울 연남\",\"date\":\"2026-05-19\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"작은 식당 테이블 위에 파스타와 음료가 놓여 있다. 창가 쪽 빛이 들어온다. (분위기: 편안함, 장소유형: restaurant, 활동: eating, resting, 키워드: 파스타, 음료, 식당, 창가)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"배고파도 SNS...\",\"content\":\"연남동 분위기 좋은 창가 자리에 앉아 파스타랑 음료를 영접했어. 맛있는 냄새가 코를 찌르는데도 테이블에 접시가 내려지자마자 일단 폰부터 들이밀고 셔터 누르기 바빴지 뭐야! 뱃속에선 당장 비상벨이 울리는데도 이 영롱한 비주얼을 카메라에 먼저 담고 있는 나 자신을 발견할 때면, 먹는 것보다 인증샷이 은근히 우선순위가 더 높다는 걸 새삼 깨닫게 된다니까.\",\"weather\":\"☀️\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"서울 연남 방문 기록\",\"content\":\"서울 연남에서 사진에 보이는 장소를 방문했다. 주요 대상과 주변 분위기를 확인했고, 날씨와 사람들의 모습도 관찰할 수 있었다. 전체적으로 여행 중 남긴 기록이다.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"후쿠오카\",\"date\":\"2026-11-02\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"라멘 그릇과 작은 접시가 식탁 위에 놓여 있다. 식당 내부는 좁고 따뜻한 조명이다. (분위기: 아늑함, 장소유형: restaurant, 활동: eating, 키워드: 라멘, 식탁, 조명, 식당)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"진한 국물이 다 한 후쿠오카 라멘\",\"content\":\"후쿠오카의 아담한 라멘집에 들어갔는데, 좁은 공간에 따뜻한 조명이 켜져 있어서 아늑한 분위기가 아주 그냥 끝내주더라고. 주문한 라멘이 나오자마자 국물부터 호로록 맛봤는데, 캬~ 진하고 깊은 맛이 입안을 싹 감싸는 게 왜 다들 일본 라멘, 라멘 하는지 단번에 이해해 버렸잖아!\",\"weather\":\"\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"완전 레전드 여행ㅋㅋ\",\"content\":\"후쿠오카에서 진짜 대박 사건이 터졌다ㅋㅋ 모든 게 미쳤고 완전 레전드라서 하루 종일 웃겨 죽는 줄 알았다. 여기는 무조건 또 가야 하는 개꿀잼 장소로 인정이다.\",\"weather\":\"\",\"emotion\":\"🤣\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"타이베이\",\"date\":\"2026-10-10\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"야시장 매대 위에 간식과 음료가 놓여 있고 주변에 사람들이 서 있다. (분위기: 북적임, 장소유형: shop, 활동: eating, shopping, 키워드: 야시장, 간식, 음료, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"야시장에서 펼쳐지는 간식 순례\",\"content\":\"타이베이 야시장을 구경하며 군것질거리들을 털고 왔어. 화려한 네온사인 불빛이랑 북적이는 사람들로 열기가 아주 그냥 후끈해서, 빈속으로 걷기만 해도 위장에서 비상벨이 요란하게 울리더라고! 눈에 보이는 족족 하나씩 집어 먹다 보니까 이게 가벼운 산책인지 본격적인 코스 요리 식사인지 경계가 아주 애매해졌지만, 여행지에서의 이런 행복한 혼란스러움은 언제든 대환영이잖아!\",\"weather\":\"🌙\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"친구들과 난리 난 날\",\"content\":\"친구들과 타이베이에서 서로 장난을 치며 크게 웃었다. 중간에 길을 잃고 뛰어다니는 소동도 있었지만 모두가 즐거워해서 더 기억에 남았다.\",\"weather\":\"🌙\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"서울 북촌\",\"date\":\"2026-04-20\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"전통 찻집 내부에 차와 작은 다과가 놓여 있다. 조명이 따뜻하고 공간은 조용하다. (분위기: 조용함, 장소유형: cafe, 실내외: indoor, 활동: resting, eating, 키워드: 찻집, 차, 다과, 조명)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"찻잔 앞에서의 속도 조절\",\"content\":\"북촌 찻집에서 향긋한 차와 아기자기한 다과를 마주하고 앉았어. 바깥에서 부지런히 걷던 발걸음과 빠른 속도가 찻잔 앞에서는 마법처럼 자동으로 느려지더라고. 다과의 크기는 아담했지만 입안에 퍼지는 존재감은 충분히 묵직했어. 덕분에 나는 괜히 시간에 쫓기지 않는 여유로운 사람인 척 아주 천천히 음미하며 시간을 즐겨 봤지.\",\"weather\":\"\",\"emotion\":\"😌\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도시가 속삭인 농담\",\"content\":\"서울 북촌의 풍경은 장난기 많은 시처럼 마음을 간질였고, 모든 빛과 바람이 나를 웃기기 위해 준비된 무대 같았다. 나는 그 유쾌한 운명 속에서 오래 웃었다.\",\"weather\":\"\",\"emotion\":\"✨\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"서울 한남\",\"date\":\"2026-05-23\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"전시 공간 안에 큰 그림과 흰 벽, 작품을 보는 사람들이 보인다. (분위기: 차분함, 장소유형: museum, 실내외: indoor, 활동: viewing_art, walking, 키워드: 전시, 그림, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"전시장에서 누려보는 고상한 허세\",\"content\":\"새하얀 벽으로 둘러싸인 갤러리 안에서 조용히 숨을 죽이며 작품들을 천천히 훑어봤어! 공간 자체가 워낙 적막하다 보니까 내 발걸음까지 마법처럼 사뿐사뿐 조심스러워지더라고. 마음에 드는 작품 앞에 일부러 팔짱을 딱 끼고 세상 진지한 표정으로 서 있어 봤지. 혹시라도 다른 사람들이 보면 내가 엄청난 예술적 식견을 가진 깊은 사색가인 줄 착각할까 봐, 속으로는 오늘 저녁 뭐 먹을지 고민하면서 괜히 그럴싸한 분위기에 한껏 취해봤잖아!\",\"weather\":\"\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"사진 속 장면\",\"content\":\"사진에는 서울 한남의 분위기가 잘 담겨 있었다. 여행자가 그 장소를 즐겁게 느꼈을 것 같은 장면이었고, 전체적으로 밝고 유쾌한 이미지로 보였다.\",\"weather\":\"\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"도쿄 긴자\",\"date\":\"2026-04-13\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"상점 내부 진열대에 작은 소품과 조명이 보인다. 공간은 깔끔하게 정리되어 있다. (분위기: 깔끔함, 장소유형: shop, 실내외: indoor, 활동: shopping, browsing, 키워드: 소품, 진열대, 조명, 상점)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"시작된 위대한 쇼핑\",\"content\":\"도쿄 긴자 소품샵에 들어갔는데, 아기자기한 물건들이 어찌나 가지런히 진열되어 있던지 내 발걸음이 그냥은 도저히 못 지나치겠더라고! 오늘 당장 뭘 살 계획은 눈곱만큼도 없었는데, 어느새 내 두 눈은 매의 눈으로 변해서 마음에 드는 녀석들을 이미 마음속 장바구니에 한가득 쓸어 담고 있더라니까. 이러다 진짜 양손 가득 쇼핑백 들고 나오는 거 아닌가 몰라!\",\"weather\":\"\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도쿄 긴자 방문 기록\",\"content\":\"도쿄 긴자에서 사진에 보이는 장소를 방문했다. 주요 대상과 주변 분위기를 확인했고, 날씨와 사람들의 모습도 관찰할 수 있었다. 전체적으로 여행 중 남긴 기록이다.\",\"weather\":\"\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"부산\",\"date\":\"2026-06-15\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"실내 시장 통로에 여러 음식 가게와 손님들이 보인다. (분위기: 북적임, 장소유형: shop, 실내외: indoor, 활동: shopping, eating, 키워드: 시장, 음식 가게, 손님)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"시장 골목을 습격한 위장의 비상벨\",\"content\":\"부산 자갈치 시장 안쪽을 요리조리 누비며 맛집들을 털고 다녔어! 걷는 족족 코끝을 찌르는 맛있는 냄새들 때문에 내 눈보다 위장이 먼저 반응해서 꼬르륵 난리가 나더라고. 아직 뭘로 배를 채울지 메뉴도 안 정했는데, 내 마음은 이미 시장 골목에 있는 모든 가게를 다 쓸어 담고 있었지 뭐야!\",\"weather\":\"\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"완전 레전드 여행ㅋㅋ\",\"content\":\"부산에서 진짜 대박 사건이 터졌다ㅋㅋ 모든 게 미쳤고 완전 레전드라서 하루 종일 웃겨 죽는 줄 알았다. 여기는 무조건 또 가야 하는 개꿀잼 장소로 인정이다.\",\"weather\":\"\",\"emotion\":\"🤣\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"제주\",\"date\":\"2026-05-04\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"기념품 가게 내부에 감귤 모양 상품과 엽서들이 진열되어 있다. (분위기: 아기자기함, 장소유형: shop, 실내외: indoor, 활동: shopping, browsing, 키워드: 기념품, 감귤, 엽서, 진열대)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"제주 소품샵에서 펼쳐지는 추억 저울질\",\"content\":\"제주 기념품 숍에 들어가서 아기자기한 엽서랑 소품들을 구경하고 왔어! 하나같이 어찌나 다들 뽀짝하고 귀엽던지 빈손으로 빠져나오기가 진짜 보통 일이 아니더라고. 여행지에서 기념품을 고르는 건 단순히 물건을 사는 게 아니라, 내 마음속에 담긴 이번 여행의 추억 부피가 얼마나 큰지 가늠해 보는 척도 같은 거 아니겠어? 결국 고민 끝에 양손 가득 기념품을 털어오며 이번 제주의 기억도 아주 묵직하게 꽉꽉 채워 담았지!\",\"weather\":\"\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"친구들과 난리 난 날\",\"content\":\"친구들과 제주에서 서로 장난을 치며 크게 웃었다. 중간에 길을 잃고 뛰어다니는 소동도 있었지만 모두가 즐거워해서 더 기억에 남았다.\",\"weather\":\"\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"서울 동대문\",\"date\":\"2026-06-01\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"넓은 실내 매장에 옷걸이와 옷들이 줄지어 있고 사람들이 쇼핑하고 있다. (분위기: 바쁨, 장소유형: shop, 실내외: indoor, 활동: shopping, 키워드: 옷가게, 옷걸이, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"동대문 패션 정글 속 보물찾기\",\"content\":\"동대문 의류 매장 안을 뚫고 지나가는데, 사방에 옷들이 빈틈없이 빽빽하게 걸려 있더라고! 사람들로 인산인해를 이루고 분위기도 엄청나게 분주해서 쇼핑 한 바퀴 돌고 나면 진이 다 빠질 정도였어. 그래도 포기하지 않고 옷걸이를 한 땀 한 땀 넘기다 보면, 내 마음에 쏙 드는 숨은 잇템을 찾아내는 짜릿한 보물찾기 기분이 제대로 든다니까!\",\"weather\":\"\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도시가 속삭인 농담\",\"content\":\"서울 동대문의 풍경은 장난기 많은 시처럼 마음을 간질였고, 모든 빛과 바람이 나를 웃기기 위해 준비된 무대 같았다. 나는 그 유쾌한 운명 속에서 오래 웃었다.\",\"weather\":\"\",\"emotion\":\"✨\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"여수\",\"date\":\"2026-08-09\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"어두운 바다와 조명이 켜진 다리가 보인다. 물 위에 불빛이 비친다. (분위기: 야경, 장소유형: nature, 활동: sightseeing, resting, 키워드: 바다, 다리, 조명, 야경)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"여수 야경 관람법\",\"content\":\"여수 밤바다를 보러 갔는데, 바다 위로 형형색색 조명이 켜진 다리가 찰랑찰랑 비치고 있더라고! 수면 위로 불빛이 이리저리 흔들리는 게 완전 예술이라 이건 진짜 카메라를 안 들고 배길 수가 없는 분위기였어. 가만히 서 있는 야경을 찍겠다고 내가 요리조리 각도를 바꾸고 발버둥을 치다 보니, 결국 풍경보다 내 몸뚱이가 더 바쁘게 움직이고 있었지 뭐야! 인생샷 하나 건져보겠다고 쌩쇼를 했지만, 덕분에 반짝이는 여수의 밤은 아주 제대로 기억에 남았어!\",\"weather\":\"🌙\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"사진 속 장면\",\"content\":\"사진에는 여수의 분위기가 잘 담겨 있었다. 여행자가 그 장소를 즐겁게 느꼈을 것 같은 장면이었고, 전체적으로 밝고 유쾌한 이미지로 보였다.\",\"weather\":\"🌙\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"서울 반포\",\"date\":\"2026-06-08\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"밤에 다리와 강변 조명이 켜져 있고 사람들이 산책하고 있다. (분위기: 야경, 장소유형: street, 활동: walking, sightseeing, 키워드: 다리, 강변, 조명, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"조명빨 제대로 받은 한강 야간 산책\",\"content\":\"밤바람을 쐬며 반포대교 주변을 걷는데, 다리에서 뿜어져 나오는 조명이 강물 위로 일렁이면서 평소엔 그냥 덤덤했던 익숙한 풍경까지 아주 그냥 영화 속 한 장면처럼 특별해 보이더라고! 찰나의 순간을 놓칠세라 폰을 꺼내 들고 사진을 호다닥 찍어봤지. 결과물을 확인해 보니까 역시 밤 산책의 완성은 은은한 조명빨이라는 걸 다시 한번 뼈저리게 느꼈잖아! 덕분에 폰 갤러리에 찰랑이는 한강 야경 인생샷이 또 하나 추가됐어!\",\"weather\":\"🌙\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"서울 반포 방문 기록\",\"content\":\"서울 반포에서 사진에 보이는 장소를 방문했다. 주요 대상과 주변 분위기를 확인했고, 날씨와 사람들의 모습도 관찰할 수 있었다. 전체적으로 여행 중 남긴 기록이다.\",\"weather\":\"🌙\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"홍콩 침사추이\",\"date\":\"2026-11-18\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"밤의 항구 건너편에 높은 건물들과 불빛이 보인다. 물 위에 조명이 비친다. (분위기: 화려함, 장소유형: landmark, 활동: sightseeing, 키워드: 항구, 야경, 고층건물, 불빛)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"홍콩 야경에 쏟아진 시선 압축본\",\"content\":\"침사추이에서 바라본 고층 빌딩 숲과 항구 뷰가 아주 그냥 장관이더라고! 마천루들이 일제히 반짝반짝 불을 뿜어내는데, 눈길이 닿는 곳마다 전부 다 메인이라 어디부터 쳐다봐야 할지 동공 지진이 제대로 왔잖아. 이 압도적인 스케일과 화려함을 사진 한 장에 다 우겨넣기엔 야경의 열정이 너무 의욕적이길래, 욕심부리지 않고 여러 장으로 나눠서 찰칵찰칵 담아내는 걸로 타협했지! 눈으로도 담고 폰에도 담고, 홍콩의 밤은 역시 이래야 제맛이지!\",\"weather\":\"🌙\",\"emotion\":\"😮\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"완전 레전드 여행ㅋㅋ\",\"content\":\"홍콩 침사추이에서 진짜 대박 사건이 터졌다ㅋㅋ 모든 게 미쳤고 완전 레전드라서 하루 종일 웃겨 죽는 줄 알았다. 여기는 무조건 또 가야 하는 개꿀잼 장소로 인정이다.\",\"weather\":\"🌙\",\"emotion\":\"🤣\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"도쿄 시부야\",\"date\":\"2026-04-14\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"밤에 큰 전광판과 횡단보도, 많은 사람들이 보인다. (분위기: 북적임, 장소유형: street, 활동: walking, sightseeing, 키워드: 전광판, 횡단보도, 사람들, 야경)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"시부야 한복판에서 즐기는 화려한 전광판 샤워\",\"content\":\"시부야의 밤거리는 사방에서 뿜어져 나오는 대형 전광판 불빛이랑 엄청난 인파 때문에 정신이 아주 그냥 혼미해지더라고! 고개를 어디로 돌려도 번쩍이는 스크린이랑 쉴 새 없이 움직이는 사람들뿐이라, 내가 가만히 서 있기만 해도 뇌 속에서 여행 영상이 자동으로 마구 재생되는 느낌이었어. 이 엄청난 현장을 폰에 담아보겠다고 카메라를 들었다가, 결국 나도 그 거대한 인파의 흐름에 도리도리 휩쓸려버렸지 뭐야! 역시 도쿄의 밤은 이래야 제맛이잖아!\",\"weather\":\"🌙\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"친구들과 난리 난 날\",\"content\":\"친구들과 도쿄 시부야에서 서로 장난을 치며 크게 웃었다. 중간에 길을 잃고 뛰어다니는 소동도 있었지만 모두가 즐거워해서 더 기억에 남았다.\",\"weather\":\"🌙\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"경주 동궁과 월지\",\"date\":\"2026-05-18\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"밤에 조명이 켜진 전통 건물과 연못이 보인다. 물 위에 불빛이 반사된다. (분위기: 고요함, 장소유형: landmark, 활동: sightseeing, 키워드: 전통 건물, 연못, 조명, 반사)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"동궁과 월지 데칼코마니 샷의 늪\",\"content\":\"어둠이 내린 동궁과 월지에 조명이 딱 켜지는데, 세상에! 물 위에 건물이 완전 데칼코마니처럼 쨍하게 비치면서 예술적인 장관이 펼쳐지더라고. 칠흑 같은 연못 위로 불빛이 완벽하게 반사되니까 셔터를 누를 수밖에 없는 타이밍이 그냥 계속 무한 리필되더라니까. 같은 구도랑 풍경인데도 '아, 다음 컷이 왠지 더 대박일 것 같아!' 하는 근거 없는 욕심 때문에 손가락이 멈추질 않아서 결국 수백 장의 똑같은 인생샷 대잔치를 벌이고 왔지 뭐야! 눈으로 한번, 폰으로 또 백만 번 담아낸 경주 야경의 밤은 진짜 최고였어!\",\"weather\":\"🌙\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도시가 속삭인 농담\",\"content\":\"경주 동궁과 월지의 풍경은 장난기 많은 시처럼 마음을 간질였고, 모든 빛과 바람이 나를 웃기기 위해 준비된 무대 같았다. 나는 그 유쾌한 운명 속에서 오래 웃었다.\",\"weather\":\"🌙\",\"emotion\":\"✨\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"서울 을지로\",\"date\":\"2026-06-12\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"어두운 골목에 작은 간판과 불빛이 켜져 있고 사람들이 지나간다. (분위기: 조용함, 장소유형: street, 활동: walking, 키워드: 골목, 간판, 불빛, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"을지로 힙스터 골목의 은은한 랜턴 샤워\",\"content\":\"어둑어둑해진 을지로 좁은 골목길을 걷는데, 구석구석 레트로한 감성의 작은 전구들이 툭툭 켜져 있더라고! 대놓고 화려한 번쩍임은 아닌데, 그 특유의 묘하고 빈티지한 분위기 때문에 자꾸만 시선이 홀리듯 꽂히는 거 있지. 인파도 드문드문 한적하게 지나가겠다, 이 여유롭고 힙한 감성을 1초라도 더 길게 누려보겠다고 일부러 발걸음을 세상 느릿느릿 굼벵이처럼 걸어봤잖아! 역시 골목 산책은 이런 낭만 터지는 맛이 있어야 한다니까!\",\"weather\":\"🌙\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"사진 속 장면\",\"content\":\"사진에는 서울 을지로의 분위기가 잘 담겨 있었다. 여행자가 그 장소를 즐겁게 느꼈을 것 같은 장면이었고, 전체적으로 밝고 유쾌한 이미지로 보였다.\",\"weather\":\"🌙\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"\",\"date\":\"2026-05-26\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"일반적인 주택가 골목과 주차된 차들이 보인다. 구체적인 랜드마크는 보이지 않는다. (날씨: 흐림, 분위기: 조용함, 장소유형: street, 활동: walking, 키워드: 골목, 차, 건물)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"이름 모를 골목길의 탐험\",\"content\":\"지도에도 안 나오는 이름 모를 골목길 구석구석을 뽈뽈거리며 탐험하고 왔어! 골목에 얌전히 주차된 차들이랑 아기작한 낮은 건물들만 보이는 엄청 평범하고 소소한 풍경이었거든? 근데 신기하게도 여행을 다니다 보면 이런 웅장한 랜드마크보다 오히려 아무 생각 없이 걸었던 이런 평범한 골목길의 잔상이 뇌리에 훨씬 더 진하게 오래 남더라고. 왠지 모르게 마음이 편안해져서 목적지 없이 걷는데도 내 발걸음은 아주 그냥 세계일주라도 하듯 세상 성실하게 움직였잖아! 골목 산책 특유의 이 여유로운 바이브, 진짜 너무 사랑해!\",\"weather\":\"☁️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"그곳 방문 기록\",\"content\":\"그곳에서 사진에 보이는 장소를 방문했다. 주요 대상과 주변 분위기를 확인했고, 날씨와 사람들의 모습도 관찰할 수 있었다. 전체적으로 여행 중 남긴 기록이다.\",\"weather\":\"☁️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"\",\"date\":\"2026-07-01\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"실내 천장 조명과 빈 테이블, 의자들이 보인다. 장소명은 알 수 없다. (분위기: 조용함, 장소유형: unknown, 실내외: indoor, 활동: resting, 키워드: 테이블, 의자, 조명)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"여행 속 오아시스\",\"content\":\"지도에도 없는 정체불명의 아늑한 실내 공간에 털썩 주저앉았어! 덩그러니 놓인 빈 테이블이랑 의자, 그리고 맘까지 차분하게 녹여주는 은은한 조명까지 완벽 그 자체더라고. 화려한 관광지 뷰는 아니었지만, 빡센 일정 속에 치여 살던 나에게 아무것도 안 하고 멍때리는 이 15분의 여유가 이번 여행의 퀄리티를 확 끌어올려 주는 킹왕짱 치트키였지 뭐야! 덕분에 방전됐던 배터리를 아주 짱짱하게 완충하고 다시 달릴 준비 완료했잖아!\",\"weather\":\"\",\"emotion\":\"😌\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"완전 레전드 여행ㅋㅋ\",\"content\":\"그곳에서 진짜 대박 사건이 터졌다ㅋㅋ 모든 게 미쳤고 완전 레전드라서 하루 종일 웃겨 죽는 줄 알았다. 여기는 무조건 또 가야 하는 개꿀잼 장소로 인정이다.\",\"weather\":\"\",\"emotion\":\"🤣\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"\",\"date\":\"2026-08-02\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"나무와 낮은 울타리, 흙길 일부가 보인다. 주변 장소를 특정하기 어렵다. (날씨: 맑음, 분위기: 한적함, 장소유형: nature, 활동: walking, 키워드: 나무, 울타리, 흙길)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"초록빛 흙길이 건네는 조용한 위로\",\"content\":\"우거진 나무들과 푹신한 흙길이 이어지는 호젓한 산책로를 여유롭게 거닐고 왔어! 내비게이션에 검색해도 나오지 않는 숨겨진 길이라 정확한 명칭은 모르지만, 코끝을 스치는 싱그러운 숲속 공기와 고요한 분위기만으로도 힐링하기엔 차고 넘치더라고. 관광객들로 바글거리는 유명한 핫플레이스가 아니어서 오히려 기대감이나 조바심을 싹 내려놓게 되니까 마음이 어찌나 편안하던지! 복잡한 생각은 잠시 접어두고 발길 닿는 대로 조용하고 평화로운 길을 음미하며 걷는 여행자 역할을 아주 기가 막히게 수행하고 왔잖아.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"친구들과 난리 난 날\",\"content\":\"친구들과 그곳에서 서로 장난을 치며 크게 웃었다. 중간에 길을 잃고 뛰어다니는 소동도 있었지만 모두가 즐거워해서 더 기억에 남았다.\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"\",\"date\":\"2026-04-04\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"창밖으로 도로와 건물 일부가 보이고 실내 유리창 반사가 있다. 장소를 특정하기 어렵다. (날씨: 흐림, 분위기: 평범함, 장소유형: unknown, 활동: resting, 키워드: 창문, 도로, 건물, 반사)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"창밖 풍경과 멍때림이 만든 여행의 여백\",\"content\":\"유리창 너머로 쉴 새 없이 움직이는 도로와 건물들이 훤히 내다보이는 자리에 얌전히 앉아 있었어! 실내 불빛이 유리창에 은은하게 반사되는 바람에 폰카로 찍은 사진 자체는 그냥 평범하게 나왔지만, 복잡한 생각 다 내려놓고 멍때리기에는 이보다 더 완벽할 수 없는 명당이더라고. 멍하니 창밖을 바라보는 이 나만의 고요한 시간도 엄연히 이번 여행의 소중한 한 페이지를 장식하는 당당한 기록이잖아! 덕분에 잃어버렸던 여유와 에너지를 동시에 충전하는 알찬 휴식이었어.\",\"weather\":\"☁️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도시가 속삭인 농담\",\"content\":\"그곳의 풍경은 장난기 많은 시처럼 마음을 간질였고, 모든 빛과 바람이 나를 웃기기 위해 준비된 무대 같았다. 나는 그 유쾌한 운명 속에서 오래 웃었다.\",\"weather\":\"☁️\",\"emotion\":\"✨\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"\",\"date\":\"2026-06-06\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"테이블 위에 물병과 가방, 휴대폰이 놓여 있다. 주변 장소 정보는 거의 없다. (분위기: 일상적, 장소유형: unknown, 실내외: indoor, 활동: resting, 키워드: 테이블, 물병, 가방, 휴대폰)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"테이블 위 흩어진 풍경이 말해주는 여행의 민낯\",\"content\":\"테이블 한가운데에 물병이랑 짐 가방, 그리고 쉴 새 없이 울리던 휴대폰까지 툭 내려놓고 잠시 숨을 골라봤어! 화려하고 웅장한 관광지 뷰는 아니지만, 진짜 리얼한 여행의 일상과 생생한 실제 모습은 오히려 이런 헐렁한 순간들에 훨씬 더 가깝게 닿아 있는 것 같아. 테이블 위에 덩그러니 놓인 물병 하나만 있어도 지금 내가 온전히 쉬어가는 중이라는 걸 증명하기엔 차고 넘치지! 마음까지 편안해지는 이 소박한 여유, 정말 너무 소중하잖아.\",\"weather\":\"\",\"emotion\":\"😌\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"사진 속 장면\",\"content\":\"사진에는 그곳의 분위기가 잘 담겨 있었다. 여행자가 그 장소를 즐겁게 느꼈을 것 같은 장면이었고, 전체적으로 밝고 유쾌한 이미지로 보였다.\",\"weather\":\"\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"\",\"date\":\"2026-09-09\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"흐릿한 실내 통로와 안내 표지판 일부가 보인다. 정확한 장소명은 알 수 없다. (분위기: 이동 중, 장소유형: transport, 실내외: indoor, 활동: walking, 키워드: 통로, 표지판, 실내)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"여행의 빈틈을 채우는 찰나의 이동 통로\",\"content\":\"짐을 챙겨 실내 통로를 바쁘게 지나가던 순간이 사진첩에 덩그러니 남아 있더라고! 주변을 둘러보니 낯선 안내 표지판이랑 길게 뻗은 복도가 보이는 게, 다음 목적지로 부지런히 이동하던 중이었던 게 틀림없어. 화려하고 멋진 랜드마크 뷰는 아니지만, 사실 진짜 여행의 본질은 이런 수많은 통로와 이동 구간을 묵묵히 거쳐야 비로소 완성되는 거 아니겠어? 무심코 지나쳤던 사소한 풍경마저도 되돌아보면 다 추억의 한 조각이 되네.\",\"weather\":\"\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"그곳 방문 기록\",\"content\":\"그곳에서 사진에 보이는 장소를 방문했다. 주요 대상과 주변 분위기를 확인했고, 날씨와 사람들의 모습도 관찰할 수 있었다. 전체적으로 여행 중 남긴 기록이다.\",\"weather\":\"\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"제주 서귀포\",\"date\":\"2026-05-02\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"바닷가 산책로와 낮은 돌담이 보인다. (날씨: 맑음, 분위기: 여유, 장소유형: nature, 활동: walking, 키워드: 바다, 산책로, 돌담)\"},{\"order\":2,\"analysis_text\":\"카페 테이블 위에 커피와 감귤 디저트가 놓여 있고 창밖으로 바다가 보인다. (분위기: 조용함, 장소유형: cafe, 활동: resting, eating, 키워드: 카페, 커피, 디저트)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"감귤 디저트가 완성한 완벽한 휴일\",\"content\":\"서귀포 바닷가가 훤히 내다보이는 한적한 산책로를 느긋하게 거닐고 왔어! 나지막한 제주 전통 돌담 너머로 일렁이는 바다를 구경하고 있으려니 마음속까지 아주 시원해지더라고. 산책 후엔 코스를 짠 듯이 자연스럽게 카페로 쏙 들어갔는데, 향긋한 커피에 달콤상큼한 감귤 디저트까지 테이블 위에 딱 등장하니까 완벽한 휴일을 위한 조건이 아주 그냥 100% 충족됐지 뭐야. 빡빡하지 않은 널널한 일정이었는데도 내적 만족도는 아주 로켓처럼 부지런하게 솟구치더라고! 역시 제주 여행은 이런 여유롭고 달달한 맛이 최고야.\",\"weather\":\"☀️\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"완전 레전드 여행ㅋㅋ\",\"content\":\"제주 서귀포에서 진짜 대박 사건이 터졌다ㅋㅋ 모든 게 미쳤고 완전 레전드라서 하루 종일 웃겨 죽는 줄 알았다. 여기는 무조건 또 가야 하는 개꿀잼 장소로 인정이다.\",\"weather\":\"☀️\",\"emotion\":\"🤣\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"부산 해운대\",\"date\":\"2026-06-14\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"해변에 파라솔과 사람들이 보이고 높은 건물들이 이어져 있다. (날씨: 맑음, 분위기: 활기, 장소유형: nature, 활동: walking, sightseeing, 키워드: 해변, 파라솔, 사람들)\"},{\"order\":2,\"analysis_text\":\"식당 테이블 위에 밀면과 만두가 놓여 있다. (분위기: 북적임, 장소유형: restaurant, 활동: eating, 키워드: 밀면, 만두)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"해운대 해변 산책과 밀면 한 그릇\",\"content\":\"해운대 백사장을 따라 걸으며 알록달록한 파라솔과 활기찬 사람들의 모습을 구경했어! 주변으로 높게 솟은 빌딩들이 끝없이 이어져 있어서 도시적인 느낌과 바다의 시원함이 동시에 느껴지더라고. 산책을 마치고 근처 식당으로 넘어가 시원한 밀면과 속이 꽉 찬 만두를 맛봤지. 북적이는 식당 분위기 속에서 든든하게 배를 채우니 그야말로 완벽한 일정이었어. 역시 여행의 마무리는 맛있는 음식과 함께하는 여유가 최고인 것 같아.\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"친구들과 난리 난 날\",\"content\":\"친구들과 부산 해운대에서 서로 장난을 치며 크게 웃었다. 중간에 길을 잃고 뛰어다니는 소동도 있었지만 모두가 즐거워해서 더 기억에 남았다.\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"경주\",\"date\":\"2026-05-18\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"낮은 건물들이 이어진 거리와 작은 상점들이 보인다. (날씨: 맑음, 분위기: 활기, 장소유형: street, 활동: walking, shopping, 키워드: 거리, 상점)\"},{\"order\":2,\"analysis_text\":\"노을이 지는 하늘 아래 첨성대와 잔디밭이 보인다. (날씨: 맑음, 분위기: 평온함, 장소유형: landmark, 랜드마크: Cheomseongdae, 활동: sightseeing, walking, 키워드: 첨성대, 노을, 잔디밭)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"경주 껌딱지 투어, 낮에는 뽈뽈 저녁엔 낭만퐁당\",\"content\":\"해 쨍쨍한 낮바닥에는 요기조기 쪼매난 상점들 털러 댕기고, 해 떨어질 무렵엔 첨성대 잔디밭에 궁디 붙이고 앉아봤어! 아니 아침 다르고 저녁 다른 이 갭 차이 뭐냐고, 무슨 동네 한 바퀴 도는데 롤러코스터 타는 줄 알았잖아. 덕분에 내 폰 갤러리가 눈뽕 맞는 낮짝이랑 불타는 고구마 같은 노을짝으로 아주 그냥 꽉 차서 터지기 직전이야. 하루 만에 1타 2피로 뽕 뽑고 오니까 콧구멍이 아주 벌렁거리네! \",\"weather\":\"☀️\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도시가 속삭인 농담\",\"content\":\"경주의 풍경은 장난기 많은 시처럼 마음을 간질였고, 모든 빛과 바람이 나를 웃기기 위해 준비된 무대 같았다. 나는 그 유쾌한 운명 속에서 오래 웃었다.\",\"weather\":\"☀️\",\"emotion\":\"✨\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"오사카\",\"date\":\"2026-04-30\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"강 옆 산책로와 화려한 간판들이 보인다. (날씨: 맑음, 분위기: 활기, 장소유형: street, 활동: walking, taking_photo, 키워드: 강, 간판, 다리)\"},{\"order\":2,\"analysis_text\":\"철판 위에 타코야키가 놓여 있고 소스가 보인다. (분위기: 따뜻함, 장소유형: restaurant, 활동: eating, 키워드: 타코야키, 철판, 소스)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"오사카 강변 산책과 뜨거운 문어빵 타임\",\"content\":\"강변을 따라 이어진 산책로를 걷고 길거리에서 타코야키도 사 먹었어! 🐙 주변 풍경을 구경하느라 눈도 바쁘고, 뜨거운 문어빵을 호호 불어 식히느라 입도 바빠서 잠시도 쉴 틈이 없었지 뭐야. 걷는 코스와 먹는 동선이 물 흐르듯 자연스럽게 이어져서 제대로 알차게 즐긴 하루였어. 😆 유쾌하고 활기찼던 오늘 일정 대성공이야!\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"사진 속 장면\",\"content\":\"사진에는 오사카의 분위기가 잘 담겨 있었다. 여행자가 그 장소를 즐겁게 느꼈을 것 같은 장면이었고, 전체적으로 밝고 유쾌한 이미지로 보였다.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"서울 북촌\",\"date\":\"2026-04-20\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"한옥 골목길과 기와지붕이 보이고 관광객 몇 명이 걷고 있다. (날씨: 흐림, 분위기: 차분함, 장소유형: street, 활동: walking, sightseeing, 키워드: 한옥, 골목, 기와)\"},{\"order\":2,\"analysis_text\":\"전통 찻집 내부에 차와 작은 다과가 놓여 있다. (분위기: 조용함, 장소유형: cafe, 실내외: indoor, 활동: resting, eating, 키워드: 찻집, 차, 다과)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"흐린 날 북촌 찻집 대피소\",\"content\":\"흐린 날씨 탓에 한층 더 차분해진 북촌 한옥 골목을 천천히 걷다가 아늑한 찻집으로 쏙 들어갔어! 따뜻한 차와 다과를 앞에 두고 마주 앉으니, 덩달아 바쁘던 발걸음까지 아주 느긋해지더라고. 다리 아프게 여기저기 많이 돌아다닌 건 아니지만, 타이밍 딱 맞춰서 쉬어간 덕분에 체력도 기분도 아주 알차게 충전된 하루였어. 여유가 가득해서 참 좋았던 시간이야! 🙂\",\"weather\":\"☁️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"서울 북촌 방문 기록\",\"content\":\"서울 북촌에서 사진에 보이는 장소를 방문했다. 주요 대상과 주변 분위기를 확인했고, 날씨와 사람들의 모습도 관찰할 수 있었다. 전체적으로 여행 중 남긴 기록이다.\",\"weather\":\"☁️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"인천 차이나타운\",\"date\":\"2026-02-08\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"붉은 간판과 중국식 장식이 있는 거리가 보인다. 관광객들이 골목을 걷고 있다. (날씨: 흐림, 분위기: 북적임, 장소유형: street, 활동: walking, sightseeing, 키워드: 거리, 간판, 장식)\"},{\"order\":2,\"analysis_text\":\"식탁에 짜장면과 탕수육이 놓여 있다. (분위기: 편안함, 장소유형: restaurant, 활동: eating, 키워드: 짜장면, 탕수육, 식당)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"붉은빛 차이나타운 골목 산책과 짜장면 타임\",\"content\":\"차이나타운 골목골목을 천천히 걸으며 거리를 온통 채운 붉은색 간판과 장식들을 구경했어! 🇨🇳 주변 분위기가 워낙 독특하고 강렬해서 사진 배경은 이미 차고 넘치게 건졌지 뭐야. 산책 후에는 점심으로 기본에 충실한 짜장면과 바삭한 탕수육까지 남김없이 해치웠어. 눈으로도 구경을 실컷 하고 뱃속도 든든하게 채워서, 눈과 배가 각자의 역할을 아주 완벽하게 해낸 하루였어!\",\"weather\":\"☁️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"완전 레전드 여행ㅋㅋ\",\"content\":\"인천 차이나타운에서 진짜 대박 사건이 터졌다ㅋㅋ 모든 게 미쳤고 완전 레전드라서 하루 종일 웃겨 죽는 줄 알았다. 여기는 무조건 또 가야 하는 개꿀잼 장소로 인정이다.\",\"weather\":\"☁️\",\"emotion\":\"🤣\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"여수\",\"date\":\"2026-08-09\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"어두운 바다와 조명이 켜진 다리가 보인다. 물 위에 불빛이 비친다. (분위기: 야경, 장소유형: nature, 활동: sightseeing, 키워드: 바다, 다리, 조명)\"},{\"order\":2,\"analysis_text\":\"포장마차 테이블에 해산물과 음료가 놓여 있다. 주변에는 사람들이 앉아 있다. (분위기: 편안함, 장소유형: restaurant, 활동: eating, resting, 키워드: 해산물, 포장마차, 야경)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"여수 밤바다 야경과 포장마차 한 상\",\"content\":\"여수 바다 쪽으로 나가 반짝이는 밤바다 야경을 구경했어! 바다를 가로지르는 다리 조명이 물결 위에 그대로 비쳐서 폰카로 대충 찍어도 작품이 따로 없더라고. 눈 호강을 실컷 하고 나서는 바로 근처 포장마차로 넘어가서 싱싱한 해산물과 시원한 음료까지 싹쓸이했지. 분위기 좋은 밤 산책이랑 든든한 저녁 시간이 물 흐르듯 자연스럽게 이어져서 하루 일정이 아주 부드럽게 착 감기듯 마무리됐어. 여수의 매력을 제대로 만끽한 완벽한 밤이야!\",\"weather\":\"🌙\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"친구들과 난리 난 날\",\"content\":\"친구들과 여수에서 서로 장난을 치며 크게 웃었다. 중간에 길을 잃고 뛰어다니는 소동도 있었지만 모두가 즐거워해서 더 기억에 남았다.\",\"weather\":\"🌙\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"서울 성수\",\"date\":\"2026-05-07\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"낮은 건물 사이로 작은 가게들과 걷는 사람들이 보인다. (날씨: 맑음, 분위기: 활기, 장소유형: street, 활동: walking, sightseeing, 키워드: 골목, 상점, 사람들)\"},{\"order\":2,\"analysis_text\":\"카페 내부 테이블 위에 커피잔과 디저트가 놓여 있다. (분위기: 조용함, 장소유형: cafe, 실내외: indoor, 활동: resting, eating, 키워드: 카페, 커피, 디저트)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"성수 골목 탐방\",\"content\":\"아기자기한 가게들이 줄지어 선 성수동 골목골목을 걷다 왔어! 걷다가 분위기 좋은 카페에 들어가서 시원한 커피랑 달달한 디저트를 먹으니까, 방금 전까지 북적이던 골목길 소음이 순식간에 멀어지더라고. 특별하게 엄청난 사건이 있었던 건 아니지만, 타이밍 딱 맞춰서 달콤하게 쉬어간 덕분에 훨씬 더 오래 기억에 남을 것 같아. 여유롭고 평화로워서 정말 행복했던 시간이야!\",\"weather\":\"☀️\",\"emotion\":\"😊\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도시가 속삭인 농담\",\"content\":\"서울 성수의 풍경은 장난기 많은 시처럼 마음을 간질였고, 모든 빛과 바람이 나를 웃기기 위해 준비된 무대 같았다. 나는 그 유쾌한 운명 속에서 오래 웃었다.\",\"weather\":\"☀️\",\"emotion\":\"✨\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"속초\",\"date\":\"2026-10-20\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"산길과 바위, 주변의 나무들이 보인다. 길을 따라 걷는 사람들이 있다. (날씨: 맑음, 분위기: 상쾌함, 장소유형: nature, 활동: hiking, walking, 키워드: 산길, 바위, 나무)\"},{\"order\":2,\"analysis_text\":\"식당 테이블 위에 생선구이와 반찬들이 놓여 있다. (분위기: 편안함, 장소유형: restaurant, 활동: eating, 키워드: 생선구이, 반찬, 식당)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"등산 후 꿀맛 같은 생선구이 한 상\",\"content\":\"초록빛 우거진 산길을 열심히 걷고 내려와서 푸짐한 생선구이와 맛깔나는 반찬들을 먹었어! 오르막길 오르느라 탈탈 털렸던 체력이 밥상 앞에 앉으니까 스멀스멀 다시 충전되는 기분이더라고. 멋진 풍경을 본 것도 물론 좋았지만, 역시 땀 흘리고 난 뒤에 먹는 밥 한 끼가 오늘의 가장 강력한 하이라이트였지 뭐야. 밥공기 싹싹 비워내며 완벽하게 마무리한 아주 훌륭한 하루였어!\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"사진 속 장면\",\"content\":\"사진에는 속초의 분위기가 잘 담겨 있었다. 여행자가 그 장소를 즐겁게 느꼈을 것 같은 장면이었고, 전체적으로 밝고 유쾌한 이미지로 보였다.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "당신은 SceneDiary의 여행 일기 작성 모델입니다.\n입력 JSON의 persona, location, date, photo_analyses만 바탕으로 작성하세요.\n입력에 없는 사실, 장소, 감정은 만들지 마세요.\npersona가 playful이면 가볍고 재치 있는 한국어 구어체로 쓰되, 과한 밈 표현이나 없는 농담은 만들지 마세요.\n반드시 {\"subtitle\":\"...\",\"content\":\"...\",\"weather\":\"...\",\"emotion\":\"...\"} 형식의 JSON 객체 하나만 답하세요.\nweather는 ☀️, ⛅, ☁️, 🌧️, ❄️, 🌙, \"\" 중 하나만 사용하세요."
+        }
+      ]
+    },
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "다음 JSON 데이터를 바탕으로 SceneDiary 여행 일기를 작성하세요.\n{\"persona\":\"playful\",\"location\":\"도쿄 오다이바\",\"date\":\"2026-04-12\",\"photo_analyses\":[{\"order\":1,\"analysis_text\":\"물가 근처에 자유의 여신상 조형물과 다리가 보인다. 관광객들이 사진을 찍고 있다. (날씨: 맑음, 분위기: 활기, 장소유형: landmark, 랜드마크: Odaiba Statue of Liberty, 활동: sightseeing, taking_photo, 키워드: 조형물, 다리, 물가)\"},{\"order\":2,\"analysis_text\":\"대형 로봇 조형물이 건물 앞에 서 있고 주변에 사람들이 모여 있다. (날씨: 맑음, 분위기: 활기, 장소유형: landmark, 활동: sightseeing, 키워드: 로봇 조형물, 건물, 사람들)\"}]}"
+          }
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "score": 1,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"오다이바 자유의 여신상과 거대 로봇 접수 완료\",\"content\":\"오다이바에 가서 자유의 여신상 조형물이랑 육중한 사이즈의 거대 로봇 조형물을 구경하고 왔어! 전혀 다른 분위기를 뽐내는 두 조형물이 한눈에 들어오는 거리에 있다 보니, 구경하느라 눈이 쉴 틈 없이 바쁘게 움직이더라고. 탁 트인 바다 풍경도 눈에 담고 독특한 볼거리까지 알차게 즐겼더니, 오늘 하루 내 폰 안의 사진첩이 아주 열일했지 뭐야. 볼거리와 여유를 한 번에 챙긴 아주 완벽하고 즐거운 하루였어!\",\"weather\":\"☀️\",\"emotion\":\"😄\"}"
+            }
+          ]
+        }
+      },
+      {
+        "score": 0,
+        "completion": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\"subtitle\":\"도쿄 오다이바 방문 기록\",\"content\":\"도쿄 오다이바에서 사진에 보이는 장소를 방문했다. 주요 대상과 주변 분위기를 확인했고, 날씨와 사람들의 모습도 관찰할 수 있었다. 전체적으로 여행 중 남긴 기록이다.\",\"weather\":\"☀️\",\"emotion\":\"🙂\"}"
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

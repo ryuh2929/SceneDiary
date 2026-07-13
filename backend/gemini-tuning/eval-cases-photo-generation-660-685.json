@@ -1,0 +1,822 @@
+[
+  {
+    "case_id": "trip_day_434",
+    "trip_id": 254,
+    "trip_day_id": 434,
+    "day_number": 1,
+    "date": "2011-07-31",
+    "location": "Chiyoda City",
+    "source_photo_generation_ids": [
+      660
+    ],
+    "source_photo_ids": [
+      782
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 660,
+        "photo_id": 782,
+        "display_order": 0,
+        "original_filename": "1000018991.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-1-2011-07-31/01-1000018991-c254b390c7.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "하드 록 카페와 토니 로마스 레스토랑이 있는 거리의 모습이다. (날씨: 흐림, 분위기: 활기찬, 장소유형: restaurant, 랜드마크: Hard Rock Cafe Tokyo, 인물: landscape_only, 활동: sightseeing, 키워드: Hard Rock Cafe, Tony Roma's, 기타 모양 간판, 주차장)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "하드 록 카페와 토니 로마스 레스토랑이 있는 거리의 모습이다. (날씨: 흐림, 분위기: 활기찬, 장소유형: restaurant, 랜드마크: Hard Rock Cafe Tokyo, 인물: landscape_only, 활동: sightseeing, 키워드: Hard Rock Cafe, Tony Roma's, 기타 모양 간판, 주차장)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_435",
+    "trip_id": 254,
+    "trip_day_id": 435,
+    "day_number": 2,
+    "date": "2016-05-03",
+    "location": "Xi Cheng Qu",
+    "source_photo_generation_ids": [
+      661
+    ],
+    "source_photo_ids": [
+      783
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 661,
+        "photo_id": 783,
+        "display_order": 0,
+        "original_filename": "1000018962.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-2-2016-05-03/01-1000018962-86006f1a4a.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "사람들이 벽돌로 된 길을 따라 언덕을 오르고 있다. (날씨: 맑음, 분위기: 활기찬, 장소유형: landmark, 랜드마크: Great Wall of China, 시간대: morning, 인물: crowd, 활동: walking, sightseeing, 키워드: 벽돌 길, 사람들, 언덕, 푸른 하늘)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "사람들이 벽돌로 된 길을 따라 언덕을 오르고 있다. (날씨: 맑음, 분위기: 활기찬, 장소유형: landmark, 랜드마크: Great Wall of China, 시간대: morning, 인물: crowd, 활동: walking, sightseeing, 키워드: 벽돌 길, 사람들, 언덕, 푸른 하늘)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_436",
+    "trip_id": 254,
+    "trip_day_id": 436,
+    "day_number": 3,
+    "date": "2025-07-14",
+    "location": "Sangdang-gu",
+    "source_photo_generation_ids": [
+      662,
+      663
+    ],
+    "source_photo_ids": [
+      784,
+      785
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 662,
+        "photo_id": 784,
+        "display_order": 0,
+        "original_filename": "1000015019.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-3-2025-07-14/01-1000015019-c8e797f449.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "한 사람이 산 전망대에서 경치를 바라보고 있다. (날씨: 맑음, 분위기: 평화로움, 장소유형: nature, 인물: stranger, 활동: sightseeing, 키워드: 사람, 나무, 구름, 산)"
+      },
+      {
+        "photo_generation_id": 663,
+        "photo_id": 785,
+        "display_order": 1,
+        "original_filename": "1000015021.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-3-2025-07-14/02-1000015021-447d0b2c30.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "두 사람이 갈대밭 사이의 나무 다리 위에 서 있다. (날씨: 흐림, 분위기: 평화로움, 장소유형: nature, 인물: group_photo, 활동: standing, 키워드: 갈대, 나무 다리, 숲)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "한 사람이 산 전망대에서 경치를 바라보고 있다. (날씨: 맑음, 분위기: 평화로움, 장소유형: nature, 인물: stranger, 활동: sightseeing, 키워드: 사람, 나무, 구름, 산)"
+      },
+      {
+        "order": 2,
+        "analysis_text": "두 사람이 갈대밭 사이의 나무 다리 위에 서 있다. (날씨: 흐림, 분위기: 평화로움, 장소유형: nature, 인물: group_photo, 활동: standing, 키워드: 갈대, 나무 다리, 숲)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_437",
+    "trip_id": 254,
+    "trip_day_id": 437,
+    "day_number": 4,
+    "date": "2025-10-08",
+    "location": "Gapyeong-gun",
+    "source_photo_generation_ids": [
+      664
+    ],
+    "source_photo_ids": [
+      786
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 664,
+        "photo_id": 786,
+        "display_order": 0,
+        "original_filename": "1000015764.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-4-2025-10-08/01-1000015764-7149ff5046.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "두 사람이 실내에서 의자에 앉아 휴식을 취하고 있다. (분위기: relaxed, 장소유형: unknown, 인물: group_photo, 활동: relaxing, 키워드: 의자, 테이블, 소파)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "두 사람이 실내에서 의자에 앉아 휴식을 취하고 있다. (분위기: relaxed, 장소유형: unknown, 인물: group_photo, 활동: relaxing, 키워드: 의자, 테이블, 소파)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_438",
+    "trip_id": 254,
+    "trip_day_id": 438,
+    "day_number": 5,
+    "date": "2025-11-22",
+    "location": "Hanam-si",
+    "source_photo_generation_ids": [
+      665
+    ],
+    "source_photo_ids": [
+      787
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 665,
+        "photo_id": 787,
+        "display_order": 0,
+        "original_filename": "1000016218.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-5-2025-11-22/01-1000016218-f93f35d36b.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "창문 밖 난간에 새가 앉아 있는 모습이 보인다. (날씨: 흐림, 분위기: 차분함, 장소유형: unknown, 인물: landscape_only, 키워드: 창문, 새, 난간, 건물)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "창문 밖 난간에 새가 앉아 있는 모습이 보인다. (날씨: 흐림, 분위기: 차분함, 장소유형: unknown, 인물: landscape_only, 키워드: 창문, 새, 난간, 건물)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_439",
+    "trip_id": 254,
+    "trip_day_id": 439,
+    "day_number": 6,
+    "date": "2025-12-28",
+    "location": "Seocho District",
+    "source_photo_generation_ids": [
+      666
+    ],
+    "source_photo_ids": [
+      788
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 666,
+        "photo_id": 788,
+        "display_order": 0,
+        "original_filename": "1000016670.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-6-2025-12-28/01-1000016670-9f1427872e.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "사람들이 테이블 위에서 보드 게임을 하고 있다. (분위기: 즐거움, 장소유형: cafe, 인물: group_photo, 활동: playing, board game, 키워드: 보드 게임, 카드, 사람들, 음료)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "사람들이 테이블 위에서 보드 게임을 하고 있다. (분위기: 즐거움, 장소유형: cafe, 인물: group_photo, 활동: playing, board game, 키워드: 보드 게임, 카드, 사람들, 음료)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_440",
+    "trip_id": 254,
+    "trip_day_id": 440,
+    "day_number": 7,
+    "date": "2026-04-03",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      667
+    ],
+    "source_photo_ids": [
+      789
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 667,
+        "photo_id": 789,
+        "display_order": 0,
+        "original_filename": "1000017670.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-7-2026-04-03/01-1000017670-b5ba55fe5e.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "유리 진열장 안에 세 개의 피규어가 전시되어 있다. (분위기: 정적, 장소유형: shop, 인물: landscape_only, 활동: viewing, 키워드: 피규어, 유리 진열장)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "유리 진열장 안에 세 개의 피규어가 전시되어 있다. (분위기: 정적, 장소유형: shop, 인물: landscape_only, 활동: viewing, 키워드: 피규어, 유리 진열장)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_441",
+    "trip_id": 254,
+    "trip_day_id": 441,
+    "day_number": 8,
+    "date": "2026-04-22",
+    "location": "Gangnam District",
+    "source_photo_generation_ids": [
+      668
+    ],
+    "source_photo_ids": [
+      790
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 668,
+        "photo_id": 790,
+        "display_order": 0,
+        "original_filename": "1000017778.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-8-2026-04-22/01-1000017778-c278e8494c.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "사람들이 전시 부스에서 대화를 나누고 있다. (분위기: 활기찬, 장소유형: event, 인물: crowd, 활동: talking, networking, 키워드: 부스, 사람들, 디스플레이)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "사람들이 전시 부스에서 대화를 나누고 있다. (분위기: 활기찬, 장소유형: event, 인물: crowd, 활동: talking, networking, 키워드: 부스, 사람들, 디스플레이)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_442",
+    "trip_id": 254,
+    "trip_day_id": 442,
+    "day_number": 9,
+    "date": "2026-04-29",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      669
+    ],
+    "source_photo_ids": [
+      791
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 669,
+        "photo_id": 791,
+        "display_order": 0,
+        "original_filename": "1000017866.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-9-2026-04-29/01-1000017866-44e83a486f.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "두 사람이 야외에서 모닥불 옆에 앉아 있다. (날씨: 맑음, 분위기: 편안함, 장소유형: nature, 시간대: evening, 인물: group_photo, 활동: camping, relaxing, 키워드: 모닥불, 사람, 나무, 의자)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "두 사람이 야외에서 모닥불 옆에 앉아 있다. (날씨: 맑음, 분위기: 편안함, 장소유형: nature, 시간대: evening, 인물: group_photo, 활동: camping, relaxing, 키워드: 모닥불, 사람, 나무, 의자)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_443",
+    "trip_id": 254,
+    "trip_day_id": 443,
+    "day_number": 10,
+    "date": "2026-05-16",
+    "location": "Hanam-si",
+    "source_photo_generation_ids": [
+      670
+    ],
+    "source_photo_ids": [
+      792
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 670,
+        "photo_id": 792,
+        "display_order": 0,
+        "original_filename": "1000017945.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-10-2026-05-16/01-1000017945-94e03884f8.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "안경을 쓴 남성이 나무 울타리와 식물 앞에서 셀카를 찍고 있다. (분위기: neutral, 장소유형: unknown, 인물: selfie, 활동: selfie, 키워드: 남성, 안경, 식물, 나무 울타리)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "안경을 쓴 남성이 나무 울타리와 식물 앞에서 셀카를 찍고 있다. (분위기: neutral, 장소유형: unknown, 인물: selfie, 활동: selfie, 키워드: 남성, 안경, 식물, 나무 울타리)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_444",
+    "trip_id": 254,
+    "trip_day_id": 444,
+    "day_number": 11,
+    "date": "2026-05-22",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      671,
+      672
+    ],
+    "source_photo_ids": [
+      793,
+      794
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 671,
+        "photo_id": 793,
+        "display_order": 0,
+        "original_filename": "1000017958.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-11-2026-05-22/01-1000017958-6ccc536024.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "다섯 명의 사람들이 팝콘과 음료를 들고 포즈를 취하고 있다. (분위기: 즐거움, 장소유형: unknown, 인물: group_photo, 활동: posing, holding snacks, 키워드: 팝콘, 음료, 사람들, 포스터)"
+      },
+      {
+        "photo_generation_id": 672,
+        "photo_id": 794,
+        "display_order": 1,
+        "original_filename": "1000017964.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-11-2026-05-22/02-1000017964-d72bbed102.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "영화 입장권이 클로즈업되어 촬영된 이미지입니다. (분위기: neutral, 장소유형: unknown, 인물: landscape_only, 키워드: 영화표, 텍스트)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "다섯 명의 사람들이 팝콘과 음료를 들고 포즈를 취하고 있다. (분위기: 즐거움, 장소유형: unknown, 인물: group_photo, 활동: posing, holding snacks, 키워드: 팝콘, 음료, 사람들, 포스터)"
+      },
+      {
+        "order": 2,
+        "analysis_text": "영화 입장권이 클로즈업되어 촬영된 이미지입니다. (분위기: neutral, 장소유형: unknown, 인물: landscape_only, 키워드: 영화표, 텍스트)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_445",
+    "trip_id": 254,
+    "trip_day_id": 445,
+    "day_number": 12,
+    "date": "2026-05-23",
+    "location": "Ilsanseo-gu",
+    "source_photo_generation_ids": [
+      673
+    ],
+    "source_photo_ids": [
+      795
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 673,
+        "photo_id": 795,
+        "display_order": 0,
+        "original_filename": "1000017972.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-12-2026-05-23/01-1000017972-3261f21999.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "사람들이 건물 앞에 모여 있는 장면으로, '2026 Play X4'라는 글자가 보인다. (날씨: 흐림, 분위기: 활기찬, 장소유형: event, 인물: crowd, 활동: walking, attending event, 키워드: 건물, 사람들, Play X4 간판)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "사람들이 건물 앞에 모여 있는 장면으로, '2026 Play X4'라는 글자가 보인다. (날씨: 흐림, 분위기: 활기찬, 장소유형: event, 인물: crowd, 활동: walking, attending event, 키워드: 건물, 사람들, Play X4 간판)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_446",
+    "trip_id": 254,
+    "trip_day_id": 446,
+    "day_number": 13,
+    "date": "2026-05-26",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      674
+    ],
+    "source_photo_ids": [
+      796
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 674,
+        "photo_id": 796,
+        "display_order": 0,
+        "original_filename": "1000017976.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-13-2026-05-26/01-1000017976-17a1d7491a.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "사무실에서 한 여성이 케이크를 들고 있고, 주변 사람들이 박수를 치고 있다. (분위기: celebratory, 장소유형: unknown, 인물: group_photo, 활동: celebrating, clapping, 키워드: 케이크, 사람들, 책상, 서류함)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "사무실에서 한 여성이 케이크를 들고 있고, 주변 사람들이 박수를 치고 있다. (분위기: celebratory, 장소유형: unknown, 인물: group_photo, 활동: celebrating, clapping, 키워드: 케이크, 사람들, 책상, 서류함)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_447",
+    "trip_id": 254,
+    "trip_day_id": 447,
+    "day_number": 14,
+    "date": "2026-06-03",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      675,
+      676
+    ],
+    "source_photo_ids": [
+      797,
+      798
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 675,
+        "photo_id": 797,
+        "display_order": 0,
+        "original_filename": "1000018011.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-14-2026-06-03/01-1000018011-c466165eaa.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "검은 번의 치즈버거와 감자튀김이 금속 쟁반에 담겨 있으며, 음료수 캔과 컵이 함께 놓여 있다. (분위기: casual, 장소유형: restaurant, 인물: landscape_only, 활동: dining, 키워드: 버거, 감자튀김, 음료수 캔, 컵, 쟁반)"
+      },
+      {
+        "photo_generation_id": 676,
+        "photo_id": 798,
+        "display_order": 1,
+        "original_filename": "1000018859.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-14-2026-06-03/02-1000018859-47fc2e4913.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "여러 사람이 식당에서 식사를 하고 있는 장면이다. (분위기: casual, 장소유형: restaurant, 인물: group_photo, 활동: eating, socializing, 키워드: 사람들, 음식, 테이블, 의자)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "검은 번의 치즈버거와 감자튀김이 금속 쟁반에 담겨 있으며, 음료수 캔과 컵이 함께 놓여 있다. (분위기: casual, 장소유형: restaurant, 인물: landscape_only, 활동: dining, 키워드: 버거, 감자튀김, 음료수 캔, 컵, 쟁반)"
+      },
+      {
+        "order": 2,
+        "analysis_text": "여러 사람이 식당에서 식사를 하고 있는 장면이다. (분위기: casual, 장소유형: restaurant, 인물: group_photo, 활동: eating, socializing, 키워드: 사람들, 음식, 테이블, 의자)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_448",
+    "trip_id": 254,
+    "trip_day_id": 448,
+    "day_number": 15,
+    "date": "2026-06-04",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      677
+    ],
+    "source_photo_ids": [
+      799
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 677,
+        "photo_id": 799,
+        "display_order": 0,
+        "original_filename": "1000018836.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-15-2026-06-04/01-1000018836-553f5ed2a3.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "다섯 명의 사람들이 영화관 좌석에 앉아 포즈를 취하고 있다. (분위기: 즐거움, 장소유형: unknown, 인물: group_photo, 활동: relaxing, posing, 키워드: 사람들, 영화관 좌석, 팝콘)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "다섯 명의 사람들이 영화관 좌석에 앉아 포즈를 취하고 있다. (분위기: 즐거움, 장소유형: unknown, 인물: group_photo, 활동: relaxing, posing, 키워드: 사람들, 영화관 좌석, 팝콘)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_449",
+    "trip_id": 254,
+    "trip_day_id": 449,
+    "day_number": 16,
+    "date": "2026-06-06",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      678
+    ],
+    "source_photo_ids": [
+      800
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 678,
+        "photo_id": 800,
+        "display_order": 0,
+        "original_filename": "1000018856.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-16-2026-06-06/01-1000018856-cf2ae25c97.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "두 사람이 식당에서 국밥을 먹고 있는 장면이다. (분위기: casual, 장소유형: restaurant, 인물: group_photo, 활동: eating, 키워드: 국밥, 반찬, 식탁, 사람)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "두 사람이 식당에서 국밥을 먹고 있는 장면이다. (분위기: casual, 장소유형: restaurant, 인물: group_photo, 활동: eating, 키워드: 국밥, 반찬, 식탁, 사람)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_450",
+    "trip_id": 254,
+    "trip_day_id": 450,
+    "day_number": 17,
+    "date": "2026-06-11",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      679
+    ],
+    "source_photo_ids": [
+      801
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 679,
+        "photo_id": 801,
+        "display_order": 0,
+        "original_filename": "1000018916.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-17-2026-06-11/01-1000018916-bdf955fd39.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "식탁 위에 돈가스와 미소된장국이 놓여 있다. (분위기: 맛있음, 장소유형: restaurant, 인물: landscape_only, 활동: eating, 키워드: 돈가스, 미소된장국, 음료, 젓가락, 숟가락)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "식탁 위에 돈가스와 미소된장국이 놓여 있다. (분위기: 맛있음, 장소유형: restaurant, 인물: landscape_only, 활동: eating, 키워드: 돈가스, 미소된장국, 음료, 젓가락, 숟가락)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_451",
+    "trip_id": 254,
+    "trip_day_id": 451,
+    "day_number": 18,
+    "date": "2026-06-12",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      680,
+      681
+    ],
+    "source_photo_ids": [
+      802,
+      803
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 680,
+        "photo_id": 802,
+        "display_order": 0,
+        "original_filename": "1000018918.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-18-2026-06-12/01-1000018918-fe5105c4f3.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "한 남성이 실내에서 상을 받는 듯한 장면이다. (분위기: formal, 장소유형: unknown, 인물: group_photo, 활동: award, presentation, 키워드: 사람, 화면, 의자)"
+      },
+      {
+        "photo_generation_id": 681,
+        "photo_id": 803,
+        "display_order": 1,
+        "original_filename": "1000018919.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-18-2026-06-12/02-1000018919-7e7de2a0f3.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "수료증이 클로즈업되어 촬영된 사진이다. (분위기: formal, 장소유형: unknown, 인물: unclear, 활동: document_viewing, 키워드: 수료증, 손)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "한 남성이 실내에서 상을 받는 듯한 장면이다. (분위기: formal, 장소유형: unknown, 인물: group_photo, 활동: award, presentation, 키워드: 사람, 화면, 의자)"
+      },
+      {
+        "order": 2,
+        "analysis_text": "수료증이 클로즈업되어 촬영된 사진이다. (분위기: formal, 장소유형: unknown, 인물: unclear, 활동: document_viewing, 키워드: 수료증, 손)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_452",
+    "trip_id": 254,
+    "trip_day_id": 452,
+    "day_number": 19,
+    "date": "2026-06-15",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      682
+    ],
+    "source_photo_ids": [
+      804
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 682,
+        "photo_id": 804,
+        "display_order": 0,
+        "original_filename": "1000018955.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-19-2026-06-15/01-1000018955-f3da876537.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "밥 위에 고기와 채소가 올려진 요리가 접시에 담겨 있다. (분위기: 맛있어 보이는, 장소유형: restaurant, 인물: landscape_only, 활동: eating, 키워드: 밥, 고기, 채소, 접시, 소스)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "밥 위에 고기와 채소가 올려진 요리가 접시에 담겨 있다. (분위기: 맛있어 보이는, 장소유형: restaurant, 인물: landscape_only, 활동: eating, 키워드: 밥, 고기, 채소, 접시, 소스)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_453",
+    "trip_id": 254,
+    "trip_day_id": 453,
+    "day_number": 20,
+    "date": "2026-06-19",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      683
+    ],
+    "source_photo_ids": [
+      805
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 683,
+        "photo_id": 805,
+        "display_order": 0,
+        "original_filename": "1000018968.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-20-2026-06-19/01-1000018968-7be9051f4c.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "사무실로 보이는 실내에서 한 사람이 음료를 들고 있다. (분위기: casual, 장소유형: unknown, 인물: portrait_of_user, 활동: holding, 키워드: 음료, 책상, 컴퓨터)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "사무실로 보이는 실내에서 한 사람이 음료를 들고 있다. (분위기: casual, 장소유형: unknown, 인물: portrait_of_user, 활동: holding, 키워드: 음료, 책상, 컴퓨터)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_454",
+    "trip_id": 254,
+    "trip_day_id": 454,
+    "day_number": 21,
+    "date": "2026-06-22",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      684
+    ],
+    "source_photo_ids": [
+      806
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 684,
+        "photo_id": 806,
+        "display_order": 0,
+        "original_filename": "1000018972.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-21-2026-06-22/01-1000018972-4b14666a72.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "접시에 담긴 음식이 테이블 위에 놓여 있다. (분위기: 맛있어 보이는, 장소유형: restaurant, 인물: unclear, 활동: eating, 키워드: 음식, 접시, 포크, 나이프, 밥)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "접시에 담긴 음식이 테이블 위에 놓여 있다. (분위기: 맛있어 보이는, 장소유형: restaurant, 인물: unclear, 활동: eating, 키워드: 음식, 접시, 포크, 나이프, 밥)"
+      }
+    ]
+  },
+  {
+    "case_id": "trip_day_455",
+    "trip_id": 254,
+    "trip_day_id": 455,
+    "day_number": 22,
+    "date": "2026-06-24",
+    "location": "Bundang-gu",
+    "source_photo_generation_ids": [
+      685
+    ],
+    "source_photo_ids": [
+      807
+    ],
+    "source_photos": [
+      {
+        "photo_generation_id": 685,
+        "photo_id": 807,
+        "display_order": 0,
+        "original_filename": "1000018977.jpg",
+        "file_url": "test_images/test_images_korea/trip-254/day-22-2026-06-24/01-1000018977-4e573c623a.jpg",
+        "photo_model_used": "gpt-4o",
+        "location_name": null,
+        "country_name": null,
+        "city_name": null,
+        "analysis_text": "사진에는 나무 테이블 위에 놓인 군만두가 보인다. (분위기: 맛있는, 장소유형: restaurant, 인물: landscape_only, 활동: dining, 키워드: 군만두, 테이블, 접시)"
+      }
+    ],
+    "photo_analyses": [
+      {
+        "order": 1,
+        "analysis_text": "사진에는 나무 테이블 위에 놓인 군만두가 보인다. (분위기: 맛있는, 장소유형: restaurant, 인물: landscape_only, 활동: dining, 키워드: 군만두, 테이블, 접시)"
+      }
+    ]
+  }
+]

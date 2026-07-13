@@ -1,35 +1,54 @@
-version: "3.9"
+# scenediary 프로젝트 docker-compose
+# backend(FastAPI)와 db(PostGIS)를 정의합니다.
+# 팀원: docker-compose up 으로 둘 다 띄울 수 있음
+# 사용자(DB 관리자): 메인 DB는 다른 compose에서 이미 띄우고 있으므로
+#                    docker-compose up backend 만 실행하면 됩니다.
 
 services:
+  # ─────────────────────────────────────────────────────────
+  # 백엔드: FastAPI 서버
+  # ─────────────────────────────────────────────────────────
   backend:
     build:
-      context: ./backend
-    container_name: scenediary-backend
+      context: ./backend                # backend 폴더의 Dockerfile로 이미지 빌드
+    container_name: scenediary-backend   # 컨테이너 이름 (docker ps에서 보이는 이름)
     ports:
-      - "8000:8000"
+      - "8000:8000"                     # 호스트:컨테이너 포트 매핑
     volumes:
-      - ./backend:/app
+      - ./backend:/app                  # 코드 변경이 컨테이너에 즉시 반영됨 (핫리로드)
+      - ${APPDATA}/gcloud/application_default_credentials.json:/root/.config/gcloud/application_default_credentials.json:ro
     env_file:
-      - .env
-    depends_on:
-      - postgres
-      - neo4j
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: scenediary-postgres
-    restart: always
+      - .env                            # 환경변수 파일 읽어오기
     environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /root/.config/gcloud/application_default_credentials.json
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # depends_on 없음: backend 단독 실행 가능. db가 자동으로 켜지지 않음.
+
+  # ─────────────────────────────────────────────────────────
+  # 데이터베이스: PostgreSQL + PostGIS (지리정보 확장)
+  # 버전 고정 (latest 금지: 팀 간 재현성 확보)
+  # ─────────────────────────────────────────────────────────
+  db:
+    image: postgis/postgis:16-3.4       # 버전 고정 (PostgreSQL 16 + PostGIS 3.4)
+    container_name: scenediary-db        # 컨테이너 이름
+    restart: unless-stopped              # 수동으로 멈춘 게 아니면 자동 재시작
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}        # .env 에서 읽어옴
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      # 0.0.0.0 으로 노출 → 같은 네트워크의 외부 PC에서도 접속 가능 (DBeaver 등)
+      - "${POSTGRES_PORT}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
-
+      # named volume: 컨테이너 삭제해도 데이터는 남음
+      - scenediary_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # DB가 진짜 접속 가능해질 때까지 확인 (backend가 race condition 안 나게)
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      
   neo4j:
     image: neo4j:5
     container_name: scenediary-neo4j
@@ -40,8 +59,12 @@ services:
       - "7474:7474"
       - "7687:7687"
     volumes:
-      - neo4j_data:/data
+      - scenediary_neo4jdata:/data
 
+# ─────────────────────────────────────────────────────────
+# Docker가 관리하는 볼륨 (데이터 저장소)
+# ─────────────────────────────────────────────────────────
 volumes:
-  postgres_data:
-  neo4j_data:
+  scenediary_pgdata:
+  scenediary_neo4jdata:
+version: "3.9"

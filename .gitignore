@@ -7,9 +7,32 @@
 .antigravity/
 .antigravity*
 
-# env
+# 개인 회고/정리 노트 (팀 공유 X)
+retrospective/
+
+# Local splash render previews
+preview-splash-fast/
+.splash-render-profile*/
+frontend/src/assets/splash/scenediary-splash-v3*.mp4
+!frontend/src/assets/splash/scenediary-splash-v3-3s.mp4
+!frontend/src/assets/splash/scenediary-splash-v3-3s-dark.mp4
+
+# Runtime uploaded images
+backend/uploads/
+
+# env (전부 무시 — .env 류는 Slack으로 공유)
 .env
 .env.*
+
+# 사용자 업로드 사진 (테스트로 쌓이는 파일들. backend/uploads/trip-*/day-*/...)
+backend/uploads/
+
+# 업로드된 사진 저장소 (이름은 test_images 지만 실제 운영 사진이 쌓이는 폴더)
+backend/test_images/
+
+# DB 백업 덤프 (pg_dump 결과 — 실제 데이터 포함이라 절대 커밋 금지)
+scenediary_backup_*.sql
+*.dump
 
 ### Node ###
 # Logs
@@ -64,6 +87,7 @@ web_modules/
 
 # Optional npm cache directory
 .npm
+.npm-cache/
 
 # Optional eslint cache
 .eslintcache

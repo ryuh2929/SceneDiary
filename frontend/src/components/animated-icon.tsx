@@ -1,132 +1,119 @@
-import { Image } from 'expo-image';
-import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import Animated, { Easing, Keyframe } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
+import * as SplashScreen from "expo-splash-screen";
+import { useVideoPlayer, VideoView } from "expo-video";
+import { useEffect, useRef, useState } from "react";
+import { BackHandler, Modal, StyleSheet, View } from "react-native";
+import { useAppSettings } from "@/contexts/app-settings-context";
 
-const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
-const DURATION = 600;
+const MIN_SHOW_MS = 3000;
+const MAX_WAIT_MS = 3000;
 
-export function AnimatedSplashOverlay() {
+export function AnimatedSplashOverlay({ ready = false }: { ready?: boolean }) {
+  const { isDarkMode, isLoaded } = useAppSettings();
   const [visible, setVisible] = useState(true);
+  const fadeStartedRef = useRef(false);
+  const nativeSplashHiddenRef = useRef(false);
+  const nativeSplashFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const startTimeRef = useRef(Date.now());
+
+  // 앱 설정이 준비되기 전에는 라이트 영상을 사용하고, 준비된 뒤 현재 테마를 반영합니다.
+  const useDarkSplash = isLoaded && isDarkMode;
+  const source = useDarkSplash
+    ? require("../assets/splash/scenediary-splash-v3-3s-dark.mp4")
+    : require("../assets/splash/scenediary-splash-v3-3s.mp4");
+
+  // 로컬 MP4를 무음으로 한 번만 재생하며, 화면 종료는 아래 3초 타이머가 담당합니다.
+  const player = useVideoPlayer(source, (videoPlayer) => {
+    videoPlayer.loop = false;
+    videoPlayer.muted = true;
+    videoPlayer.play();
+  });
+
+  const hideNativeSplash = () => {
+    if (nativeSplashHiddenRef.current) return;
+    nativeSplashHiddenRef.current = true;
+
+    if (nativeSplashFallbackRef.current) {
+      clearTimeout(nativeSplashFallbackRef.current);
+      nativeSplashFallbackRef.current = null;
+    }
+
+    // void SplashScreen.hideAsync();
+  };
+
+  const handleModalShow = () => {
+    if (nativeSplashHiddenRef.current || nativeSplashFallbackRef.current)
+      return;
+
+    // 영상 첫 프레임 이벤트가 오지 않더라도 앱이 네이티브 스플래시에 갇히지 않게 합니다.
+    nativeSplashFallbackRef.current = setTimeout(hideNativeSplash, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (nativeSplashFallbackRef.current) {
+        clearTimeout(nativeSplashFallbackRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    const h = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => h.remove();
+  }, [visible]);
+
+  const startFadeOut = () => {
+    if (fadeStartedRef.current) return;
+    fadeStartedRef.current = true;
+    setVisible(false);
+  };
+
+  useEffect(() => {
+    if (!ready) return;
+    const elapsed = Date.now() - startTimeRef.current;
+    const t = setTimeout(startFadeOut, Math.max(0, MIN_SHOW_MS - elapsed));
+    return () => clearTimeout(t);
+  }, [ready]);
+
+  useEffect(() => {
+    const t = setTimeout(startFadeOut, MAX_WAIT_MS);
+    return () => clearTimeout(t);
+  }, []);
 
   if (!visible) return null;
 
-  const splashKeyframe = new Keyframe({
-    0: {
-      transform: [{ scale: INITIAL_SCALE_FACTOR }],
-      opacity: 1,
-    },
-    20: {
-      opacity: 1,
-    },
-    70: {
-      opacity: 0,
-      easing: Easing.elastic(0.7),
-    },
-    100: {
-      opacity: 0,
-      transform: [{ scale: 1 }],
-      easing: Easing.elastic(0.7),
-    },
-  });
-
   return (
-    <Animated.View
-      entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
-        'worklet';
-        if (finished) {
-          scheduleOnRN(setVisible, false);
-        }
-      })}
-      style={styles.backgroundSolidColor}
-    />
-  );
-}
-
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: INITIAL_SCALE_FACTOR }],
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const logoKeyframe = new Keyframe({
-  0: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-  },
-  40: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-    easing: Easing.elastic(0.7),
-  },
-  100: {
-    opacity: 1,
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '0deg' }],
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
-  },
-});
-
-export function AnimatedIcon() {
-  return (
-    <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
-      </Animated.View>
-
-      <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
-      </Animated.View>
-    </View>
+    <Modal
+      animationType="none"
+      presentationStyle="overFullScreen"
+      statusBarTranslucent
+      transparent
+      visible={visible}
+      onShow={handleModalShow}
+    >
+      <View style={styles.overlay}>
+        <VideoView
+          player={player}
+          style={styles.video}
+          nativeControls={false}
+          contentFit="cover"
+          surfaceType="textureView"
+          onFirstFrameRender={hideNativeSplash}
+        />
+      </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  imageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  overlay: {
+    flex: 1,
+    backgroundColor: "#152538",
   },
-  glow: {
-    width: 201,
-    height: 201,
-    position: 'absolute',
-  },
-  iconContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 128,
-    height: 128,
-    zIndex: 100,
-  },
-  image: {
-    position: 'absolute',
-    width: 76,
-    height: 71,
-  },
-  background: {
-    borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
-    width: 128,
-    height: 128,
-    position: 'absolute',
-  },
-  backgroundSolidColor: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#208AEF',
-    zIndex: 1000,
+  video: {
+    flex: 1,
+    backgroundColor: "#152538",
   },
 });

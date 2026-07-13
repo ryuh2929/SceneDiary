@@ -1,0 +1,451 @@
+import json
+import os
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile
+from sqlalchemy.orm import Session
+
+from app.db.session import get_db
+from app.db.models import User
+from app.schemas.settings import (
+    SettingsProfile,
+    TravelStyleAnalysisStatus,
+    UpdateNicknameRequest,
+    UpdateSettingsToggleRequest,
+    UpdateWritingPersonaRequest,
+)
+from app.services.image_processor import save_profile_image
+from app.services.travel_style_analysis import (
+    get_travel_style_analysis_status,
+    mark_travel_style_analysis_running,
+    run_travel_style_analysis,
+)
+
+router = APIRouter(prefix="/settings", tags=["settings"])
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+_PROFILE_IMAGE_PUBLIC_ROOT = "profile_images"
+_PROFILE_IMAGE_ROOT = _BACKEND_DIR / "test_images" / _PROFILE_IMAGE_PUBLIC_ROOT
+MAX_PROFILE_IMAGE_BYTES = 1 * 1024 * 1024
+
+
+def env_int(name: str, default: int) -> int:
+    # 테스트할 때 .env 값만 바꿔도 쿨다운을 조절할 수 있게 합니다.
+    # 잘못된 값이나 0 이하 값이 들어오면 운영 기본값인 default를 사용합니다.
+    try:
+        value = int(os.getenv(name, str(default)))
+    except ValueError:
+        return default
+
+    return value if value > 0 else default
+
+
+TRAVEL_STYLE_ANALYSIS_COOLDOWN_SECONDS = env_int("EXPO_PUBLIC_TRAVEL_ANALYSIS_COOLDOWN_SECONDS", 60)
+
+# DB에는 안정적인 코드값(daily, playful 등)만 저장하고,
+# 화면에 보여줄 라벨/설명은 API 응답을 만들 때 매핑합니다.
+# dict 순서가 그대로 프런트 버튼 순서가 되므로, 설정 화면에서 보일 순서대로 작성합니다.
+PERSONA_OPTIONS = {
+    "daily": {
+        "label": "일상적",
+        "description": "담백하고 자연스러운 표현",
+    },
+    "playful": {
+        "label": "유쾌한",
+        "description": "가볍고 재치 있는 표현",
+    },
+    "poetic": {
+        "label": "시적인",
+        "description": "감성적이고 문학적인 표현",
+    },
+    "romantic": {
+        "label": "로맨틱",
+        "description": "따뜻하고 사랑이 넘치는 표현",
+    },
+}
+LEGACY_PERSONA_ALIASES = {
+    # 예전에 사용하던 adventurous 값은 새 페르소나 체계에서 playful로 읽히게 합니다.
+    # 기존 테스트 데이터가 남아있어도 버튼 선택 상태가 비어 보이지 않도록 하는 임시 호환 처리입니다.
+    "adventurous": "playful",
+}
+
+DEFAULT_TRAVEL_STYLE_ANALYSIS = {
+    "title": "이름 없는 여행자",
+    "description": "아직 분석할 수 있는 여행 데이터가 없습니다.",
+    "icon": "NotebookPen",
+}
+# DB에 저장된 travel_style_analysis.icon 값이 프런트에서 렌더링 가능한 아이콘인지 검증하는 허용 목록입니다.
+TRAVEL_STYLE_ICON_NAMES = {
+    "Flower2",
+    "Camera",
+    "Compass",
+    "Trees",
+    "TreePalm",
+    "TentTree",
+    "Binoculars",
+    "FlameKindling",
+    "PartyPopper",
+    "Martini",
+    "Beer",
+    "BottleWine",
+    "Wine",
+    "Hamburger",
+    "Sandwich",
+    "Utensils",
+    "TicketsPlane",
+    "Map",
+    "Helicopter",
+    "Ship",
+    "CarFront",
+    "Amphora",
+    "Landmark",
+    "FerrisWheel",
+    "RollerCoaster",
+    "Mountain",
+    "Coffee",
+    "Building",
+    "Castle",
+    "Hotel",
+    "House",
+    "Sailboat",
+    "FishingHook",
+    "Fish",
+    "IceCreamBowl",
+    "Soup",
+    "CookingPot",
+    "Cookie",
+    "Dog",
+    "Snail",
+    "Squirrel",
+    "Turtle",
+    "Bird",
+    "Bug",
+    "Origami",
+    "Footprints",
+    "Rose",
+    "Baby",
+    "CircleDollarSign",
+    "Snowflake",
+    "Sun",
+    "NotebookPen",
+}
+
+
+def clean(value: object | None) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def base_url(request: Request) -> str:
+    return str(request.base_url).rstrip("/")
+
+
+def public_image_url(request: Request, path: str | None) -> str | None:
+    # DB에는 test_images 아래의 상대 경로만 저장하고,
+    # 설정 API 응답에서는 모바일 앱이 바로 읽을 수 있는 절대 URL로 바꿉니다.
+    cleaned_path = clean(path)
+    if not cleaned_path:
+        return None
+    if cleaned_path.startswith(("http://", "https://")):
+        return cleaned_path
+    if cleaned_path.startswith("test_images/"):
+        return f"{base_url(request)}/{cleaned_path}"
+    return f"{base_url(request)}/test_images/{cleaned_path}"
+
+
+def normalize_persona_id(persona_id: str) -> str:
+    # DB에 예전 코드값이 남아있거나 프런트가 예전 값을 보내도, 현재 사용하는 코드값으로 한 번 정리합니다.
+    normalized = persona_id.strip().lower()
+
+    return LEGACY_PERSONA_ALIASES.get(normalized, normalized)
+
+
+def persona_tags(selected_persona: str) -> list[dict[str, object]]:
+    normalized = normalize_persona_id(selected_persona)
+
+    # 프론트는 tags 배열을 그대로 버튼 목록으로 렌더링합니다.
+    # 따라서 항상 전체 페르소나 목록을 내려주고, DB 값과 일치하는 항목만 선택 상태로 표시합니다.
+    return [
+        {
+            "id": persona_id,
+            "label": option["label"],
+            "description": option["description"],
+            "selected": persona_id == normalized,
+        }
+        for persona_id, option in PERSONA_OPTIONS.items()
+    ]
+
+
+def travel_style_analysis(user: User) -> dict[str, str]:
+    # travel_style_analysis는 DB에 JSON 문자열로 저장될 예정입니다.
+    # 아직 분석 결과가 없어서 NULL이거나, 파싱할 수 없는 값이면 화면 표시용 fallback을 내려줍니다.
+    raw_analysis = clean(user.travel_style_analysis)
+
+    if not raw_analysis:
+        return DEFAULT_TRAVEL_STYLE_ANALYSIS
+
+    try:
+        parsed_analysis = json.loads(raw_analysis)
+    except json.JSONDecodeError:
+        return DEFAULT_TRAVEL_STYLE_ANALYSIS
+
+    if not isinstance(parsed_analysis, dict):
+        return DEFAULT_TRAVEL_STYLE_ANALYSIS
+
+    icon = clean(parsed_analysis.get("icon"))
+
+    return {
+        "title": clean(parsed_analysis.get("title")) or DEFAULT_TRAVEL_STYLE_ANALYSIS["title"],
+        "description": clean(parsed_analysis.get("description"))
+        or DEFAULT_TRAVEL_STYLE_ANALYSIS["description"],
+        "icon": icon if icon in TRAVEL_STYLE_ICON_NAMES else DEFAULT_TRAVEL_STYLE_ANALYSIS["icon"],
+    }
+
+
+def to_settings_profile(user: User, request: Request) -> SettingsProfile:
+    writing_persona = normalize_persona_id(clean(user.writing_persona))
+    selected_persona = PERSONA_OPTIONS.get(writing_persona)
+
+    # 아이콘은 프론트에서 lucide-react-native 컴포넌트로 매핑할 수 있는 키만 내려줍니다.
+    return SettingsProfile(
+        userId=user.id,
+        nickname=clean(user.nickname) or "오늘의 여행자",
+        profileImageUrl=public_image_url(request, user.profile_image_url),
+        persona={
+            "title": "글 작성 페르소나",
+            "description": selected_persona["description"]
+            if selected_persona
+            else "선택된 글 작성 페르소나가 없습니다.",
+            "tags": persona_tags(writing_persona),
+        },
+        travelType=travel_style_analysis(user),
+        toggles=[
+            {
+                "id": "darkMode",
+                "label": "다크 모드",
+                "enabled": bool(user.dark_mode),
+            },
+            {
+                "id": "pushNotification",
+                "label": "푸시 알림",
+                "enabled": bool(user.push_enabled),
+            },
+        ],
+    )
+
+
+def find_user_or_404(db: Session, user_uuid: str | None) -> User:
+    # 프런트에서 넘긴 user_uuid가 있으면 해당 기기의 유저를 우선 찾습니다.
+    # 아직 user_uuid 연결 전인 임시 화면 확인을 위해 값이 없을 때만 최신 유저를 fallback으로 사용합니다.
+    query = db.query(User)
+
+    if user_uuid:
+        user = query.filter(User.user_uuid == user_uuid).first()
+    else:
+        user = query.order_by(User.created_at.desc()).first()
+
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return user
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def as_utc(value: datetime) -> datetime:
+    # DB 드라이버 설정에 따라 timezone 정보가 빠진 datetime이 올 수 있어서 UTC 기준으로 맞춰 비교합니다.
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+
+    return value.astimezone(timezone.utc)
+
+
+def travel_style_retry_after_seconds(user: User) -> int:
+    # 마지막으로 분석 요청을 "접수한" 시간을 기준으로 1분 이내 재요청이면 남은 대기 시간을 계산합니다.
+    # NULL이면 아직 제한할 이전 요청이 없는 상태이므로 바로 통과시킵니다.
+    requested_at = user.travel_style_analysis_requested_at
+
+    if requested_at is None:
+        return 0
+
+    available_at = as_utc(requested_at) + timedelta(seconds=TRAVEL_STYLE_ANALYSIS_COOLDOWN_SECONDS)
+    remaining = (available_at - utc_now()).total_seconds()
+
+    return max(0, int(remaining + 0.999))
+
+
+@router.get("/profile", response_model=SettingsProfile)
+def get_settings_profile(
+    request: Request,
+    user_uuid: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    user = find_user_or_404(db, user_uuid)
+
+    return to_settings_profile(user, request)
+
+
+@router.patch("/persona", response_model=SettingsProfile)
+def update_writing_persona(
+    payload: UpdateWritingPersonaRequest,
+    request: Request,
+    user_uuid: str = Query(...),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    # 프런트가 보내는 값은 반드시 PERSONA_OPTIONS에 등록된 id만 허용합니다.
+    # 잘못된 값이 DB에 들어가면 이후 버튼 선택 상태를 맞출 수 없어서 여기서 차단합니다.
+    persona_id = normalize_persona_id(payload.persona_id)
+
+    if persona_id not in PERSONA_OPTIONS:
+        raise HTTPException(status_code=400, detail="Unknown writing persona")
+
+    user = find_user_or_404(db, user_uuid)
+    user.writing_persona = persona_id
+    user.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(user)
+
+    return to_settings_profile(user, request)
+
+
+@router.patch("/toggle", response_model=SettingsProfile)
+def update_settings_toggle(
+    payload: UpdateSettingsToggleRequest,
+    request: Request,
+    user_uuid: str = Query(...),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    user = find_user_or_404(db, user_uuid)
+
+    # 프런트에서 쓰는 토글 id를 실제 users 테이블 컬럼에 연결합니다.
+    # UI 이름이 바뀌어도 DB 컬럼명은 이 매핑만 수정하면 됩니다.
+    if payload.toggle_id == "darkMode":
+        user.dark_mode = payload.enabled
+    elif payload.toggle_id == "pushNotification":
+        user.push_enabled = payload.enabled
+
+    user.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(user)
+
+    return to_settings_profile(user, request)
+
+
+@router.patch("/nickname", response_model=SettingsProfile)
+def update_nickname(
+    payload: UpdateNicknameRequest,
+    request: Request,
+    user_uuid: str = Query(...),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    nickname = payload.nickname.strip()
+
+    # 빈 닉네임이나 지나치게 긴 닉네임은 DB에 저장하지 않습니다.
+    # 현재 users.nickname 컬럼은 VARCHAR(50)이므로 프런트 제한보다 넉넉하게 50자로 검증합니다.
+    if not nickname:
+        raise HTTPException(status_code=400, detail="Nickname is required")
+
+    if len(nickname) > 50:
+        raise HTTPException(status_code=400, detail="Nickname is too long")
+
+    user = find_user_or_404(db, user_uuid)
+    user.nickname = nickname
+    user.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(user)
+
+    return to_settings_profile(user, request)
+
+
+@router.post("/profile-image", response_model=SettingsProfile)
+async def update_profile_image(
+    request: Request,
+    file: UploadFile = File(...),
+    user_uuid: str = Query(...),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    # 프로필 사진은 프런트에서 256x256 JPEG로 잘라서 보내고,
+    # 백엔드는 용량/타입을 확인한 뒤 users.profile_image_url에 저장 경로만 반영합니다.
+    if file.content_type not in {"image/jpeg", "image/jpg"}:
+        raise HTTPException(status_code=400, detail="Profile image must be a JPEG file")
+
+    raw_bytes = await file.read()
+    if len(raw_bytes) > MAX_PROFILE_IMAGE_BYTES:
+        raise HTTPException(status_code=400, detail="Profile image is larger than 1MB")
+
+    user = find_user_or_404(db, user_uuid)
+
+    try:
+        saved_image = save_profile_image(
+            raw_bytes=raw_bytes,
+            original_filename=file.filename,
+            profile_root=_PROFILE_IMAGE_ROOT,
+            profile_public_root=_PROFILE_IMAGE_PUBLIC_ROOT,
+            user_id=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Profile image is invalid") from exc
+
+    user.profile_image_url = saved_image.file_url
+    user.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(user)
+
+    return to_settings_profile(user, request)
+
+
+@router.post("/travel-style-analysis", response_model=SettingsProfile)
+def request_travel_style_analysis(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    user_uuid: str = Query(...),
+    db: Session = Depends(get_db),
+) -> SettingsProfile:
+    user = find_user_or_404(db, user_uuid)
+    retry_after_seconds = travel_style_retry_after_seconds(user)
+
+    if retry_after_seconds > 0:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "message": "재요청까지 잠시 시간이 필요합니다.",
+                "retry_after_seconds": retry_after_seconds,
+            },
+        )
+
+    # 쿨다운을 통과한 요청만 "접수된 분석 요청"으로 보고 시간을 먼저 기록합니다.
+    # 분석 완료 시점이 아니라 요청 접수 시점을 기록해야, 분석 중 버튼을 다시 눌러도 중복 LLM 호출을 막을 수 있습니다.
+    now = utc_now()
+    user.travel_style_analysis_requested_at = now
+    user.updated_at = now
+    db.commit()
+    db.refresh(user)
+
+    # 설정 화면의 분석 버튼은 요청만 빠르게 완료하고, 실제 LLM 분석은 백그라운드 작업에서 처리합니다.
+    mark_travel_style_analysis_running(user.id)
+    background_tasks.add_task(run_travel_style_analysis, user.id, force=True)
+
+    return to_settings_profile(user, request)
+
+
+@router.get("/travel-style-analysis/status", response_model=TravelStyleAnalysisStatus)
+def get_travel_style_analysis_state(
+    user_uuid: str = Query(...),
+    db: Session = Depends(get_db),
+) -> TravelStyleAnalysisStatus:
+    user = find_user_or_404(db, user_uuid)
+    status = get_travel_style_analysis_status(user.id)
+
+    # 분석 요청은 백그라운드에서 처리되므로, 프론트가 완료/실패 여부를 짧게 확인할 수 있게 별도 상태를 내려줍니다.
+    return TravelStyleAnalysisStatus(
+        status=status["status"],
+        message=status.get("message"),
+    )
