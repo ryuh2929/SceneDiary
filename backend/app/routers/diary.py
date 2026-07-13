@@ -13,10 +13,13 @@
 
 import json
 import os
+import re
 import time
-from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
+from threading import Semaphore
 from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
@@ -47,9 +50,16 @@ _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 # 사진 분석은 OpenAI 호환 경로에서 DIARY_MODEL을 직접 사용합니다.
 # 생성에 쓰는 모델명(생성 이력 기록용). diary_generator 와 같은 기본값.
 _PHOTO_ANALYSIS_MODEL = os.getenv("DIARY_MODEL", "gemma4:e4b")
+_PHOTO_ANALYSIS_CONCURRENCY = max(1, int(os.getenv("PHOTO_ANALYSIS_CONCURRENCY", "4")))
+_DAY_GENERATION_CONCURRENCY = max(1, int(os.getenv("DAY_GENERATION_CONCURRENCY", "3")))
+_DIARY_LLM_CONCURRENCY = max(1, int(os.getenv("DIARY_LLM_CONCURRENCY", "2")))
 _DIARY_MODEL_PROVIDER = os.getenv("DIARY_MODEL_PROVIDER", "openai").strip().lower()
 _GEMINI_DIARY_PROVIDERS = {"gemini", "vertex", "vertexai"}
 _DIARY_PERSONAS = {"daily", "playful", "poetic", "romantic"}
+_DAY_GENERATION_EXECUTOR = ThreadPoolExecutor(max_workers=_DAY_GENERATION_CONCURRENCY)
+_PHOTO_ANALYSIS_SEMAPHORE = Semaphore(_PHOTO_ANALYSIS_CONCURRENCY)
+_DIARY_LLM_SEMAPHORE = Semaphore(_DIARY_LLM_CONCURRENCY)
+_TRIP_TITLE_SEMAPHORE = Semaphore(1)
 
 
 def _normalize_diary_persona(persona: str | None) -> str:
@@ -64,6 +74,30 @@ def _diary_generation_model_used(persona: str | None = None) -> str:
         endpoint_id = (os.getenv(f"GEMINI_{persona.upper()}_ENDPOINT_ID") or "unconfigured").strip()
         return f"vertex:{persona}:{endpoint_id}"
     return os.getenv(f"DIARY_OPENAI_MODEL_{persona.upper()}", _PHOTO_ANALYSIS_MODEL)
+
+
+def _analyze_photo_with_global_limit(analyze_photo, path: Path, metadata: dict) -> dict:
+    # 여러 일차가 동시에 생성되어도 OpenAI VLM 요청은 프로세스 전체에서 최대 N개만 진행합니다.
+    with _PHOTO_ANALYSIS_SEMAPHORE:
+        return analyze_photo(path, photo_metadata=metadata)
+
+
+def _write_diary_with_global_limit(write_diary, analyses: list[dict], *, location: str, date: str, persona: str) -> dict:
+    # 파인튜닝 LLM 엔드포인트가 과부하되지 않도록 일기 작성 LLM은 별도로 제한합니다.
+    with _DIARY_LLM_SEMAPHORE:
+        return write_diary(
+            analyses,
+            location=location,
+            date=date,
+            persona=persona,
+        )
+
+
+def submit_generation_task(trip_day_id: int, gen_id: int) -> None:
+    # FastAPI BackgroundTasks 안에서 오래 도는 생성을 직접 실행하지 않고,
+    # 일차별 executor에 넘겨 다음 일차 VLM이 이전 일차 LLM을 기다리지 않게 합니다.
+    _DAY_GENERATION_EXECUTOR.submit(_run_generation, trip_day_id, gen_id)
+
 
 DEAFULT_TRIP_TITLE = "제목 생성 중..."
 
@@ -149,6 +183,37 @@ def _photo_metadata_for_vlm(photo: Photo) -> dict:
         "location_name": photo.location_name or "",
         "city_name": getattr(photo, "city_name", None) or "",
         "country_name": getattr(photo, "country_name", None) or "",
+    }
+
+
+def _photo_taken_at_local(photo: Photo) -> str:
+    if not photo.taken_at_utc or not photo.tz:
+        return ""
+
+    match = re.match(r"^([+-])(\d{2}):(\d{2})$", photo.tz)
+    if not match:
+        return ""
+
+    sign, hours_raw, minutes_raw = match.groups()
+    offset_minutes = int(hours_raw) * 60 + int(minutes_raw)
+    if sign == "-":
+        offset_minutes *= -1
+
+    utc_dt = photo.taken_at_utc
+    if utc_dt.tzinfo is None:
+        utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+    offset = timezone(timedelta(minutes=offset_minutes))
+    return utc_dt.astimezone(offset).isoformat(timespec="seconds")
+
+
+def _photo_analysis_for_llm(photo: Photo, analysis_text: str) -> dict:
+    # LLM은 사진을 직접 보지 않고 VLM 분석 텍스트를 보므로,
+    # 촬영 시간을 함께 넘겨 하루의 시간 흐름을 더 자연스럽게 구성하게 합니다.
+    return {
+        "analysis_text": analysis_text,
+        "taken_at_local": _photo_taken_at_local(photo),
+        "taken_at_utc": photo.taken_at_utc.isoformat() if photo.taken_at_utc else "",
+        "tz": photo.tz or "",
     }
 
 
@@ -275,6 +340,7 @@ def update_trip_day(
     trip_day_id: int,
     body: DayUpdate,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> DayPage:
     # 진단용 로그 — 어떤 필드가 들어왔는지 확인. 안정화되면 제거.
@@ -322,12 +388,29 @@ def update_trip_day(
                 trip.flag = country_to_flag(body.countryName)
     db.commit()
     db.refresh(trip_day)
-    trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
-    if trip:
+    # Neo4j 동기화는 부가 처리라 저장 응답을 막지 않도록 백그라운드로 넘깁니다.
+    background_tasks.add_task(_update_trip_day_graph_background, trip_day.id)
+    return _build_day(db, trip_day, _base_url(request))
+
+
+def _update_trip_day_graph_background(trip_day_id: int) -> None:
+    db = SessionLocal()
+    try:
+        trip_day = db.query(TripDay).filter(TripDay.id == trip_day_id).first()
+        if trip_day is None:
+            return
+        trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
+        if trip is None:
+            return
+
         from app.services.neo4j_service import update_trip_day_graph
+
         ok = update_trip_day_graph(trip_day, trip)
         print("neo4j trip_day update result:", ok)
-    return _build_day(db, trip_day, _base_url(request))
+    except Exception as exc:
+        print(f"[neo4j] background trip_day update skipped: {exc}")
+    finally:
+        db.close()
 
 
 # ── 백그라운드 생성 작업 ──
@@ -362,8 +445,13 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
         # 콘솔 로그(영문/숫자만 — 어떤 터미널에서도 안 깨지게)
         print(f"[diary-gen] start: trip_day={trip_day_id}, photos={len(photos)}")
 
-        # ── 1단계: 사진별 분석. 이미 성공한 분석이 있으면 재사용(재생성이 빨라짐) ──
-        analyses: list[str] = []
+        # ── 1단계: 사진별 분석. 이미 성공한 분석은 재사용하고, 새 VLM 호출만 4개까지 병렬 처리합니다. ──
+        analyses: list[dict] = []
+        cached_analysis_by_photo_id: dict[int, str] = {}
+        fresh_analysis_by_photo_id: dict[int, dict] = {}
+        failed_photo_ids: set[int] = set()
+        pending_photo_jobs: list[tuple[Photo, Path, dict]] = []
+
         for p in photos:
             cached = (
                 db.query(PhotoGeneration)
@@ -375,7 +463,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                 .first()
             )
             if cached is not None and cached.analysis_text:
-                analyses.append(cached.analysis_text)  # 재사용: AI 재호출 없음
+                cached_analysis_by_photo_id[p.id] = cached.analysis_text  # 재사용: AI 재호출 없음
                 continue
 
             path = _BACKEND_DIR / p.file_url
@@ -383,8 +471,37 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             image_path.append(path)
             if not path.exists():
                 continue  # 파일이 없으면 그 사진은 건너뜀
-            try:
-                analysis = analyze_photo(path, photo_metadata=_photo_metadata_for_vlm(p))
+            pending_photo_jobs.append((p, path, _photo_metadata_for_vlm(p)))
+
+        if pending_photo_jobs:
+            print(
+                f"[diary-gen] VLM analyze start: pending={len(pending_photo_jobs)}, "
+                f"concurrency={_PHOTO_ANALYSIS_CONCURRENCY}"
+            )
+
+            # OpenAI VLM 호출은 I/O bound라 스레드에서 동시에 기다리게 하고,
+            # SQLAlchemy 세션/DB 쓰기는 아래 메인 스레드에서만 처리합니다.
+            with ThreadPoolExecutor(max_workers=_PHOTO_ANALYSIS_CONCURRENCY) as executor:
+                future_to_photo_id = {
+                    executor.submit(_analyze_photo_with_global_limit, analyze_photo, path, metadata): p.id
+                    for p, path, metadata in pending_photo_jobs
+                }
+                for future in as_completed(future_to_photo_id):
+                    photo_id = future_to_photo_id[future]
+                    try:
+                        fresh_analysis_by_photo_id[photo_id] = future.result()
+                    except Exception as exc:
+                        failed_photo_ids.add(photo_id)
+                        print(f"[diary-gen] photo analyze FAILED: photo={photo_id}: {exc}")
+
+        for p in photos:
+            cached_text = cached_analysis_by_photo_id.get(p.id)
+            if cached_text:
+                analyses.append(_photo_analysis_for_llm(p, cached_text))
+                continue
+
+            analysis = fresh_analysis_by_photo_id.get(p.id)
+            if analysis is not None:
                 analysis_json = analysis["analysis_json"]
                 token_usage = analysis.get("token_usage") or {}
                 db.add(
@@ -412,7 +529,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                         created_at=datetime.now(),
                     )
                 )
-                analyses.append(analysis["analysis_text"])
+                analyses.append(_photo_analysis_for_llm(p, analysis["analysis_text"]))
                 print("사진속 기분?:",analysis_json.get("mood"))
                 mood_list.append(analysis_json.get("mood"))
 
@@ -435,7 +552,7 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                     confidence=float(analysis_json.get("landmark_confidence") or 0.0)
                 )
                 graph_place.append(photo_place)
-            except Exception as exc:  # 사진 1장 분석 실패는 기록만 하고 계속 진행
+            elif p.id in failed_photo_ids:  # 사진 1장 분석 실패는 기록만 하고 계속 진행
                 db.add(
                     PhotoGeneration(
                         photo_id=p.id,
@@ -444,7 +561,6 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
                         created_at=datetime.now(),
                     )
                 )
-                print(f"[diary-gen] photo analyze FAILED: photo={p.id}: {exc}")
         db.commit()  # 분석 이력 먼저 저장(2단계가 실패해도 분석은 남도록)
         
         # ── 2단계: 모은 분석으로 일기 작성(사진 없이 텍스트만) ──
@@ -455,7 +571,8 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             gen.model_used = _diary_generation_model_used(persona)
             db.commit()
 
-        result = write_diary(
+        result = _write_diary_with_global_limit(
+            write_diary,
             analyses,
             location=trip_day.location_summary or "",
             date=trip_day.date.isoformat(),
@@ -499,9 +616,14 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
             trip=graph_trip,
             days=graph_dayMemory
         )
-        past_graph_context(user.id,graph_seed)
-        ok = save_trip_graph(user.id,user.nickname,graph_seed,trip.id)
-        print("neo4j 저장 결과: ",ok)
+        # Neo4j 저장은 검색/회상용 부가 처리입니다.
+        # 연결 실패가 일기 본문 저장이나 전체 제목 생성까지 막지 않도록 분리합니다.
+        try:
+            past_graph_context(user.id,graph_seed)
+            ok = save_trip_graph(user.id,user.nickname,graph_seed,trip.id)
+            print("neo4j 저장 결과: ",ok)
+        except Exception as exc:
+            print(f"[neo4j] graph context/save skipped: {exc}")
 
 
         elapsed = time.monotonic() - started
@@ -514,79 +636,81 @@ def _run_generation(trip_day_id: int, gen_id: int) -> None:
         # 마지막 일차가 막 success 가 된 지금 시점에서 한 번만 실행.
         # 이미 사용자/AI 가 만든 제목이 있으면(= '제목 생성 중...' 기본값이 아니면) 건드리지 않음.
         try:
-            remaining = (
-                db.query(TripDay)
-                .filter(
-                    TripDay.trip_id == trip_day.trip_id,
-                    (TripDay.content.is_(None)) | (TripDay.content == ""),
-                )
-                .count()
-            )
-            trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
-            print("제목 생성 준비")
-            print("remaining:",remaining)
-            print("trip.title:",trip.title)
-            print("DEAFULT_TRIP_TITLE:",DEAFULT_TRIP_TITLE)
-            if remaining == 0 and trip is not None and (not trip.title or trip.title == DEAFULT_TRIP_TITLE):
-                print("제목 생성중...")
-                from app.services.diary_generator import write_trip_title
-
-                all_days = (
+            with _TRIP_TITLE_SEMAPHORE:
+                db.expire_all()
+                remaining = (
                     db.query(TripDay)
-                    .filter(TripDay.trip_id == trip.id)
-                    .order_by(TripDay.day_number)
-                    .all()
-                )
-                days_payload = [
-                    {
-                        "subtitle": d.subtitle or "",
-                        # 너무 길면 토큰 낭비. 앞 200자만 발췌해 분위기 전달.
-                        "content_excerpt": (d.content or "")[:200],
-                    }
-                    for d in all_days
-                ]
-                trip_photos = (
-                    db.query(Photo)
-                    .join(TripDay, Photo.trip_day_id == TripDay.id)
                     .filter(
-                        TripDay.trip_id == trip.id,
-                        Photo.deleted_at.is_(None),
+                        TripDay.trip_id == trip_day.trip_id,
+                        (TripDay.content.is_(None)) | (TripDay.content == ""),
                     )
-                    .order_by(TripDay.day_number, Photo.display_order)
-                    .all()
+                    .count()
                 )
-                photo_candidates = []
-                for photo in trip_photos:
-                    latest_analysis = (
-                        db.query(PhotoGeneration)
-                        .filter(
-                            PhotoGeneration.photo_id == photo.id,
-                            PhotoGeneration.status == "success",
-                        )
-                        .order_by(PhotoGeneration.id.desc())
-                        .first()
+                trip = db.query(Trip).filter(Trip.id == trip_day.trip_id).first()
+                print("제목 생성 준비")
+                print("remaining:",remaining)
+                print("trip.title:",trip.title)
+                print("DEAFULT_TRIP_TITLE:",DEAFULT_TRIP_TITLE)
+                if remaining == 0 and trip is not None and (not trip.title or trip.title == DEAFULT_TRIP_TITLE):
+                    print("제목 생성중...")
+                    from app.services.diary_generator import write_trip_title
+
+                    all_days = (
+                        db.query(TripDay)
+                        .filter(TripDay.trip_id == trip.id)
+                        .order_by(TripDay.day_number)
+                        .all()
                     )
-                    photo_candidates.append(
+                    days_payload = [
                         {
-                            "img_id": photo.id,
-                            "analysis_text": latest_analysis.analysis_text if latest_analysis else "",
+                            "subtitle": d.subtitle or "",
+                            # 너무 길면 토큰 낭비. 앞 200자만 발췌해 분위기 전달.
+                            "content_excerpt": (d.content or "")[:200],
                         }
+                        for d in all_days
+                    ]
+                    trip_photos = (
+                        db.query(Photo)
+                        .join(TripDay, Photo.trip_day_id == TripDay.id)
+                        .filter(
+                            TripDay.trip_id == trip.id,
+                            Photo.deleted_at.is_(None),
+                        )
+                        .order_by(TripDay.day_number, Photo.display_order)
+                        .all()
                     )
-                title_dict = write_trip_title(
-                    days_payload,
-                    destination=trip.destination or "",
-                    photo_info=photo_candidates,
-                )
-                if title_dict:
-                    generated_title = (title_dict.get("title") or "").strip()
-                    generated_img_id = title_dict.get("img_id")
-                    if generated_title:
-                        trip.title = generated_title
-                    if generated_img_id:
-                        trip.cover_photo_id = generated_img_id
-                    db.commit()
-                    ok = update_trip_day_graph(trip_day, trip)
-                    print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
+                    photo_candidates = []
+                    for photo in trip_photos:
+                        latest_analysis = (
+                            db.query(PhotoGeneration)
+                            .filter(
+                                PhotoGeneration.photo_id == photo.id,
+                                PhotoGeneration.status == "success",
+                            )
+                            .order_by(PhotoGeneration.id.desc())
+                            .first()
+                        )
+                        photo_candidates.append(
+                            {
+                                "img_id": photo.id,
+                                "analysis_text": latest_analysis.analysis_text if latest_analysis else "",
+                            }
+                        )
+                    title_dict = write_trip_title(
+                        days_payload,
+                        destination=trip.destination or "",
+                        photo_info=photo_candidates,
+                    )
+                    if title_dict:
+                        generated_title = (title_dict.get("title") or "").strip()
+                        generated_img_id = title_dict.get("img_id")
+                        if generated_title:
+                            trip.title = generated_title
+                        if generated_img_id:
+                            trip.cover_photo_id = generated_img_id
+                        db.commit()
+                        ok = update_trip_day_graph(trip_day, trip)
+                        print(f"[trip-title] generated: trip={trip.id} title={trip.title}")
         except Exception as exc:
             # 제목 생성 실패해도 일기 본문 흐름엔 영향 없게 — 로그만.
             print(f"[trip-title] FAILED: trip_day={trip_day_id}: {exc}")
@@ -626,7 +750,7 @@ def regenerate_trip_day(
     db.add(gen)
     db.commit()
     # 느린 생성은 응답 후 백그라운드에서. (사진 여러 장이면 수십 초)
-    background_tasks.add_task(_run_generation, trip_day_id, gen.id)
+    background_tasks.add_task(submit_generation_task, trip_day_id, gen.id)
     return DayStatus(tripDayId=trip_day.id, genStatus="generating")
 
 

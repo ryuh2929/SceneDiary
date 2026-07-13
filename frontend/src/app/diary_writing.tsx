@@ -80,11 +80,19 @@ export default function DiaryWritingScreen() {
   const routeParams = useLocalSearchParams<{
     tripId?: string | string[];
     path?: string;
+    perfStartedAt?: string | string[];
+    perfFirstDayReadyMs?: string | string[];
   }>();
   console.log("누가 다이어리로 왔는가", routeParams.path);
   const tripIdRaw = Array.isArray(routeParams.tripId)
     ? routeParams.tripId[0]
     : routeParams.tripId;
+  const perfStartedAtRaw = Array.isArray(routeParams.perfStartedAt)
+    ? routeParams.perfStartedAt[0]
+    : routeParams.perfStartedAt;
+  const perfFirstDayReadyMsRaw = Array.isArray(routeParams.perfFirstDayReadyMs)
+    ? routeParams.perfFirstDayReadyMs[0]
+    : routeParams.perfFirstDayReadyMs;
   const TRIP_ID = tripIdRaw ? Number(tripIdRaw) : NaN;
 
   // 백엔드에서 받아온 여행 전체. 받기 전(로딩 중)엔 null.
@@ -117,6 +125,7 @@ export default function DiaryWritingScreen() {
   // fillContent 가 진행 중인 tripDayId 모음. 같은 날 본문을 두 번 fetch 하지 않게 막습니다.
   // (폴링 응답으로 days 가 자주 갱신되어 [days] effect 가 자주 재실행되는 환경 대응)
   const inflightFillRef = useRef<Set<number>>(new Set());
+  const loggedAllDaysReadyRef = useRef(false);
 
   // 본문(일기) 편집 상태. 연필 아이콘으로 진입 → 저장/취소로 종료.
   // 편집 중에는 "다음날로"/"저장하기" 가 잠겨 사용자가 의도치 않게 진행하지 않게 합니다.
@@ -197,6 +206,32 @@ export default function DiaryWritingScreen() {
 
     return () => clearInterval(timer); // 다 ready거나 화면을 떠나면 폴링 정지
   }, [hasGenerating, TRIP_ID]);
+
+  useEffect(() => {
+    const startedAt = Number(perfStartedAtRaw);
+    const allDaysReady =
+      days.length > 0 && days.every((d) => d.genStatus === "ready");
+
+    // 전체 일차의 LLM 결과가 모두 화면에서 ready로 확인된 시점입니다.
+    // 첫 일차 진입 시간과 별도로, 전체 생성 완료 체감 시간을 비교할 때 사용합니다.
+    if (
+      Number.isFinite(startedAt) &&
+      allDaysReady &&
+      !loggedAllDaysReadyRef.current
+    ) {
+      loggedAllDaysReadyRef.current = true;
+      const elapsedMs = Date.now() - startedAt;
+      const firstDayReadyMs = Number(perfFirstDayReadyMsRaw);
+      if (Number.isFinite(firstDayReadyMs)) {
+        console.log(
+          `[perf] click_to_first_day_ready=${firstDayReadyMs}ms (${(firstDayReadyMs / 1000).toFixed(2)}s)`,
+        );
+      }
+      console.log(
+        `[perf] click_to_all_days_ready=${elapsedMs}ms (${(elapsedMs / 1000).toFixed(2)}s)`,
+      );
+    }
+  }, [days, perfFirstDayReadyMsRaw, perfStartedAtRaw]);
 
   useEffect(() => {
     const eventSource = getTripTitle(TRIP_ID);

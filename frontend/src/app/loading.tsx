@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Platform, Pressable, Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -419,6 +419,7 @@ export default function LoadingScreen() {
   const params = useLocalSearchParams<{
     path?: string; photos?: string; tripId?: string;
     tripDayId?: string; day?: string; mode?: string; days?: string;
+    perfStartedAt?: string;
   }>();
 
   const photos      = useMemo(() => parsePhotosParam(params.photos), [params.photos]);
@@ -427,6 +428,7 @@ export default function LoadingScreen() {
   const tripDayId   = getFirstParam(params.tripDayId);
   const day         = getFirstParam(params.day)       ?? '1';
   const mode        = getFirstParam(params.mode)      ?? 'initial';
+  const perfStartedAt = getFirstParam(params.perfStartedAt);
   const allDays     = useMemo(() => parseDaysParam(params.days), [params.days]);
 
   const isNextDayMode = mode === 'next-day';
@@ -441,6 +443,7 @@ export default function LoadingScreen() {
   const [pollingAttempt, setPollingAttempt] = useState(0);
   const [failedDayId, setFailedDayId] = useState<number | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
+  const firstDayReadyMsRef = useRef<string | undefined>(undefined);
 
   const totalDayCount     = allDays.length || (tripDayId ? 1 : 0);
 
@@ -541,6 +544,13 @@ export default function LoadingScreen() {
         } else if (doneCount === statuses.length) {
           setLoadingStep('completed'); setProgress(100); setErrorMessage(null);
           setFailedDayId(null);
+          // 첫 일차가 작성 화면으로 열릴 수 있게 된 시점만 저장합니다.
+          // 실제 로그는 전체 완료 로그와 붙여 보기 위해 diary_writing에서 한 번에 출력합니다.
+          const startedAt = Number(perfStartedAt);
+          if (Number.isFinite(startedAt) && firstDayReadyMsRef.current === undefined) {
+            const elapsedMs = Date.now() - startedAt;
+            firstDayReadyMsRef.current = String(elapsedMs);
+          }
           stopPolling();
         } else {
           setLoadingStep('generating_diary');
@@ -570,7 +580,7 @@ export default function LoadingScreen() {
     const timer = setTimeout(() => {
       router.replace({
         pathname: '/diary_writing',
-        params:   { tripId, day, mode, path: params.path },
+        params:   { tripId, day, mode, path: params.path, perfStartedAt, perfFirstDayReadyMs: firstDayReadyMsRef.current },
       });
     }, COMPLETE_DELAY_MS);
     return () => clearTimeout(timer);
@@ -637,7 +647,7 @@ export default function LoadingScreen() {
         disabled={isRetrying || (progress < 100 && loadingStep !== 'failed')}
         onPress={() => {
           if (loadingStep === 'failed') { void retryGeneration(); return; }
-          router.replace({ pathname: '/diary_writing', params: { tripId, day, mode } });
+          router.replace({ pathname: '/diary_writing', params: { tripId, day, mode, perfStartedAt, perfFirstDayReadyMs: firstDayReadyMsRef.current } });
         }}
         style={{ marginHorizontal: 24, borderRadius: 12, overflow: 'hidden', opacity: progress >= 100 || loadingStep === 'failed' ? 1 : 0.52 }}
       >

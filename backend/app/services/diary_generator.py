@@ -94,6 +94,7 @@ _WRITE_PROMPT = """당신은 여행 사진 분석 결과를 보고 한국어 여
 오늘 하루를 되돌아보는 일기처럼 자연스럽게 작성하세요.
 사진을 해설하듯 쓰지 말고, 사용자가 그 순간을 다시 떠올리는 일기처럼 작성하세요.
 '사진에는', '장면이었다' 같은 제3자 관찰 표현은 피하세요.
+photo_analyses에 taken_at_local 또는 taken_at_utc가 있으면 사진이 찍힌 시간 흐름을 참고하세요.
 
 [content 문체 규칙]
 content의 모든 문장은 평서형 '-다'체로 통일하세요.
@@ -396,7 +397,7 @@ def analyze_photo(path: Path, *, photo_metadata: dict | None = None) -> dict:
 
 
 def write_diary(
-    analyses: list[str], *, location: str = "", date: str = "", persona: str = "daily"
+    analyses: list[str | dict], *, location: str = "", date: str = "", persona: str = "daily"
 ) -> dict:
     """[2단계 · LLM] 사진 분석 텍스트들만 보고(사진 없이) 일기를 씁니다.
 
@@ -405,13 +406,26 @@ def write_diary(
     """
     persona = _normalize_persona(persona)
 
+    def _analysis_payload_item(index: int, analysis: str | dict) -> dict:
+        if isinstance(analysis, dict):
+            return {
+                "order": index,
+                "analysis_text": str(analysis.get("analysis_text") or ""),
+                # 촬영시간은 EXIF에서 얻은 값입니다. local이 있으면 LLM이 하루 흐름을 잡기 쉽고,
+                # utc/tz는 원본 시간 정보를 보존하기 위한 보조 필드입니다.
+                "taken_at_local": analysis.get("taken_at_local") or "",
+                "taken_at_utc": analysis.get("taken_at_utc") or "",
+                "tz": analysis.get("tz") or "",
+            }
+        return {"order": index, "analysis_text": analysis}
+
     # 사진 원본 대신 VLM이 만든 analysis_text 배열을 JSON 입력으로 넘깁니다.
     payload = {
         "persona": persona,
         "location": location or "",
         "date": date or "",
         "photo_analyses": [
-            {"order": index, "analysis_text": analysis}
+            _analysis_payload_item(index, analysis)
             for index, analysis in enumerate(analyses, 1)
         ],
     }
