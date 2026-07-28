@@ -212,7 +212,7 @@ export default function DiaryWritingScreen() {
         return {
           ...prev, // 기존의 모든 속성을 그대로 복사해오고
           title: data.title, // title만 덮어씌움
-          representImage: data.representImage, // resentimage만 덮어씌움
+          representImage: data.representImage, // representImage 덮어씌움
         };
       });
       eventSource.close();
